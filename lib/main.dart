@@ -152,6 +152,7 @@ class InvoiceRowItem {
   DCItem? item;
   double qty;
   double rate;
+  final FocusNode itemFocus = FocusNode();
   final FocusNode rateFocus = FocusNode();
   final FocusNode qtyFocus = FocusNode();
 
@@ -357,6 +358,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   String _invoiceType = 'Regular B2C';
   DCCustomer? _selectedParty;
 
+  final FocusNode _partyFocus = FocusNode();
   final FocusNode _billNoFocus = FocusNode();
   final FocusNode _refFocus = FocusNode();
   final FocusNode _coolieFocus = FocusNode();
@@ -369,10 +371,16 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     _addRow();
   }
 
-  void _addRow() {
+  void _addRow({bool requestFocus = false}) {
+    final newRow = InvoiceRowItem(item: null, qty: 1.0, rate: 0.0);
     setState(() {
-      _rows.add(InvoiceRowItem(item: null, qty: 1.0, rate: 0.0));
+      _rows.add(newRow);
     });
+    if (requestFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        newRow.itemFocus.requestFocus();
+      });
+    }
   }
 
   void _removeRow(int idx) {
@@ -401,6 +409,55 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   double get _exactTotal => _subTotal + _sgst + _cgst + _coolie;
   double get _grandTotal => _exactTotal.roundToDouble();
   double get _roundOff => _grandTotal - _exactTotal;
+
+  void _showConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => KeyboardListener(
+        focusNode: FocusNode()..requestFocus(),
+        onKeyEvent: (event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.enter) {
+              Navigator.pop(ctx);
+              _saveInvoice();
+            } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+              Navigator.pop(ctx);
+            }
+          }
+        },
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF1E242C),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text('Do you want to confirm?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Party: ${_selectedParty?.name ?? "Cash / Unregistered"}'),
+              Text('Grand Total: ₹${_grandTotal.toStringAsFixed(2)}'),
+              const SizedBox(height: 12),
+              const Text('Press [ENTER] to Save | Press [ESC] to Cancel',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Back (Esc)', style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _saveInvoice();
+              },
+              child: const Text('Save & Print (Enter)'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _openInstantAddCustomerDialog(String presetName) {
     final nameCtrl = TextEditingController(text: presetName);
@@ -474,6 +531,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   }),
                 );
                 widget.onSaved();
+                if (_rows.isNotEmpty) {
+                  _rows[0].itemFocus.requestFocus();
+                }
               }
             },
             child: const Text('Save & Select'),
@@ -570,6 +630,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     }),
                   );
                   widget.onSaved();
+                  _rows[rowIndex].rateFocus.requestFocus();
                 }
               },
               child: const Text('Save & Select'),
@@ -615,34 +676,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     );
 
     widget.onSaved();
-    _showPrintDialog(dateStr);
-  }
-
-  void _showPrintDialog(String dateStr) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Invoice Saved Successfully'),
-        content: const Text('Would you like to print or save the PDF Invoice now?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-            icon: const Icon(Icons.print, size: 18),
-            label: const Text('Print / Export PDF'),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _generateAndPrintPdf(dateStr);
-            },
-          ),
-        ],
-      ),
-    );
+    _generateAndPrintPdf(dateStr);
   }
 
   Future<void> _generateAndPrintPdf(String dateStr) async {
@@ -746,9 +780,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 icon: const Icon(Icons.save, color: Colors.white, size: 18),
-                label: const Text('Save & Print (Enter)',
+                label: const Text('Save & Print',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                onPressed: _saveInvoice,
+                onPressed: _showConfirmationDialog,
               ),
             ],
           ),
@@ -789,7 +823,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     },
                     onSelected: (c) {
                       setState(() => _selectedParty = c);
-                      _billNoFocus.requestFocus();
+                      if (_rows.isNotEmpty) {
+                        _rows[0].itemFocus.requestFocus();
+                      }
                     },
                     fieldViewBuilder: (ctx, textCtrl, fNode, onSubmitted) {
                       return TextField(
@@ -808,7 +844,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                           if (_selectedParty == null && val.trim().isNotEmpty) {
                             _openInstantAddCustomerDialog(val.trim());
                           } else {
-                            _billNoFocus.requestFocus();
+                            if (_rows.isNotEmpty) {
+                              _rows[0].itemFocus.requestFocus();
+                            }
                           }
                         },
                       );
@@ -824,7 +862,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     decoration: const InputDecoration(labelText: 'Ref'),
                     onSubmitted: (_) {
                       if (_rows.isNotEmpty) {
-                        _rows[0].rateFocus.requestFocus();
+                        _rows[0].itemFocus.requestFocus();
                       }
                     },
                   ),
@@ -913,7 +951,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 fieldViewBuilder: (ctx, itemTextCtrl, iFocus, onSub) {
                                   return TextField(
                                     controller: itemTextCtrl,
-                                    focusNode: iFocus,
+                                    focusNode: row.itemFocus,
                                     decoration: InputDecoration(
                                       hintText: 'Search or type item...',
                                       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -924,8 +962,12 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                       ),
                                     ),
                                     onSubmitted: (val) {
-                                      if (row.item == null && val.trim().isNotEmpty) {
-                                        _openInstantAddItemDialog(idx, val.trim());
+                                      if (row.item == null) {
+                                        if (val.trim().isEmpty) {
+                                          _showConfirmationDialog();
+                                        } else {
+                                          _openInstantAddItemDialog(idx, val.trim());
+                                        }
                                       } else {
                                         row.rateFocus.requestFocus();
                                       }
@@ -966,9 +1008,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 },
                                 onFieldSubmitted: (_) {
                                   if (idx == _rows.length - 1) {
-                                    _addRow();
+                                    _addRow(requestFocus: true);
                                   } else {
-                                    _rows[idx + 1].rateFocus.requestFocus();
+                                    _rows[idx + 1].itemFocus.requestFocus();
                                   }
                                 },
                               ),
@@ -999,8 +1041,8 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         icon: const Icon(Icons.add, size: 18),
-                        label: const Text('+ Add Item Row (Enter on Qty)'),
-                        onPressed: _addRow,
+                        label: const Text('+ Add Item Row (Enter to add)'),
+                        onPressed: () => _addRow(requestFocus: true),
                       ),
                     ),
                   ),
@@ -1032,7 +1074,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(labelText: 'Coolie (₹)'),
                           onChanged: (v) => setState(() {}),
-                          onSubmitted: (_) => _saveInvoice(),
+                          onSubmitted: (_) => _showConfirmationDialog(),
                         ),
                       ),
                       const SizedBox(width: 20),
@@ -1543,706 +1585,4 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
         TextEditingController(text: isNew ? '' : customer.contact);
     final addressCtrl =
         TextEditingController(text: isNew ? '' : customer.address);
-    final b2bCtrl = TextEditingController(text: isNew ? '' : customer.b2b);
-    final b2cCtrl = TextEditingController(text: isNew ? '' : customer.b2c);
-    final remarksCtrl =
-        TextEditingController(text: isNew ? '' : customer.remarks);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isNew ? 'Add New Customer to Sheet' : 'Edit Customer Details'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact')),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address')),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'B2B Trade Name')),
-                const SizedBox(height: 10),
-                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Reference')),
-                const SizedBox(height: 10),
-                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules')),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-            onPressed: () async {
-              if (nameCtrl.text.trim().isNotEmpty) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Updating Customer to Sheet...')),
-                );
-                await http.post(
-                  Uri.parse(sheetApiUrl),
-                  body: jsonEncode({
-                    "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
-                    if (!isNew) "rowIndex": customer.rowIndex,
-                    "name": nameCtrl.text.trim(),
-                    "contact": contactCtrl.text.trim(),
-                    "address": addressCtrl.text.trim(),
-                    "b2b": b2bCtrl.text.trim(),
-                    "b2c": b2cCtrl.text.trim(),
-                    "remarks": remarksCtrl.text.trim(),
-                  }),
-                );
-                widget.onRefreshRequired();
-              }
-            },
-            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet',
-                style: const TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCustomerModalRow(String title, String val, {bool isHighlight = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 150,
-            child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              val,
-              softWrap: true,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: isHighlight ? const Color(0xFF38BDF8) : Colors.white,
-                height: 1.3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = widget.customers.where((c) {
-      return c.name.toLowerCase().contains(_query.toLowerCase()) ||
-          c.b2b.toLowerCase().contains(_query.toLowerCase()) ||
-          c.b2c.toLowerCase().contains(_query.toLowerCase()) ||
-          c.contact.contains(_query);
-    }).toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('CUSTOMERS DIRECTORY',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('TOTAL ${widget.customers.length} PARTIES',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const Spacer(),
-              SizedBox(
-                width: 300,
-                child: TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search, size: 20),
-                    hintText: 'Search customer name...',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
-                icon: const Icon(Icons.person_add, color: Colors.white, size: 18),
-                label: const Text('Add Customer', style: TextStyle(color: Colors.white)),
-                onPressed: () => _openEditCustomerDialog(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
-              itemBuilder: (ctx, i) {
-                final c = filtered[i];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showCustomerPreviewModal(c),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF161B22),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF242C37)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: const Color(0xFF1E242C),
-                          child: Text('${c.slNo}',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF94A3B8),
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(c.name,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                                  const SizedBox(width: 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1E242C),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF2C3540)),
-                                    ),
-                                    child: Text(
-                                      c.billingTag,
-                                      style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF94A3B8)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              if (c.contact.isNotEmpty || c.address.isNotEmpty)
-                                Text(
-                                  '📞 ${c.contact.isNotEmpty ? c.contact : "-"}  |  📍 ${c.address.isNotEmpty ? c.address : "-"}',
-                                  style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                                ),
-                              if (c.b2b.isNotEmpty)
-                                Text('B2B: ${c.b2b}',
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF38BDF8),
-                                        fontWeight: FontWeight.w500)),
-                              if (c.b2c.isNotEmpty)
-                                Text('B2C: ${c.b2c}',
-                                    style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                              if (c.remarks.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text('Note: ${c.remarks}',
-                                      style: const TextStyle(fontSize: 12, color: Color(0xFFCBD5E1))),
-                                ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_note, color: Color(0xFF94A3B8), size: 24),
-                          tooltip: 'Edit Customer',
-                          onPressed: () => _openEditCustomerDialog(customer: c),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 4. PACKING SLIP VIEW ----------------
-
-class LoadingSlipView extends StatefulWidget {
-  final List<LoadingEntry> loadingSlip;
-  final List<DCItem> items;
-  final List<DCCustomer> customers;
-
-  const LoadingSlipView({
-    super.key,
-    required this.loadingSlip,
-    required this.items,
-    required this.customers,
-  });
-
-  @override
-  State<LoadingSlipView> createState() => _LoadingSlipViewState();
-}
-
-class _LoadingSlipViewState extends State<LoadingSlipView> {
-  void _openAddPackingSlipDialog() {
-    String? selectedCust =
-        widget.customers.isNotEmpty ? widget.customers.first.name : null;
-    final placeCtrl = TextEditingController();
-    final summaryCtrl = TextEditingController();
-    final bagsCtrl = TextEditingController(text: '10');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E242C),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Add to Packing Slip'),
-          content: SizedBox(
-            width: 500,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedCust,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Party / Customer Name'),
-                    items: widget.customers
-                        .map((c) => DropdownMenuItem(value: c.name, child: Text(c.name)))
-                        .toList(),
-                    onChanged: (v) => setDialogState(() => selectedCust = v),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(controller: placeCtrl, decoration: const InputDecoration(labelText: 'Place (സ്ഥലം)')),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: summaryCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Item Summary (ഉദാ: Sadhya Vadi 5, Priyam 5)',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: bagsCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Total Nos of Bags (ചാക്ക്)'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-              onPressed: () async {
-                if (selectedCust != null && bagsCtrl.text.trim().isNotEmpty) {
-                  final party = selectedCust!;
-                  final place = placeCtrl.text.trim();
-                  final summary = summaryCtrl.text.trim();
-                  final bags = int.tryParse(bagsCtrl.text.trim()) ?? 0;
-
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Saving to Google Sheet Packing Slip...')),
-                  );
-
-                  setState(() {
-                    widget.loadingSlip.add(LoadingEntry(
-                      customerName: party,
-                      place: place,
-                      summary: summary.isEmpty ? 'Rice Bags' : summary,
-                      bags: bags,
-                    ));
-                  });
-
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": "ADD_PACKING_SLIP",
-                      "party": party,
-                      "place": place,
-                      "itemSummary": summary,
-                      "totalBags": bags,
-                    }),
-                  );
-                }
-              },
-              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _copySlipToClipboard() {
-    final buffer = StringBuffer();
-    buffer.writeln("--- DAVIS & COMPANY PACKING SLIP ---");
-    int total = 0;
-    for (int i = 0; i < widget.loadingSlip.length; i++) {
-      final e = widget.loadingSlip[i];
-      total += e.bags;
-      buffer.writeln(
-          "${i + 1}. ${e.customerName} (${e.place}) : ${e.summary} - ${e.bags} Bags");
-    }
-    buffer.writeln("TOTAL BAGS: $total");
-
-    Clipboard.setData(ClipboardData(text: buffer.toString()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Packing slip copied to clipboard!')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    int totalBags = widget.loadingSlip.fold(0, (sum, entry) => sum + entry.bags);
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('PACKING / LOADING SLIP',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('LINKED DIRECTLY TO GOOGLE SHEET',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const Spacer(),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E242C),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text('Copy Slip'),
-                onPressed: widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Entry', style: TextStyle(color: Colors.white)),
-                onPressed: _openAddPackingSlipDialog,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: widget.loadingSlip.isEmpty
-                ? const Center(
-                    child: Text('No entries added yet. Tap "Add Entry" to create a slip.',
-                        style: TextStyle(color: Color(0xFF94A3B8))),
-                  )
-                : ListView.separated(
-                    itemCount: widget.loadingSlip.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, idx) {
-                      final entry = widget.loadingSlip[idx];
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF161B22),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF242C37)),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: const Color(0xFF1E242C),
-                              child: Text('${idx + 1}',
-                                  style: const TextStyle(color: Color(0xFF94A3B8))),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(entry.customerName,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                      if (entry.place.isNotEmpty) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF1E242C),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(entry.place,
-                                              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(entry.summary,
-                                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                            Text('${entry.bags} Bags',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF38BDF8))),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Color(0xFF64748B)),
-                              onPressed: () {
-                                setState(() {
-                                  widget.loadingSlip.removeAt(idx);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF242C37)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('TOTAL DISPATCH LOAD:',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('$totalBags BAGS',
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 5. INVOICE HISTORY VIEW ----------------
-
-class InvoiceHistoryView extends StatelessWidget {
-  final List<DCEstimate> estimates;
-  const InvoiceHistoryView({super.key, required this.estimates});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('INVOICE HISTORY',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          Text('${estimates.length} INVOICES LOGGED IN SHEET',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 20),
-          Expanded(
-            child: estimates.isEmpty
-                ? const Center(
-                    child: Text('No invoice history logged yet.',
-                        style: TextStyle(color: Color(0xFF94A3B8))),
-                  )
-                : ListView.separated(
-                    itemCount: estimates.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, idx) {
-                      final est = estimates[idx];
-                      return Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF161B22),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF242C37)),
-                        ),
-                        child: Row(
-                          children: [
-                            Text('#${est.slNo}',
-                                style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(est.customer,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                      const SizedBox(width: 10),
-                                      Text('(${est.date})',
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(est.itemSummary,
-                                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                            Text('₹${est.grandTotal}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF38BDF8))),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 6. CALCULATOR VIEW ----------------
-
-class PackSizeCalculatorView extends StatefulWidget {
-  final List<DCItem> items;
-  const PackSizeCalculatorView({super.key, required this.items});
-
-  @override
-  State<PackSizeCalculatorView> createState() => _PackSizeCalculatorViewState();
-}
-
-class _PackSizeCalculatorViewState extends State<PackSizeCalculatorView> {
-  DCItem? _selectedItem;
-  final _qtyCtrl = TextEditingController(text: '1');
-  double _totalCalculated = 0.0;
-
-  void _calculate() {
-    if (_selectedItem == null) return;
-    final qty = double.tryParse(_qtyCtrl.text.trim()) ?? 0.0;
-    final rate = double.tryParse(_selectedItem!.rate) ?? 0.0;
-    setState(() {
-      _totalCalculated = qty * rate;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('PACK SIZE & RATE CALCULATOR',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const Text('QUICK ESTIMATE PER BAG / KG',
-              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF242C37)),
-            ),
-            child: Column(
-              children: [
-                DropdownButtonFormField<DCItem>(
-                  value: _selectedItem,
-                  hint: const Text('Select an Item from Price List'),
-                  isExpanded: true,
-                  items: widget.items
-                      .map((i) => DropdownMenuItem(
-                            value: i,
-                            child: Text('${i.name} — ₹${i.rate} (${i.rateType})'),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      _selectedItem = v;
-                    });
-                    _calculate();
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _qtyCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: _selectedItem != null && _selectedItem!.rateType.contains('BAG')
-                              ? 'Number of Bags'
-                              : 'Quantity in KGs',
-                        ),
-                        onChanged: (v) => _calculate(),
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E242C),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Estimated Amount:',
-                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                            Text(
-                              '₹${_totalCalculated.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF38BDF8)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final b2bCtrl =
