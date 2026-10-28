@@ -369,7 +369,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN (PRECISE KEYBOARD FLOW) ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -402,9 +402,19 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   final List<InvoiceRowItem> _rows = [];
 
+  // Popup overlay selection states
+  bool _showPartyList = false;
+  int _partySelectedIndex = 0;
+  List<DCCustomer> _filteredParties = [];
+
+  int? _activeItemRowIndex;
+  int _itemSelectedIndex = 0;
+  List<DCItem> _filteredItems = [];
+
   @override
   void initState() {
     super.initState();
+    _filteredParties = widget.customers;
     _addRow();
   }
 
@@ -427,6 +437,8 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       _selectedParty = null;
       _partyTextCtrl.clear();
       _coolieCtrl.text = '0.00';
+      _showPartyList = false;
+      _activeItemRowIndex = null;
       _rows.clear();
       _addRow();
     });
@@ -452,32 +464,84 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   double get _grandTotal => _exactTotal.roundToDouble();
   double get _roundOff => _grandTotal - _exactTotal;
 
-  KeyEventResult _handleGlobalKeyEvent(FocusNode node, KeyEvent event) {
+  // Key Event for Party Input
+  KeyEventResult _handlePartyKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
       final isAlt = HardwareKeyboard.instance.isAltPressed;
-      final isCtrl = HardwareKeyboard.instance.isControlPressed;
-
-      // Alt + C : Instant Create
       if (isAlt && event.logicalKey == LogicalKeyboardKey.keyC) {
-        if (_partyFocus.hasFocus) {
-          _openInstantAddCustomerDialog(_partyTextCtrl.text.trim());
-          return KeyEventResult.handled;
-        }
-        for (int i = 0; i < _rows.length; i++) {
-          if (_rows[i].itemSearchFocus.hasFocus) {
-            _openInstantAddItemDialog(i, _rows[i].textCtrl.text.trim());
-            return KeyEventResult.handled;
-          }
-        }
+        _openInstantAddCustomerDialog(_partyTextCtrl.text.trim());
+        return KeyEventResult.handled;
       }
 
-      // Ctrl + A : Save & Print
-      if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyA) {
-        _saveInvoice();
-        return KeyEventResult.handled;
+      if (_showPartyList && _filteredParties.isNotEmpty) {
+        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+          setState(() {
+            _partySelectedIndex = (_partySelectedIndex + 1).clamp(0, _filteredParties.length - 1);
+          });
+          return KeyEventResult.handled;
+        } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+          setState(() {
+            _partySelectedIndex = (_partySelectedIndex - 1).clamp(0, _filteredParties.length - 1);
+          });
+          return KeyEventResult.handled;
+        } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+          _selectParty(_filteredParties[_partySelectedIndex]);
+          return KeyEventResult.handled;
+        }
       }
     }
     return KeyEventResult.ignored;
+  }
+
+  void _selectParty(DCCustomer cust) {
+    setState(() {
+      _selectedParty = cust;
+      _partyTextCtrl.text = cust.name;
+      _showPartyList = false;
+    });
+    // Direct Jump to First Item Row
+    if (_rows.isNotEmpty) {
+      _rows[0].itemSearchFocus.requestFocus();
+    }
+  }
+
+  // Key Event for Item Input
+  KeyEventResult _handleItemKeyEvent(int rowIdx, FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent) {
+      final isAlt = HardwareKeyboard.instance.isAltPressed;
+      if (isAlt && event.logicalKey == LogicalKeyboardKey.keyC) {
+        _openInstantAddItemDialog(rowIdx, _rows[rowIdx].textCtrl.text.trim());
+        return KeyEventResult.handled;
+      }
+
+      if (_activeItemRowIndex == rowIdx && _filteredItems.isNotEmpty) {
+        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+          setState(() {
+            _itemSelectedIndex = (_itemSelectedIndex + 1).clamp(0, _filteredItems.length - 1);
+          });
+          return KeyEventResult.handled;
+        } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+          setState(() {
+            _itemSelectedIndex = (_itemSelectedIndex - 1).clamp(0, _filteredItems.length - 1);
+          });
+          return KeyEventResult.handled;
+        } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+          _selectItem(rowIdx, _filteredItems[_itemSelectedIndex]);
+          return KeyEventResult.handled;
+        }
+      }
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _selectItem(int rowIdx, DCItem itm) {
+    setState(() {
+      _rows[rowIdx].item = itm;
+      _rows[rowIdx].textCtrl.text = itm.name;
+      _rows[rowIdx].rate = double.tryParse(itm.rate) ?? 0.0;
+      _activeItemRowIndex = null;
+    });
+    _rows[rowIdx].rateFocus.requestFocus();
   }
 
   void _openInstantAddCustomerDialog(String presetName) {
@@ -539,6 +603,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   widget.customers.insert(0, newCust);
                   _selectedParty = newCust;
                   _partyTextCtrl.text = newCust.name;
+                  _showPartyList = false;
                 });
                 widget.onSetSyncing(true);
                 await http.post(
@@ -639,6 +704,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     _rows[rowIndex].item = newItem;
                     _rows[rowIndex].textCtrl.text = newItem.name;
                     _rows[rowIndex].rate = double.tryParse(newItem.rate) ?? 0.0;
+                    _activeItemRowIndex = null;
                   });
                   widget.onSetSyncing(true);
                   await http.post(
@@ -815,432 +881,439 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Focus(
-      onKeyEvent: _handleGlobalKeyEvent,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('Customer Bill',
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFE2E8F0))),
+              const SizedBox(width: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E242C),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF2C3540)),
+                ),
+                child: Text('Auto Bill #${widget.nextBillNo}',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+              ),
+              const SizedBox(width: 14),
+              const Text('Alt + C: Instant Add  |  Ctrl + A: Save',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+              const Spacer(),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: const Text('Cancel Bill'),
+                onPressed: _clearBilling,
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.save, color: Colors.white, size: 18),
+                label: const Text('Save & Print (Ctrl+A)',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: _saveInvoice,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Party Selection Bar with Custom Tally Popup Table
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF242C37)),
+            ),
+            child: Row(
               children: [
-                const Text('Customer Bill',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFE2E8F0))),
-                const SizedBox(width: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E242C),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFF2C3540)),
+                Expanded(
+                  flex: 4,
+                  child: Focus(
+                    onKeyEvent: _handlePartyKeyEvent,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _partyTextCtrl,
+                          focusNode: _partyFocus,
+                          decoration: InputDecoration(
+                            labelText: 'Party / Customer Name (Type & Arrow Navigate)',
+                            hintText: 'Search customer...',
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.person_add, size: 18),
+                              tooltip: 'Instant Add Customer (Alt + C)',
+                              onPressed: () => _openInstantAddCustomerDialog(_partyTextCtrl.text.trim()),
+                            ),
+                          ),
+                          onChanged: (val) {
+                            setState(() {
+                              _showPartyList = true;
+                              _partySelectedIndex = 0;
+                              _filteredParties = widget.customers.where((c) {
+                                return c.name.toLowerCase().contains(val.toLowerCase()) ||
+                                    c.b2b.toLowerCase().contains(val.toLowerCase());
+                              }).toList();
+                            });
+                          },
+                          onTap: () {
+                            setState(() {
+                              _showPartyList = true;
+                              _filteredParties = widget.customers;
+                            });
+                          },
+                        ),
+                        if (_showPartyList && _filteredParties.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            height: 200,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E242C),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF2C3540)),
+                            ),
+                            child: ListView.builder(
+                              itemCount: _filteredParties.length,
+                              itemBuilder: (ctx, index) {
+                                final p = _filteredParties[index];
+                                final isSelected = index == _partySelectedIndex;
+                                return InkWell(
+                                  onTap: () => _selectParty(p),
+                                  child: Container(
+                                    color: isSelected ? const Color(0xFF2563EB).withOpacity(0.25) : null,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    child: Row(
+                                      children: [
+                                        if (isSelected)
+                                          const Text('> ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                                        Expanded(
+                                          child: Text(
+                                            "${p.name} ${p.b2b.isNotEmpty ? '(${p.b2b})' : ''}",
+                                            style: TextStyle(
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                              color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                  child: Text('Auto Bill #${widget.nextBillNo}',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                 ),
                 const SizedBox(width: 14),
-                const Text('Alt + C: Instant Add  |  Ctrl + A: Save',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                const Spacer(),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                SizedBox(
+                  width: 180,
+                  child: DropdownButtonFormField<String>(
+                    value: _invoiceType,
+                    decoration: const InputDecoration(labelText: 'Supply Type'),
+                    items: const [
+                      DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
+                      DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
+                    ],
+                    onChanged: (v) => setState(() => _invoiceType = v!),
                   ),
-                  icon: const Icon(Icons.cancel_outlined, size: 18),
-                  label: const Text('Cancel Bill'),
-                  onPressed: _clearBilling,
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  icon: const Icon(Icons.save, color: Colors.white, size: 18),
-                  label: const Text('Save & Print (Ctrl+A)',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  onPressed: _saveInvoice,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 16),
 
-            // Party Selection Bar (Direct jump to items, Ref & Bill No skipped)
-            Container(
-              padding: const EdgeInsets.all(16),
+          // Tally Grid Table (Qty without Bags)
+          Expanded(
+            child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFF161B22),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFF242C37)),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    flex: 4,
-                    child: RawAutocomplete<DCCustomer>(
-                      focusNode: _partyFocus,
-                      textEditingController: _partyTextCtrl,
-                      displayStringForOption: (c) =>
-                          "${c.name} ${c.b2b.isNotEmpty ? '(${c.b2b})' : ''}",
-                      optionsBuilder: (TextEditingValue textVal) {
-                        if (textVal.text.isEmpty) {
-                          return widget.customers;
-                        }
-                        return widget.customers.where((c) =>
-                            c.name.toLowerCase().contains(textVal.text.toLowerCase()) ||
-                            c.b2b.toLowerCase().contains(textVal.text.toLowerCase()));
-                      },
-                      onSelected: (c) {
-                        setState(() {
-                          _selectedParty = c;
-                          _partyTextCtrl.text = c.name;
-                        });
-                        // Direct jump into first item
-                        if (_rows.isNotEmpty) {
-                          _rows[0].itemSearchFocus.requestFocus();
-                        }
-                      },
-                      fieldViewBuilder: (ctx, textCtrl, fNode, onSubmitted) {
-                        return TextField(
-                          controller: textCtrl,
-                          focusNode: fNode,
-                          decoration: InputDecoration(
-                            labelText: 'Party / Customer Name (Type & Arrow Navigate)',
-                            hintText: 'Search party...',
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.person_add, size: 18),
-                              tooltip: 'Instant Add Customer (Alt + C)',
-                              onPressed: () => _openInstantAddCustomerDialog(textCtrl.text.trim()),
-                            ),
-                          ),
-                        );
-                      },
-                      optionsViewBuilder: (ctx, onSelected, options) {
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: Material(
-                            elevation: 8,
-                            color: const Color(0xFF1E242C),
-                            borderRadius: BorderRadius.circular(8),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 280, maxWidth: 450),
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                itemCount: options.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  final option = options.elementAt(index);
-                                  final isHighlighted = AutocompleteHighlightedOption.of(context) == index;
-                                  return InkWell(
-                                    onTap: () => onSelected(option),
-                                    child: Container(
-                                      color: isHighlighted ? const Color(0xFF2563EB).withOpacity(0.25) : null,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      child: Text(
-                                        "${option.name} ${option.b2b.isNotEmpty ? '(${option.b2b})' : ''}",
-                                        style: TextStyle(
-                                          fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
-                                          color: isHighlighted ? const Color(0xFF38BDF8) : Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1E242C),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  SizedBox(
-                    width: 180,
-                    child: DropdownButtonFormField<String>(
-                      value: _invoiceType,
-                      decoration: const InputDecoration(labelText: 'Supply Type'),
-                      items: const [
-                        DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
-                        DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
+                    child: const Row(
+                      children: [
+                        SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 16),
+                        Expanded(flex: 4, child: Text('Name of Item (Arrow Navigate & Enter)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 16),
+                        Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 16),
+                        Expanded(flex: 2, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 16),
+                        Expanded(flex: 2, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 40),
                       ],
-                      onChanged: (v) => setState(() => _invoiceType = v!),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                  const Divider(height: 1, color: Color(0xFF242C37)),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _rows.length,
+                      separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C37)),
+                      itemBuilder: (ctx, idx) {
+                        final row = _rows[idx];
+                        final isItemPopupOpen = _activeItemRowIndex == idx;
 
-            // Tally Grid Table
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161B22),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF242C37)),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1E242C),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                      ),
-                      child: const Row(
-                        children: [
-                          SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 16),
-                          Expanded(flex: 4, child: Text('Name of Item (Arrow Navigate & Enter)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 16),
-                          Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 16),
-                          Expanded(flex: 2, child: Text('Qty (Bags)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 16),
-                          Expanded(flex: 2, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 40),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1, color: Color(0xFF242C37)),
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _rows.length,
-                        separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C37)),
-                        itemBuilder: (ctx, idx) {
-                          final row = _rows[idx];
-                          return Row(
-                            children: [
-                              SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                flex: 4,
-                                child: RawAutocomplete<DCItem>(
-                                  focusNode: row.itemSearchFocus,
-                                  textEditingController: row.textCtrl,
-                                  displayStringForOption: (i) => i.name,
-                                  optionsBuilder: (TextEditingValue tVal) {
-                                    if (tVal.text.isEmpty) {
-                                      return widget.items;
-                                    }
-                                    return widget.items.where((i) =>
-                                        i.name.toLowerCase().contains(tVal.text.toLowerCase()) ||
-                                        i.tallyName.toLowerCase().contains(tVal.text.toLowerCase()));
-                                  },
-                                  onSelected: (item) {
-                                    setState(() {
-                                      row.item = item;
-                                      row.rate = double.tryParse(item.rate) ?? 0.0;
-                                      row.textCtrl.text = item.name;
-                                    });
-                                    row.rateFocus.requestFocus();
-                                  },
-                                  fieldViewBuilder: (ctx, itemTextCtrl, iFocus, onSub) {
-                                    return TextField(
-                                      controller: itemTextCtrl,
-                                      focusNode: iFocus,
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 14),
+                              child: SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 4,
+                              child: Focus(
+                                onKeyEvent: (node, event) => _handleItemKeyEvent(idx, node, event),
+                                child: Column(
+                                  children: [
+                                    TextField(
+                                      controller: row.textCtrl,
+                                      focusNode: row.itemSearchFocus,
                                       decoration: InputDecoration(
-                                        hintText: 'Search item & arrow navigate...',
+                                        hintText: 'Search item...',
                                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                         suffixIcon: IconButton(
                                           icon: const Icon(Icons.add, size: 16),
                                           tooltip: 'Instant Add Item (Alt + C)',
-                                          onPressed: () => _openInstantAddItemDialog(idx, itemTextCtrl.text.trim()),
+                                          onPressed: () => _openInstantAddItemDialog(idx, row.textCtrl.text.trim()),
                                         ),
                                       ),
-                                    );
-                                  },
-                                  optionsViewBuilder: (ctx, onSelected, options) {
-                                    return Align(
-                                      alignment: Alignment.topLeft,
-                                      child: Material(
-                                        elevation: 8,
-                                        color: const Color(0xFF1E242C),
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: ConstrainedBox(
-                                          constraints: const BoxConstraints(maxHeight: 250, maxWidth: 450),
-                                          child: ListView.builder(
-                                            padding: EdgeInsets.zero,
-                                            itemCount: options.length,
-                                            itemBuilder: (BuildContext context, int index) {
-                                              final option = options.elementAt(index);
-                                              final isHighlighted = AutocompleteHighlightedOption.of(context) == index;
-                                              return InkWell(
-                                                onTap: () => onSelected(option),
-                                                child: Container(
-                                                  color: isHighlighted ? const Color(0xFF2563EB).withOpacity(0.25) : null,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                                  child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        option.name,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          _activeItemRowIndex = idx;
+                                          _itemSelectedIndex = 0;
+                                          _filteredItems = widget.items.where((i) {
+                                            return i.name.toLowerCase().contains(val.toLowerCase()) ||
+                                                i.tallyName.toLowerCase().contains(val.toLowerCase());
+                                          }).toList();
+                                        });
+                                      },
+                                      onTap: () {
+                                        setState(() {
+                                          _activeItemRowIndex = idx;
+                                          _filteredItems = widget.items;
+                                        });
+                                      },
+                                    ),
+                                    if (isItemPopupOpen && _filteredItems.isNotEmpty)
+                                      Container(
+                                        margin: const EdgeInsets.only(top: 4),
+                                        height: 180,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1E242C),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: const Color(0xFF2C3540)),
+                                        ),
+                                        child: ListView.builder(
+                                          itemCount: _filteredItems.length,
+                                          itemBuilder: (ctx, itemIdx) {
+                                            final item = _filteredItems[itemIdx];
+                                            final isSelected = itemIdx == _itemSelectedIndex;
+                                            return InkWell(
+                                              onTap: () => _selectItem(idx, item),
+                                              child: Container(
+                                                color: isSelected ? const Color(0xFF2563EB).withOpacity(0.25) : null,
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                child: Row(
+                                                  children: [
+                                                    if (isSelected)
+                                                      const Text('> ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                                                    Expanded(
+                                                      child: Text(
+                                                        item.name,
                                                         style: TextStyle(
-                                                          fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
-                                                          color: isHighlighted ? const Color(0xFF38BDF8) : Colors.white,
+                                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                          color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
                                                         ),
                                                       ),
-                                                      Text('₹${option.rate}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                                    ],
-                                                  ),
+                                                    ),
+                                                    Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                                  ],
                                                 ),
-                                              );
-                                            },
-                                          ),
+                                              ),
+                                            );
+                                          },
                                         ),
                                       ),
-                                    );
-                                  },
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                flex: 2,
-                                child: TextFormField(
-                                  key: ValueKey('rate_${row.item?.name}_$idx'),
-                                  initialValue: row.rate.toStringAsFixed(2),
-                                  focusNode: row.rateFocus,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                  onChanged: (val) {
-                                    setState(() {
-                                      row.rate = double.tryParse(val) ?? 0.0;
-                                    });
-                                  },
-                                  onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
-                                ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                key: ValueKey('rate_${row.item?.name}_$idx'),
+                                initialValue: row.rate.toStringAsFixed(2),
+                                focusNode: row.rateFocus,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                onChanged: (val) {
+                                  setState(() {
+                                    row.rate = double.tryParse(val) ?? 0.0;
+                                  });
+                                },
+                                onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                flex: 2,
-                                child: TextFormField(
-                                  initialValue: row.qty.toStringAsFixed(0),
-                                  focusNode: row.qtyFocus,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                  onChanged: (val) {
-                                    setState(() {
-                                      row.qty = double.tryParse(val) ?? 1.0;
-                                    });
-                                  },
-                                  onFieldSubmitted: (_) {
-                                    if (idx == _rows.length - 1) {
-                                      _addRow();
-                                      Future.delayed(const Duration(milliseconds: 50), () {
-                                        _rows[idx + 1].itemSearchFocus.requestFocus();
-                                      });
-                                    } else {
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                initialValue: row.qty.toStringAsFixed(0),
+                                focusNode: row.qtyFocus,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                onChanged: (val) {
+                                  setState(() {
+                                    row.qty = double.tryParse(val) ?? 1.0;
+                                  });
+                                },
+                                onFieldSubmitted: (_) {
+                                  if (idx == _rows.length - 1) {
+                                    _addRow();
+                                    Future.delayed(const Duration(milliseconds: 50), () {
                                       _rows[idx + 1].itemSearchFocus.requestFocus();
-                                    }
-                                  },
-                                ),
+                                    });
+                                  } else {
+                                    _rows[idx + 1].itemSearchFocus.requestFocus();
+                                  }
+                                },
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                flex: 2,
+                            ),
+                            const SizedBox(width: 16),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 14),
+                              child: SizedBox(
+                                width: 120,
                                 child: Text(
                                   '₹${row.amount.toStringAsFixed(2)}',
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                 ),
                               ),
-                              SizedBox(
-                                width: 40,
-                                child: IconButton(
-                                  icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
-                                  onPressed: () => _removeRow(idx),
-                                ),
+                            ),
+                            SizedBox(
+                              width: 40,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
+                                onPressed: () => _removeRow(idx),
                               ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('+ Add Item Row (Enter on Qty)'),
-                          onPressed: _addRow,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Tally Summary & Auto-Calculation Footer
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF161B22),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF242C37)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 140,
-                          child: TextField(
-                            controller: _coolieCtrl,
-                            focusNode: _coolieFocus,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Coolie (₹)'),
-                            onChanged: (v) => setState(() {}),
-                            onSubmitted: (_) => _saveInvoice(),
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Text(
-                          'Taxable Subtotal: ₹${_taxableAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _summaryLine('Sub Total:', '₹${_subTotal.toStringAsFixed(2)}'),
-                        if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
-                        if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
-                        if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
-                        _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
-                        const Divider(height: 12, color: Color(0xFF242C37)),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            const Text('Grand Total: ',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                            Text('₹${_grandTotal.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF38BDF8))),
-                          ],
-                        ),
-                      ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('+ Add Item Row (Enter on Qty)'),
+                        onPressed: _addRow,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+
+          // Tally Summary & Auto-Calculation Footer
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF242C37)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 140,
+                        child: TextField(
+                          controller: _coolieCtrl,
+                          focusNode: _coolieFocus,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Coolie (₹)'),
+                          onChanged: (v) => setState(() {}),
+                          onSubmitted: (_) => _saveInvoice(),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Text(
+                        'Taxable Subtotal: ₹${_taxableAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _summaryLine('Sub Total:', '₹${_subTotal.toStringAsFixed(2)}'),
+                      if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
+                      if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
+                      if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
+                      _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
+                      const Divider(height: 12, color: Color(0xFF242C37)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          const Text('Grand Total: ',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                          Text('₹${_grandTotal.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF38BDF8))),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2217,7 +2290,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- 5. INVOICE HISTORY VIEW (VIEW & CANCEL STATUS) ----------------
+// ---------------- 5. INVOICE HISTORY VIEW ----------------
 
 class InvoiceHistoryView extends StatelessWidget {
   final List<DCEstimate> estimates;
