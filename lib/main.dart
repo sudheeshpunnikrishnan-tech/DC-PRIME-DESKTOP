@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -196,7 +195,7 @@ class InvoiceRowItem {
   double get amount => qty * rate;
 }
 
-// ---------------- APP ROOT ----------------
+// ---------------- APP ROOT: BALANCED EMERALD MINT THEME ----------------
 
 class DCPrimeApp extends StatelessWidget {
   const DCPrimeApp({super.key});
@@ -209,26 +208,27 @@ class DCPrimeApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F141C),
+        scaffoldBackgroundColor: const Color(0xFF0D1217),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF2563EB),
-          surface: Color(0xFF161D27),
-          onSurface: Color(0xFFF1F5F9),
+          primary: Color(0xFF10B981),
+          secondary: Color(0xFF34D399),
+          surface: Color(0xFF141C24),
+          onSurface: Color(0xFFF8FAFC),
         ),
         navigationRailTheme: const NavigationRailThemeData(
-          backgroundColor: Color(0xFF121822),
-          indicatorColor: Color(0xFF2563EB),
+          backgroundColor: Color(0xFF10161E),
+          indicatorColor: Color(0xFF059669),
           selectedIconTheme: IconThemeData(color: Colors.white, size: 22),
           unselectedIconTheme: IconThemeData(color: Color(0xFF94A3B8), size: 22),
-          selectedLabelTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+          selectedLabelTextStyle: TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelTextStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
         ),
         inputDecorationTheme: const InputDecorationTheme(
           filled: true,
-          fillColor: Color(0xFF1C2533),
-          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2B384D))),
-          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2B384D))),
-          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF38BDF8), width: 1.5)),
+          fillColor: Color(0xFF1A242E),
+          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF283847))),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF283847))),
+          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF10B981), width: 1.5)),
           labelStyle: TextStyle(color: Color(0xFF94A3B8)),
         ),
       ),
@@ -274,7 +274,6 @@ class _MainDashboardState extends State<MainDashboard> {
         final List custList = data['customers'] ?? [];
         final List estList = data['estimates'] ?? [];
 
-        // Load company details from Sheet row 2
         if (data['company'] != null) {
           final comp = data['company'];
           CompanyConfig.logoUrl = comp['logoUrl'] ?? CompanyConfig.logoUrl;
@@ -318,12 +317,12 @@ class _MainDashboardState extends State<MainDashboard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDlgState) => AlertDialog(
-          backgroundColor: const Color(0xFF161D27),
+          backgroundColor: const Color(0xFF141C24),
           title: const Row(
             children: [
-              Icon(Icons.business, color: Color(0xFF38BDF8)),
+              Icon(Icons.business, color: Color(0xFF10B981)),
               SizedBox(width: 10),
-              Text('Company Profile & Invoice Header (Saved to Sheet)'),
+              Text('Company Profile & Invoice Header', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: SizedBox(
@@ -332,19 +331,18 @@ class _MainDashboardState extends State<MainDashboard> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo Selector Bar
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF121822),
+                      color: const Color(0xFF10161E),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF2B384D)),
+                      border: Border.all(color: const Color(0xFF283847)),
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 24,
-                          backgroundColor: const Color(0xFF1C2533),
+                          backgroundColor: const Color(0xFF1A242E),
                           backgroundImage: logoPathLocal.isNotEmpty
                               ? FileImage(File(logoPathLocal))
                               : (CompanyConfig.logoUrl.isNotEmpty ? NetworkImage(CompanyConfig.logoUrl) as ImageProvider : null),
@@ -359,13 +357,17 @@ class _MainDashboardState extends State<MainDashboard> {
                             children: [
                               Text(logoPathLocal.isNotEmpty
                                   ? 'Selected: ${logoPathLocal.split(Platform.pathSeparator).last}'
-                                  : (CompanyConfig.logoUrl.isNotEmpty ? 'Active Cloud Logo' : 'No Logo Uploaded')),
+                                  : (CompanyConfig.logoUrl.isNotEmpty ? 'Cloud Logo Loaded' : 'No Logo Uploaded')),
                               const SizedBox(height: 4),
-                              const Text('Supports PNG, JPG (Auto-uploads to Google Drive)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                              const Text('Supports PNG, JPG (Uploads to Drive & saves in Sheet)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                             ],
                           ),
                         ),
                         OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF10B981)),
+                            foregroundColor: const Color(0xFF34D399),
+                          ),
                           icon: const Icon(Icons.file_upload, size: 16),
                           label: const Text('Select File'),
                           onPressed: () async {
@@ -410,9 +412,15 @@ class _MainDashboardState extends State<MainDashboard> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF059669),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              ),
               onPressed: () async {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -455,10 +463,10 @@ class _MainDashboardState extends State<MainDashboard> {
 
                 setState(() => _isBackgroundSyncing = false);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Company Profile saved permanently!')),
+                  const SnackBar(content: Text('Company Profile saved permanently to Google Sheets!')),
                 );
               },
-              child: const Text('Save to Sheet'),
+              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -474,8 +482,8 @@ class _MainDashboardState extends State<MainDashboard> {
           if (_isBackgroundSyncing)
             const LinearProgressIndicator(
               minHeight: 3,
-              backgroundColor: Color(0xFF161D27),
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+              backgroundColor: Color(0xFF141C24),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
             ),
           Expanded(
             child: Row(
@@ -494,7 +502,7 @@ class _MainDashboardState extends State<MainDashboard> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)]),
+                            gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF10B981)]),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Text('DC', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
@@ -503,7 +511,7 @@ class _MainDashboardState extends State<MainDashboard> {
                     ),
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
+                    icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
                     tooltip: 'Sync from Google Sheet',
                     onPressed: () => _fetchData(silent: true),
                   ),
@@ -540,10 +548,10 @@ class _MainDashboardState extends State<MainDashboard> {
                     ),
                   ],
                 ),
-                const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF232D3F)),
+                const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF1E2833)),
                 Expanded(
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
                       : IndexedStack(
                           index: _navIndex,
                           children: [
@@ -589,7 +597,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. TALLY PRIME BILLING SCREEN (PRECISE COLUMN ALIGNMENT) ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -623,7 +631,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   final List<InvoiceRowItem> _rows = [];
 
-  // Overlays
   OverlayEntry? _partyOverlay;
   int _partySelectedIndex = 0;
   List<DCCustomer> _filteredParties = [];
@@ -692,8 +699,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   double get _roundOff => _grandTotal - _exactTotal;
   int get _totalBags => _rows.fold(0, (sum, r) => sum + r.bags);
 
-  // ---------------- PARTY OVERLAY ----------------
-
   void _showPartyOverlay() {
     _hidePartyOverlay();
     if (_filteredParties.isEmpty) return;
@@ -716,14 +721,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               offset: const Offset(0, 52),
               child: Material(
                 elevation: 14,
-                color: const Color(0xFF1C2533),
+                color: const Color(0xFF1A242E),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 220),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1C2533),
+                    color: const Color(0xFF1A242E),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF38BDF8), width: 1.2),
+                    border: Border.all(color: const Color(0xFF10B981), width: 1.2),
                   ),
                   child: ListView.builder(
                     controller: _partyScrollCtrl,
@@ -735,18 +740,18 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                       return InkWell(
                         onTap: () => _selectParty(p),
                         child: Container(
-                          color: isSelected ? const Color(0xFF2563EB).withOpacity(0.3) : null,
+                          color: isSelected ? const Color(0xFF059669).withOpacity(0.3) : null,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           child: Row(
                             children: [
                               if (isSelected)
-                                const Text('> ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                                const Text('> ', style: TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold)),
                               Expanded(
                                 child: Text(
                                   "${p.name} ${p.b2b.isNotEmpty ? '(${p.b2b})' : ''}",
                                   style: TextStyle(
                                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
+                                    color: isSelected ? const Color(0xFF34D399) : Colors.white,
                                   ),
                                 ),
                               ),
@@ -817,8 +822,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     });
   }
 
-  // ---------------- ITEM OVERLAY ----------------
-
   void _showItemOverlay(int rowIdx) {
     _hideItemOverlay();
     if (_filteredItems.isEmpty) return;
@@ -854,14 +857,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               offset: Offset(0, offsetY),
               child: Material(
                 elevation: 16,
-                color: const Color(0xFF1C2533),
+                color: const Color(0xFF1A242E),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   height: popupHeight,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1C2533),
+                    color: const Color(0xFF1A242E),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF38BDF8), width: 1.2),
+                    border: Border.all(color: const Color(0xFF10B981), width: 1.2),
                     boxShadow: [
                       BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 10, offset: const Offset(0, 4)),
                     ],
@@ -876,7 +879,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                       return InkWell(
                         onTap: () => _selectItem(rowIdx, item),
                         child: Container(
-                          color: isSelected ? const Color(0xFF2563EB).withOpacity(0.35) : null,
+                          color: isSelected ? const Color(0xFF059669).withOpacity(0.35) : null,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -884,12 +887,12 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                               Row(
                                 children: [
                                   if (isSelected)
-                                    const Text('> ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                                    const Text('> ', style: TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold)),
                                   Text(
                                     item.name,
                                     style: TextStyle(
                                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
+                                      color: isSelected ? const Color(0xFF34D399) : Colors.white,
                                     ),
                                   ),
                                 ],
@@ -986,7 +989,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         title: const Text('Instant Add Customer (Alt + C)'),
         content: SizedBox(
           width: 480,
@@ -1016,7 +1019,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
             onPressed: () async {
               if (nameCtrl.text.trim().isNotEmpty) {
                 Navigator.pop(ctx);
@@ -1056,7 +1059,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 });
               }
             },
-            child: const Text('Save & Select'),
+            child: const Text('Save & Select', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1076,7 +1079,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF161D27),
+          backgroundColor: const Color(0xFF141C24),
           title: const Text('Instant Add Item (Alt + C)'),
           content: SizedBox(
             width: 480,
@@ -1116,7 +1119,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
               onPressed: () async {
                 if (nameCtrl.text.trim().isNotEmpty) {
                   Navigator.pop(ctx);
@@ -1157,7 +1160,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   });
                 }
               },
-              child: const Text('Save & Select'),
+              child: const Text('Save & Select', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -1237,7 +1240,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         insetPadding: const EdgeInsets.all(20),
         child: SizedBox(
           width: 920,
@@ -1245,7 +1248,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
           child: Column(
             children: [
               AppBar(
-                backgroundColor: const Color(0xFF121822),
+                backgroundColor: const Color(0xFF10161E),
                 title: Text('Invoice #$billNo (Tally Prime Format)'),
                 actions: [
                   IconButton(
@@ -1302,17 +1305,17 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 Row(
                   children: [
                     const Text('Customer Bill',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFF1F5F9))),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
                     const SizedBox(width: 14),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1C2533),
+                        color: const Color(0xFF1A242E),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF2B384D)),
+                        border: Border.all(color: const Color(0xFF283847)),
                       ),
                       child: Text('Bill #${widget.nextBillNo}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
                     ),
                     const SizedBox(width: 14),
                     const Text('Ctrl + S / F8: Save & Print  |  Alt + C: Instant Add',
@@ -1331,7 +1334,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     const SizedBox(width: 10),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
+                        backgroundColor: const Color(0xFF059669),
                         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
@@ -1348,9 +1351,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161D27),
+                    color: const Color(0xFF141C24),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF2B384D)),
+                    border: Border.all(color: const Color(0xFF283847)),
                   ),
                   child: Row(
                     children: [
@@ -1413,13 +1416,13 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Table Area with Exact Alignment & Unit Dropdown
+                // Table Area
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161D27),
+                      color: const Color(0xFF141C24),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF2B384D)),
+                      border: Border.all(color: const Color(0xFF283847)),
                     ),
                     child: Column(
                       children: [
@@ -1427,7 +1430,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: const BoxDecoration(
-                            color: Color(0xFF1C2533),
+                            color: Color(0xFF1A242E),
                             borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
                           ),
                           child: const Row(
@@ -1449,12 +1452,12 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                             ],
                           ),
                         ),
-                        const Divider(height: 1, color: Color(0xFF2B384D)),
+                        const Divider(height: 1, color: Color(0xFF283847)),
                         Expanded(
                           child: ListView.separated(
                             padding: const EdgeInsets.all(12),
                             itemCount: _rows.length,
-                            separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF2B384D)),
+                            separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF283847)),
                             itemBuilder: (ctx, idx) {
                               final row = _rows[idx];
 
@@ -1615,13 +1618,13 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                           child: Row(
                             children: [
                               TextButton.icon(
-                                icon: const Icon(Icons.add, size: 18),
-                                label: const Text('+ Add Item Row (Enter on Bags)'),
+                                icon: const Icon(Icons.add, size: 18, color: Color(0xFF34D399)),
+                                label: const Text('+ Add Item Row (Enter on Bags)', style: TextStyle(color: Color(0xFF34D399))),
                                 onPressed: _addRow,
                               ),
                               const Spacer(),
                               Text('Total Bags in Bill: $_totalBags Bags',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
                             ],
                           ),
                         ),
@@ -1635,9 +1638,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161D27),
+                    color: const Color(0xFF141C24),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF2B384D)),
+                    border: Border.all(color: const Color(0xFF283847)),
                   ),
                   child: Row(
                     children: [
@@ -1674,14 +1677,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                             if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
                             if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
                             _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
-                            const Divider(height: 12, color: Color(0xFF2B384D)),
+                            const Divider(height: 12, color: Color(0xFF283847)),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 const Text('Grand Total: ',
                                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
                                 Text('₹${_grandTotal.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
                               ],
                             ),
                           ],
@@ -1734,7 +1737,6 @@ Future<Uint8List> generateTallyPdf({
 }) async {
   final doc = pw.Document();
 
-  // Attempt logo download if available
   pw.ImageProvider? logoImage;
   if (CompanyConfig.logoUrl.isNotEmpty) {
     try {
@@ -1755,7 +1757,6 @@ Future<Uint8List> generateTallyPdf({
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Header with Logo
               pw.Container(
                 padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 alignment: pw.Alignment.center,
@@ -1784,7 +1785,6 @@ Future<Uint8List> generateTallyPdf({
                   ],
                 ),
               ),
-              // Meta info
               pw.Container(
                 decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
                 child: pw.Row(
@@ -1825,7 +1825,6 @@ Future<Uint8List> generateTallyPdf({
                   ],
                 ),
               ),
-              // Items Table Header
               pw.Container(
                 color: PdfColors.grey200,
                 decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
@@ -1842,7 +1841,6 @@ Future<Uint8List> generateTallyPdf({
                   ],
                 ),
               ),
-              // Items Rows
               pw.Expanded(
                 child: pw.ListView.builder(
                   padding: pw.EdgeInsets.zero,
@@ -1867,7 +1865,6 @@ Future<Uint8List> generateTallyPdf({
                   },
                 ),
               ),
-              // Bottom Calculations
               pw.Container(
                 decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(width: 1))),
                 child: pw.Row(
@@ -1960,7 +1957,7 @@ class InvoiceHistoryView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1975,7 +1972,7 @@ class InvoiceHistoryView extends StatelessWidget {
               child: Text(
                 est.status,
                 style: TextStyle(
-                  color: est.status == 'CANCELLED' ? Colors.redAccent : Colors.greenAccent,
+                  color: est.status == 'CANCELLED' ? Colors.redAccent : const Color(0xFF34D399),
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -1992,13 +1989,13 @@ class InvoiceHistoryView extends StatelessWidget {
               Text('Date: ${est.date}', style: const TextStyle(color: Color(0xFF94A3B8))),
               const SizedBox(height: 6),
               Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-              const Divider(color: Color(0xFF2B384D), height: 20),
+              const Divider(color: Color(0xFF283847), height: 20),
               const Text('Items Summary:', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: const Color(0xFF121822), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: const Color(0xFF10161E), borderRadius: BorderRadius.circular(8)),
                 child: Text(est.itemSummary, style: const TextStyle(height: 1.4)),
               ),
               const SizedBox(height: 12),
@@ -2013,7 +2010,7 @@ class InvoiceHistoryView extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: Text('Grand Total: ₹${est.grandTotal}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
               ),
             ],
           ),
@@ -2021,7 +2018,7 @@ class InvoiceHistoryView extends StatelessWidget {
         actions: [
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
+              backgroundColor: const Color(0xFF059669),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             icon: const Icon(Icons.print, size: 16, color: Colors.white),
@@ -2100,7 +2097,7 @@ class InvoiceHistoryView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         insetPadding: const EdgeInsets.all(20),
         child: SizedBox(
           width: 920,
@@ -2108,7 +2105,7 @@ class InvoiceHistoryView extends StatelessWidget {
           child: Column(
             children: [
               AppBar(
-                backgroundColor: const Color(0xFF121822),
+                backgroundColor: const Color(0xFF10161E),
                 title: Text('Invoice #${est.slNo} - Tally Print View'),
                 actions: [
                   IconButton(
@@ -2170,10 +2167,10 @@ class InvoiceHistoryView extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF161D27),
+                            color: const Color(0xFF141C24),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF2B384D)),
+                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF283847)),
                           ),
                           child: Row(
                             children: [
@@ -2220,7 +2217,7 @@ class InvoiceHistoryView extends StatelessWidget {
                                   style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 18,
-                                      color: isCancelled ? Colors.grey : const Color(0xFF38BDF8))),
+                                      color: isCancelled ? Colors.grey : const Color(0xFF34D399))),
                             ],
                           ),
                         ),
@@ -2234,7 +2231,7 @@ class InvoiceHistoryView extends StatelessWidget {
   }
 }
 
-// ---------------- 4. PRICE LIST VIEW (WITH WORKING EDIT & DELETE) ----------------
+// ---------------- 4. PRICE LIST VIEW ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -2256,7 +2253,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -2264,7 +2261,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
               child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
             ),
             IconButton(
-              icon: const Icon(Icons.edit, color: Color(0xFF38BDF8)),
+              icon: const Icon(Icons.edit, color: Color(0xFF34D399)),
               onPressed: () {
                 Navigator.pop(ctx);
                 _openEditItemDialog(item: item);
@@ -2279,7 +2276,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Divider(color: Color(0xFF2B384D)),
+                const Divider(color: Color(0xFF283847)),
                 _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
                 _buildModalRow('Rate Unit:', item.rateType),
                 _buildModalRow('Quantity / Pack Size:', '${item.qty} KG/Bag'),
@@ -2312,7 +2309,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         title: const Text('Confirm Delete Item'),
         content: Text('Are you sure you want to permanently remove "${item.name}" from Google Sheet?'),
         actions: [
@@ -2351,7 +2348,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF161D27),
+          backgroundColor: const Color(0xFF141C24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(isNew ? 'Add New Item to Sheet' : 'Edit Item Details'),
           content: SizedBox(
@@ -2392,7 +2389,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
               onPressed: () async {
                 if (nameCtrl.text.trim().isNotEmpty) {
                   Navigator.pop(ctx);
@@ -2413,7 +2410,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                   widget.onRefreshRequired();
                 }
               },
-              child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white)),
+              child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -2436,7 +2433,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: isColor ? const Color(0xFF38BDF8) : Colors.white,
+                color: isColor ? const Color(0xFF34D399) : Colors.white,
               ),
             ),
           ),
@@ -2475,9 +2472,9 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
               ),
               const SizedBox(width: 12),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
                 icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Item', style: TextStyle(color: Colors.white)),
+                label: const Text('Add Item', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 onPressed: () => _openEditItemDialog(),
               ),
             ],
@@ -2496,16 +2493,16 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161D27),
+                      color: const Color(0xFF141C24),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF2B384D)),
+                      border: Border.all(color: const Color(0xFF283847)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: const Color(0xFF1C2533),
+                          backgroundColor: const Color(0xFF1A242E),
                           child: Text('${item.no}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 20),
@@ -2517,16 +2514,16 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                               const SizedBox(height: 6),
                               Row(
                                 children: [
-                                  Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF38BDF8))),
+                                  Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF34D399))),
                                   const SizedBox(width: 8),
                                   Text('(${item.rateType})', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
                                   const SizedBox(width: 14),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1C2533),
+                                      color: const Color(0xFF1A242E),
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF2B384D)),
+                                      border: Border.all(color: const Color(0xFF283847)),
                                     ),
                                     child: Text(
                                       item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE',
@@ -2544,7 +2541,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.edit_note, color: Color(0xFF94A3B8), size: 24),
+                          icon: const Icon(Icons.edit_note, color: Color(0xFF34D399), size: 24),
                           tooltip: 'Edit Item',
                           onPressed: () => _openEditItemDialog(item: item),
                         ),
@@ -2561,7 +2558,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-// ---------------- 5. CUSTOMERS VIEW (WITH WORKING EDIT & DELETE) ----------------
+// ---------------- 5. CUSTOMERS VIEW ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -2594,7 +2591,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
-                color: isHighlight ? const Color(0xFF38BDF8) : Colors.white,
+                color: isHighlight ? const Color(0xFF34D399) : Colors.white,
                 height: 1.3,
               ),
             ),
@@ -2608,13 +2605,13 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Expanded(child: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20))),
             IconButton(
-              icon: const Icon(Icons.edit, color: Color(0xFF38BDF8)),
+              icon: const Icon(Icons.edit, color: Color(0xFF34D399)),
               onPressed: () {
                 Navigator.pop(ctx);
                 _openEditCustomerDialog(customer: customer);
@@ -2630,7 +2627,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(color: Color(0xFF2B384D)),
+                const Divider(color: Color(0xFF283847)),
                 _buildCustomerModalRow('Customer Name:', customer.name),
                 _buildCustomerModalRow('Contact Number:', customer.contact.isEmpty ? '-' : customer.contact),
                 _buildCustomerModalRow('Address:', customer.address.isEmpty ? '-' : customer.address),
@@ -2644,7 +2641,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFF121822), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF2B384D))),
+                    decoration: BoxDecoration(color: const Color(0xFF10161E), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF283847))),
                     child: Text(customer.remarks, softWrap: true, style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 14, height: 1.4)),
                   ),
                 ],
@@ -2674,7 +2671,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         title: const Text('Confirm Delete Customer'),
         content: Text('Are you sure you want to permanently delete party "${customer.name}" from Google Sheet?'),
         actions: [
@@ -2711,7 +2708,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161D27),
+        backgroundColor: const Color(0xFF141C24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(isNew ? 'Add New Customer to Sheet' : 'Edit Customer Details'),
         content: SizedBox(
@@ -2742,7 +2739,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
             onPressed: () async {
               if (nameCtrl.text.trim().isNotEmpty) {
                 Navigator.pop(ctx);
@@ -2762,7 +2759,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                 widget.onRefreshRequired();
               }
             },
-            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white)),
+            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -2802,9 +2799,9 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
               ),
               const SizedBox(width: 12),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
                 icon: const Icon(Icons.person_add, color: Colors.white, size: 18),
-                label: const Text('Add Customer', style: TextStyle(color: Colors.white)),
+                label: const Text('Add Customer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 onPressed: () => _openEditCustomerDialog(),
               ),
             ],
@@ -2823,16 +2820,16 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161D27),
+                      color: const Color(0xFF141C24),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF2B384D)),
+                      border: Border.all(color: const Color(0xFF283847)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: const Color(0xFF1C2533),
+                          backgroundColor: const Color(0xFF1A242E),
                           child: Text('${c.slNo}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 20),
@@ -2847,9 +2844,9 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1C2533),
+                                      color: const Color(0xFF1A242E),
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF2B384D)),
+                                      border: Border.all(color: const Color(0xFF283847)),
                                     ),
                                     child: Text(
                                       c.billingTag,
@@ -2863,7 +2860,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                 Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"}  |  📍 ${c.address.isNotEmpty ? c.address : "-"}',
                                     style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
                               if (c.b2b.isNotEmpty)
-                                Text('B2B: ${c.b2b}', style: const TextStyle(fontSize: 13, color: Color(0xFF38BDF8), fontWeight: FontWeight.w500)),
+                                Text('B2B: ${c.b2b}', style: const TextStyle(fontSize: 13, color: Color(0xFF34D399), fontWeight: FontWeight.w500)),
                               if (c.b2c.isNotEmpty)
                                 Text('B2C: ${c.b2c}', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                               if (c.remarks.isNotEmpty)
@@ -2875,7 +2872,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.edit_note, color: Color(0xFF94A3B8), size: 24),
+                          icon: const Icon(Icons.edit_note, color: Color(0xFF34D399), size: 24),
                           tooltip: 'Edit Customer',
                           onPressed: () => _openEditCustomerDialog(customer: c),
                         ),
@@ -2921,7 +2918,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF161D27),
+          backgroundColor: const Color(0xFF141C24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Add to Packing Slip'),
           content: SizedBox(
@@ -2957,7 +2954,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
               onPressed: () async {
                 if (selectedCust != null && bagsCtrl.text.trim().isNotEmpty) {
                   final party = selectedCust!;
@@ -2987,7 +2984,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                   );
                 }
               },
-              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white)),
+              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -3032,16 +3029,16 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
               ),
               const Spacer(),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1C2533), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1A242E), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
                 icon: const Icon(Icons.copy, size: 18),
                 label: const Text('Copy Slip'),
                 onPressed: widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
               ),
               const SizedBox(width: 10),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
                 icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Entry', style: TextStyle(color: Colors.white)),
+                label: const Text('Add Entry', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 onPressed: _openAddPackingSlipDialog,
               ),
             ],
@@ -3058,14 +3055,14 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                       return Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF161D27),
+                          color: const Color(0xFF141C24),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF2B384D)),
+                          border: Border.all(color: const Color(0xFF283847)),
                         ),
                         child: Row(
                           children: [
                             CircleAvatar(
-                              backgroundColor: const Color(0xFF1C2533),
+                              backgroundColor: const Color(0xFF1A242E),
                               child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8))),
                             ),
                             const SizedBox(width: 16),
@@ -3080,7 +3077,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                                         const SizedBox(width: 8),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: const Color(0xFF1C2533), borderRadius: BorderRadius.circular(4)),
+                                          decoration: BoxDecoration(color: const Color(0xFF1A242E), borderRadius: BorderRadius.circular(4)),
                                           child: Text(entry.place, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                                         ),
                                       ],
@@ -3091,7 +3088,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                                 ],
                               ),
                             ),
-                            Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF38BDF8))),
+                            Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF34D399))),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Color(0xFF64748B)),
                               onPressed: () {
@@ -3109,15 +3106,15 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF161D27),
+              color: const Color(0xFF141C24),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF2B384D)),
+              border: Border.all(color: const Color(0xFF283847)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('TOTAL DISPATCH LOAD:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('$totalBags BAGS', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                Text('$totalBags BAGS', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
               ],
             ),
           ),
@@ -3179,9 +3176,9 @@ class SettingsDesktopView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161D27),
+                    color: const Color(0xFF141C24),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF2B384D)),
+                    border: Border.all(color: const Color(0xFF283847)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -3190,7 +3187,7 @@ class SettingsDesktopView extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 22,
-                            backgroundColor: Color(0xFF2563EB),
+                            backgroundColor: Color(0xFF059669),
                             child: Icon(Icons.support_agent, color: Colors.white, size: 24),
                           ),
                           SizedBox(width: 14),
@@ -3204,11 +3201,11 @@ class SettingsDesktopView extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      const Divider(color: Color(0xFF2B384D)),
+                      const Divider(color: Color(0xFF283847)),
                       const SizedBox(height: 10),
                       _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
                       _supportRow('Application Suite', 'DC Prime Desktop (TallyPrime Workflow Edition)'),
-                      _supportRow('Release Version', 'v2.6.0 (Desktop 64-bit Build)'),
+                      _supportRow('Release Version', 'v2.7.0 (Desktop 64-bit Build)'),
                       _supportRow('Target Framework', 'Flutter 3.x (Windows Runner)'),
                     ],
                   ),
@@ -3224,7 +3221,7 @@ class SettingsDesktopView extends StatelessWidget {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+      child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
     );
   }
 
@@ -3238,13 +3235,13 @@ class SettingsDesktopView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF161D27),
+        color: const Color(0xFF141C24),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2B384D)),
+        border: Border.all(color: const Color(0xFF283847)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF38BDF8), size: 28),
+          Icon(icon, color: const Color(0xFF34D399), size: 28),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -3257,7 +3254,10 @@ class SettingsDesktopView extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1C2533), side: const BorderSide(color: Color(0xFF2B384D))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1A242E),
+              side: const BorderSide(color: Color(0xFF283847)),
+            ),
             onPressed: onTap,
             child: Text(actionText, style: const TextStyle(color: Colors.white, fontSize: 12)),
           ),
@@ -3272,7 +3272,7 @@ class SettingsDesktopView extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(width: 160, child: Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFF1F5F9)))),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFF8FAFC)))),
         ],
       ),
     );
