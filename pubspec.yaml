@@ -1,17 +1,33 @@
 name: dc_prime_desktop
-description: "Ultra lightweight Desktop App for Davis & Company"
-publish_to: 'none'
+description: "Davis & Company DC Prime Desktop Suite - TallyPrime Edition"
+publish_to: "none"
+
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
+
+  # Networking & JSON
   http: ^1.2.0
-  pdf: ^3.10.8
+
+  # PDF Generation & Printing
+  pdf: ^3.10.7
   printing: ^5.11.1
+
+  # Local File Picker for Logo / Assets
+  file_picker: ^8.0.0
+
+  # Material Design Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
