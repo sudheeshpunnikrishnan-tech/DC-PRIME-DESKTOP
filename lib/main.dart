@@ -97,6 +97,7 @@ class DCCustomer {
 }
 
 class DCEstimate {
+  final int rowIndex;
   final dynamic slNo;
   final String date;
   final String customer;
@@ -106,8 +107,10 @@ class DCEstimate {
   final String cgst;
   final String roundOff;
   final String grandTotal;
+  String status;
 
   DCEstimate({
+    required this.rowIndex,
     required this.slNo,
     required this.date,
     required this.customer,
@@ -117,10 +120,12 @@ class DCEstimate {
     required this.cgst,
     required this.roundOff,
     required this.grandTotal,
+    this.status = 'ACTIVE',
   });
 
   factory DCEstimate.fromJson(Map<String, dynamic> json) {
     return DCEstimate(
+      rowIndex: json['rowIndex'] ?? 0,
       slNo: json['slNo'] ?? '',
       date: json['date'] ?? '',
       customer: json['customer'] ?? '',
@@ -130,6 +135,7 @@ class DCEstimate {
       cgst: json['cgst']?.toString() ?? '0',
       roundOff: json['roundOff']?.toString() ?? '0',
       grandTotal: json['grandTotal']?.toString() ?? '0',
+      status: json['status']?.toString() ?? 'ACTIVE',
     );
   }
 }
@@ -209,6 +215,7 @@ class _MainDashboardState extends State<MainDashboard> {
   List<DCEstimate> _estimates = [];
   final List<LoadingEntry> _loadingSlip = [];
   bool _isLoading = true;
+  bool _isBackgroundSyncing = false;
 
   @override
   void initState() {
@@ -216,8 +223,13 @@ class _MainDashboardState extends State<MainDashboard> {
     _fetchData();
   }
 
-  Future<void> _fetchData() async {
-    setState(() => _isLoading = true);
+  Future<void> _fetchData({bool silent = false}) async {
+    if (!silent) {
+      setState(() => _isLoading = true);
+    } else {
+      setState(() => _isBackgroundSyncing = true);
+    }
+
     try {
       final res = await http.get(Uri.parse(sheetApiUrl));
       if (res.statusCode == 200 || res.statusCode == 302) {
@@ -231,102 +243,125 @@ class _MainDashboardState extends State<MainDashboard> {
           _customers = custList.map((c) => DCCustomer.fromJson(c)).toList();
           _estimates = estList.map((e) => DCEstimate.fromJson(e)).toList();
           _isLoading = false;
+          _isBackgroundSyncing = false;
         });
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _isBackgroundSyncing = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          NavigationRail(
-            backgroundColor: const Color(0xFF14181F),
-            selectedIndex: _navIndex,
-            onDestinationSelected: (val) => setState(() => _navIndex = val),
-            labelType: NavigationRailLabelType.all,
-            leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text('DC',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
+          if (_isBackgroundSyncing)
+            const LinearProgressIndicator(
+              minHeight: 3,
+              backgroundColor: Color(0xFF161B22),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
             ),
-            trailing: IconButton(
-              icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
-              tooltip: 'Reload from Google Sheet',
-              onPressed: _fetchData,
-            ),
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long),
-                label: Text('Billing'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.inventory_2_outlined),
-                selectedIcon: Icon(Icons.inventory_2),
-                label: Text('Price List'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.people_outline),
-                selectedIcon: Icon(Icons.people),
-                label: Text('Customers'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.local_shipping_outlined),
-                selectedIcon: Icon(Icons.local_shipping),
-                label: Text('Packing Slip'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.history_outlined),
-                selectedIcon: Icon(Icons.history),
-                label: Text('Invoices'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.calculate_outlined),
-                selectedIcon: Icon(Icons.calculate),
-                label: Text('Calculator'),
-              ),
-            ],
-          ),
-          const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF242C37)),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : IndexedStack(
-                    index: _navIndex,
-                    children: [
-                      TallyBillingScreen(
-                        items: _items,
-                        customers: _customers,
-                        onSaved: _fetchData,
+            child: Row(
+              children: [
+                NavigationRail(
+                  backgroundColor: const Color(0xFF14181F),
+                  selectedIndex: _navIndex,
+                  onDestinationSelected: (val) => setState(() => _navIndex = val),
+                  labelType: NavigationRailLabelType.all,
+                  leading: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      PriceListDesktopView(
-                        items: _items,
-                        onRefreshRequired: _fetchData,
-                      ),
-                      CustomerDesktopView(
-                        customers: _customers,
-                        onRefreshRequired: _fetchData,
-                      ),
-                      LoadingSlipView(
-                        loadingSlip: _loadingSlip,
-                        items: _items,
-                        customers: _customers,
-                      ),
-                      InvoiceHistoryView(estimates: _estimates),
-                      PackSizeCalculatorView(items: _items),
-                    ],
+                      child: const Text('DC',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
                   ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
+                    tooltip: 'Reload from Google Sheet',
+                    onPressed: () => _fetchData(silent: true),
+                  ),
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long),
+                      label: Text('Billing'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.inventory_2_outlined),
+                      selectedIcon: Icon(Icons.inventory_2),
+                      label: Text('Price List'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.people_outline),
+                      selectedIcon: Icon(Icons.people),
+                      label: Text('Customers'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.local_shipping_outlined),
+                      selectedIcon: Icon(Icons.local_shipping),
+                      label: Text('Packing Slip'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.history_outlined),
+                      selectedIcon: Icon(Icons.history),
+                      label: Text('Invoices'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.calculate_outlined),
+                      selectedIcon: Icon(Icons.calculate),
+                      label: Text('Calculator'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF242C37)),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : IndexedStack(
+                          index: _navIndex,
+                          children: [
+                            TallyBillingScreen(
+                              items: _items,
+                              customers: _customers,
+                              nextBillNo: _estimates.length + 1,
+                              onSaved: () => _fetchData(silent: true),
+                              onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+                            ),
+                            PriceListDesktopView(
+                              items: _items,
+                              onRefreshRequired: () => _fetchData(silent: true),
+                            ),
+                            CustomerDesktopView(
+                              customers: _customers,
+                              onRefreshRequired: () => _fetchData(silent: true),
+                            ),
+                            LoadingSlipView(
+                              loadingSlip: _loadingSlip,
+                              items: _items,
+                              customers: _customers,
+                            ),
+                            InvoiceHistoryView(
+                              estimates: _estimates,
+                              items: _items,
+                              customers: _customers,
+                              onRefreshRequired: () => _fetchData(silent: true),
+                            ),
+                            PackSizeCalculatorView(items: _items),
+                          ],
+                        ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -334,18 +369,22 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. TALLY PRIME BILLING SCREEN (WITH ALT+C) ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
   final List<DCCustomer> customers;
+  final int nextBillNo;
   final VoidCallback onSaved;
+  final Function(bool) onSetSyncing;
 
   const TallyBillingScreen({
     super.key,
     required this.items,
     required this.customers,
+    required this.nextBillNo,
     required this.onSaved,
+    required this.onSetSyncing,
   });
 
   @override
@@ -353,16 +392,12 @@ class TallyBillingScreen extends StatefulWidget {
 }
 
 class _TallyBillingScreenState extends State<TallyBillingScreen> {
-  final _billNoCtrl = TextEditingController(text: '51942');
-  final _refCtrl = TextEditingController(text: '75');
   final _coolieCtrl = TextEditingController(text: '0.00');
   final _partyTextCtrl = TextEditingController();
   String _invoiceType = 'Regular B2C';
   DCCustomer? _selectedParty;
 
   final FocusNode _partyFocus = FocusNode();
-  final FocusNode _billNoFocus = FocusNode();
-  final FocusNode _refFocus = FocusNode();
   final FocusNode _coolieFocus = FocusNode();
 
   final List<InvoiceRowItem> _rows = [];
@@ -387,6 +422,17 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     }
   }
 
+  void _clearBilling() {
+    setState(() {
+      _selectedParty = null;
+      _partyTextCtrl.clear();
+      _coolieCtrl.text = '0.00';
+      _rows.clear();
+      _addRow();
+    });
+    _partyFocus.requestFocus();
+  }
+
   double get _subTotal => _rows.fold(0.0, (sum, r) => sum + r.amount);
 
   double get _taxableAmount {
@@ -406,13 +452,12 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   double get _grandTotal => _exactTotal.roundToDouble();
   double get _roundOff => _grandTotal - _exactTotal;
 
-  // Handle Alt+C and Ctrl+A keyboard shortcuts
   KeyEventResult _handleGlobalKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
       final isAlt = HardwareKeyboard.instance.isAltPressed;
       final isCtrl = HardwareKeyboard.instance.isControlPressed;
 
-      // Alt + C : Instant Creation
+      // Alt + C : Instant Create
       if (isAlt && event.logicalKey == LogicalKeyboardKey.keyC) {
         if (_partyFocus.hasFocus) {
           _openInstantAddCustomerDialog(_partyTextCtrl.text.trim());
@@ -495,6 +540,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   _selectedParty = newCust;
                   _partyTextCtrl.text = newCust.name;
                 });
+                widget.onSetSyncing(true);
                 await http.post(
                   Uri.parse(sheetApiUrl),
                   body: jsonEncode({
@@ -508,7 +554,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   }),
                 );
                 widget.onSaved();
-                _billNoFocus.requestFocus();
+                if (_rows.isNotEmpty) {
+                  _rows[0].itemSearchFocus.requestFocus();
+                }
               }
             },
             child: const Text('Save & Select'),
@@ -592,6 +640,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     _rows[rowIndex].textCtrl.text = newItem.name;
                     _rows[rowIndex].rate = double.tryParse(newItem.rate) ?? 0.0;
                   });
+                  widget.onSetSyncing(true);
                   await http.post(
                     Uri.parse(sheetApiUrl),
                     body: jsonEncode({
@@ -632,14 +681,13 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
         .map((r) => "${r.item!.name} (${r.qty}x${r.rate})")
         .join(", ");
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Saving invoice to Google Sheets...')),
-    );
+    widget.onSetSyncing(true);
 
     await http.post(
       Uri.parse(sheetApiUrl),
       body: jsonEncode({
         "action": "ADD_ESTIMATE",
+        "slNo": widget.nextBillNo,
         "date": dateStr,
         "customer": _selectedParty!.name,
         "itemSummary": summary,
@@ -665,8 +713,11 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
         content: const Text('Would you like to print or save the PDF Invoice now?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _clearBilling();
+            },
+            child: const Text('Close & New Bill', style: TextStyle(color: Color(0xFF94A3B8))),
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
@@ -675,6 +726,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
             onPressed: () {
               Navigator.pop(ctx);
               _generateAndPrintPdf(dateStr);
+              _clearBilling();
             },
           ),
         ],
@@ -707,7 +759,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text("Bill No: ${_billNoCtrl.text}"),
+                    pw.Text("Bill No: ${widget.nextBillNo}"),
                     pw.Text("Date: $dateStr"),
                   ],
                 ),
@@ -779,16 +831,30 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         color: Color(0xFFE2E8F0))),
                 const SizedBox(width: 14),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1E242C),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: const Color(0xFF2C3540)),
                   ),
-                  child: const Text('Alt + C: Instant Create  |  Ctrl + A: Save Bill',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                  child: Text('Auto Bill #${widget.nextBillNo}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                 ),
+                const SizedBox(width: 14),
+                const Text('Alt + C: Instant Add  |  Ctrl + A: Save',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                 const Spacer(),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  ),
+                  icon: const Icon(Icons.cancel_outlined, size: 18),
+                  label: const Text('Cancel Bill'),
+                  onPressed: _clearBilling,
+                ),
+                const SizedBox(width: 10),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
@@ -804,7 +870,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Tally Meta Fields Header
+            // Party Selection Bar (Direct jump to items, Ref & Bill No skipped)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -814,19 +880,11 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               ),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 140,
-                    child: TextField(
-                      controller: _billNoCtrl,
-                      focusNode: _billNoFocus,
-                      decoration: const InputDecoration(labelText: 'Bill No'),
-                      onSubmitted: (_) => _refFocus.requestFocus(),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
                   Expanded(
-                    flex: 3,
-                    child: Autocomplete<DCCustomer>(
+                    flex: 4,
+                    child: RawAutocomplete<DCCustomer>(
+                      focusNode: _partyFocus,
+                      textEditingController: _partyTextCtrl,
                       displayStringForOption: (c) =>
                           "${c.name} ${c.b2b.isNotEmpty ? '(${c.b2b})' : ''}",
                       optionsBuilder: (TextEditingValue textVal) {
@@ -842,36 +900,58 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                           _selectedParty = c;
                           _partyTextCtrl.text = c.name;
                         });
-                        _billNoFocus.requestFocus();
+                        // Direct jump into first item
+                        if (_rows.isNotEmpty) {
+                          _rows[0].itemSearchFocus.requestFocus();
+                        }
                       },
                       fieldViewBuilder: (ctx, textCtrl, fNode, onSubmitted) {
-                        return Focus(
-                          focusNode: _partyFocus,
-                          child: TextField(
-                            controller: textCtrl,
-                            focusNode: fNode,
-                            decoration: InputDecoration(
-                              labelText: 'Party Name (Search / Alt+C)',
-                              hintText: 'Type & use arrow keys...',
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.person_add, size: 18),
-                                tooltip: 'Instant Add Customer (Alt + C)',
-                                onPressed: () => _openInstantAddCustomerDialog(textCtrl.text.trim()),
+                        return TextField(
+                          controller: textCtrl,
+                          focusNode: fNode,
+                          decoration: InputDecoration(
+                            labelText: 'Party / Customer Name (Type & Arrow Navigate)',
+                            hintText: 'Search party...',
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.person_add, size: 18),
+                              tooltip: 'Instant Add Customer (Alt + C)',
+                              onPressed: () => _openInstantAddCustomerDialog(textCtrl.text.trim()),
+                            ),
+                          ),
+                        );
+                      },
+                      optionsViewBuilder: (ctx, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 8,
+                            color: const Color(0xFF1E242C),
+                            borderRadius: BorderRadius.circular(8),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 280, maxWidth: 450),
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                itemCount: options.length,
+                                itemBuilder: (BuildContext context, int index) {
+                                  final option = options.elementAt(index);
+                                  final isHighlighted = AutocompleteHighlightedOption.of(context) == index;
+                                  return InkWell(
+                                    onTap: () => onSelected(option),
+                                    child: Container(
+                                      color: isHighlighted ? const Color(0xFF2563EB).withOpacity(0.25) : null,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      child: Text(
+                                        "${option.name} ${option.b2b.isNotEmpty ? '(${option.b2b})' : ''}",
+                                        style: TextStyle(
+                                          fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
+                                          color: isHighlighted ? const Color(0xFF38BDF8) : Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                            onChanged: (v) => _partyTextCtrl.text = v,
-                            onSubmitted: (val) {
-                              if (_selectedParty != null && _selectedParty!.name.toLowerCase() == val.toLowerCase()) {
-                                _billNoFocus.requestFocus();
-                              } else {
-                                final match = widget.customers.where((c) => c.name.toLowerCase().contains(val.toLowerCase()));
-                                if (match.isNotEmpty) {
-                                  setState(() => _selectedParty = match.first);
-                                  textCtrl.text = match.first.name;
-                                  _billNoFocus.requestFocus();
-                                }
-                              }
-                            },
                           ),
                         );
                       },
@@ -879,21 +959,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   ),
                   const SizedBox(width: 14),
                   SizedBox(
-                    width: 120,
-                    child: TextField(
-                      controller: _refCtrl,
-                      focusNode: _refFocus,
-                      decoration: const InputDecoration(labelText: 'Ref'),
-                      onSubmitted: (_) {
-                        if (_rows.isNotEmpty) {
-                          _rows[0].itemSearchFocus.requestFocus();
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  SizedBox(
-                    width: 160,
+                    width: 180,
                     child: DropdownButtonFormField<String>(
                       value: _invoiceType,
                       decoration: const InputDecoration(labelText: 'Supply Type'),
@@ -929,7 +995,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         children: [
                           SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                           SizedBox(width: 16),
-                          Expanded(flex: 4, child: Text('Name of Item (Alt+C to Add)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          Expanded(flex: 4, child: Text('Name of Item (Arrow Navigate & Enter)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                           SizedBox(width: 16),
                           Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                           SizedBox(width: 16),
@@ -954,8 +1020,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                               const SizedBox(width: 16),
                               Expanded(
                                 flex: 4,
-                                child: Autocomplete<DCItem>(
-                                  initialValue: TextEditingValue(text: row.item?.name ?? ''),
+                                child: RawAutocomplete<DCItem>(
+                                  focusNode: row.itemSearchFocus,
+                                  textEditingController: row.textCtrl,
                                   displayStringForOption: (i) => i.name,
                                   optionsBuilder: (TextEditingValue tVal) {
                                     if (tVal.text.isEmpty) {
@@ -964,23 +1031,21 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                     return widget.items.where((i) =>
                                         i.name.toLowerCase().contains(tVal.text.toLowerCase()) ||
                                         i.tallyName.toLowerCase().contains(tVal.text.toLowerCase()));
-                                },
-                                onSelected: (item) {
-                                  setState(() {
-                                    row.item = item;
-                                    row.rate = double.tryParse(item.rate) ?? 0.0;
-                                    row.textCtrl.text = item.name;
-                                  });
-                                  row.rateFocus.requestFocus();
-                                },
-                                fieldViewBuilder: (ctx, itemTextCtrl, iFocus, onSub) {
-                                  return Focus(
-                                    focusNode: row.itemSearchFocus,
-                                    child: TextField(
+                                  },
+                                  onSelected: (item) {
+                                    setState(() {
+                                      row.item = item;
+                                      row.rate = double.tryParse(item.rate) ?? 0.0;
+                                      row.textCtrl.text = item.name;
+                                    });
+                                    row.rateFocus.requestFocus();
+                                  },
+                                  fieldViewBuilder: (ctx, itemTextCtrl, iFocus, onSub) {
+                                    return TextField(
                                       controller: itemTextCtrl,
                                       focusNode: iFocus,
                                       decoration: InputDecoration(
-                                        hintText: 'Search item (Alt+C to Add)...',
+                                        hintText: 'Search item & arrow navigate...',
                                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                         suffixIcon: IconButton(
                                           icon: const Icon(Icons.add, size: 16),
@@ -988,173 +1053,197 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                           onPressed: () => _openInstantAddItemDialog(idx, itemTextCtrl.text.trim()),
                                         ),
                                       ),
-                                      onChanged: (v) => row.textCtrl.text = v,
-                                      onSubmitted: (val) {
-                                        if (row.item != null && row.item!.name.toLowerCase() == val.toLowerCase()) {
-                                          row.rateFocus.requestFocus();
-                                        } else {
-                                          final match = widget.items.where((i) => i.name.toLowerCase().contains(val.toLowerCase()));
-                                          if (match.isNotEmpty) {
-                                            setState(() {
-                                              row.item = match.first;
-                                              row.rate = double.tryParse(match.first.rate) ?? 0.0;
-                                            });
-                                            itemTextCtrl.text = match.first.name;
-                                            row.rateFocus.requestFocus();
-                                          }
-                                        }
-                                      },
-                                    ),
-                                  );
-                                },
+                                    );
+                                  },
+                                  optionsViewBuilder: (ctx, onSelected, options) {
+                                    return Align(
+                                      alignment: Alignment.topLeft,
+                                      child: Material(
+                                        elevation: 8,
+                                        color: const Color(0xFF1E242C),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(maxHeight: 250, maxWidth: 450),
+                                          child: ListView.builder(
+                                            padding: EdgeInsets.zero,
+                                            itemCount: options.length,
+                                            itemBuilder: (BuildContext context, int index) {
+                                              final option = options.elementAt(index);
+                                              final isHighlighted = AutocompleteHighlightedOption.of(context) == index;
+                                              return InkWell(
+                                                onTap: () => onSelected(option),
+                                                child: Container(
+                                                  color: isHighlighted ? const Color(0xFF2563EB).withOpacity(0.25) : null,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        option.name,
+                                                        style: TextStyle(
+                                                          fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal,
+                                                          color: isHighlighted ? const Color(0xFF38BDF8) : Colors.white,
+                                                        ),
+                                                      ),
+                                                      Text('₹${option.rate}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                key: ValueKey('rate_${row.item?.name}_$idx'),
-                                initialValue: row.rate.toStringAsFixed(2),
-                                focusNode: row.rateFocus,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                onChanged: (val) {
-                                  setState(() {
-                                    row.rate = double.tryParse(val) ?? 0.0;
-                                  });
-                                },
-                                onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                initialValue: row.qty.toStringAsFixed(0),
-                                focusNode: row.qtyFocus,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                onChanged: (val) {
-                                  setState(() {
-                                    row.qty = double.tryParse(val) ?? 1.0;
-                                  });
-                                },
-                                onFieldSubmitted: (_) {
-                                  if (idx == _rows.length - 1) {
-                                    _addRow();
-                                    Future.delayed(const Duration(milliseconds: 50), () {
-                                      _rows[idx + 1].itemSearchFocus.requestFocus();
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 2,
+                                child: TextFormField(
+                                  key: ValueKey('rate_${row.item?.name}_$idx'),
+                                  initialValue: row.rate.toStringAsFixed(2),
+                                  focusNode: row.rateFocus,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      row.rate = double.tryParse(val) ?? 0.0;
                                     });
-                                  } else {
-                                    _rows[idx + 1].itemSearchFocus.requestFocus();
-                                  }
-                                },
+                                  },
+                                  onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                '₹${row.amount.toStringAsFixed(2)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 2,
+                                child: TextFormField(
+                                  initialValue: row.qty.toStringAsFixed(0),
+                                  focusNode: row.qtyFocus,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      row.qty = double.tryParse(val) ?? 1.0;
+                                    });
+                                  },
+                                  onFieldSubmitted: (_) {
+                                    if (idx == _rows.length - 1) {
+                                      _addRow();
+                                      Future.delayed(const Duration(milliseconds: 50), () {
+                                        _rows[idx + 1].itemSearchFocus.requestFocus();
+                                      });
+                                    } else {
+                                      _rows[idx + 1].itemSearchFocus.requestFocus();
+                                    }
+                                  },
+                                ),
                               ),
-                            ),
-                            SizedBox(
-                              width: 40,
-                              child: IconButton(
-                                icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
-                                onPressed: () => _removeRow(idx),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '₹${row.amount.toStringAsFixed(2)}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
+                              SizedBox(
+                                width: 40,
+                                child: IconButton(
+                                  icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
+                                  onPressed: () => _removeRow(idx),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text('+ Add Item Row (Enter on Qty)'),
+                          onPressed: _addRow,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Tally Summary & Auto-Calculation Footer
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF161B22),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF242C37)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 140,
+                          child: TextField(
+                            controller: _coolieCtrl,
+                            focusNode: _coolieFocus,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Coolie (₹)'),
+                            onChanged: (v) => setState(() {}),
+                            onSubmitted: (_) => _saveInvoice(),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        Text(
+                          'Taxable Subtotal: ₹${_taxableAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                        ),
+                      ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('+ Add Item Row (Enter on Qty)'),
-                        onPressed: _addRow,
-                      ),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _summaryLine('Sub Total:', '₹${_subTotal.toStringAsFixed(2)}'),
+                        if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
+                        if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
+                        if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
+                        _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
+                        const Divider(height: 12, color: Color(0xFF242C37)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const Text('Grand Total: ',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                            Text('₹${_grandTotal.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF38BDF8))),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-
-          // Tally Summary & Auto-Calculation Footer
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF242C37)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 140,
-                        child: TextField(
-                          controller: _coolieCtrl,
-                          focusNode: _coolieFocus,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Coolie (₹)'),
-                          onChanged: (v) => setState(() {}),
-                          onSubmitted: (_) => _saveInvoice(),
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Text(
-                        'Taxable Subtotal: ₹${_taxableAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _summaryLine('Sub Total:', '₹${_subTotal.toStringAsFixed(2)}'),
-                      if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
-                      if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
-                      if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
-                      _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
-                      const Divider(height: 12, color: Color(0xFF242C37)),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          const Text('Grand Total: ',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                          Text('₹${_grandTotal.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF38BDF8))),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _summaryLine(String label, String value) {
     return Padding(
@@ -1313,10 +1402,6 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
               onPressed: () async {
                 if (nameCtrl.text.trim().isNotEmpty) {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Updating Google Sheet...')),
-                  );
-
                   await http.post(
                     Uri.parse(sheetApiUrl),
                     body: jsonEncode({
@@ -1697,9 +1782,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
             onPressed: () async {
               if (nameCtrl.text.trim().isNotEmpty) {
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Updating Customer to Sheet...')),
-                );
                 await http.post(
                   Uri.parse(sheetApiUrl),
                   body: jsonEncode({
@@ -1950,10 +2032,6 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                   final bags = int.tryParse(bagsCtrl.text.trim()) ?? 0;
 
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Saving to Google Sheet Packing Slip...')),
-                  );
-
                   setState(() {
                     widget.loadingSlip.add(LoadingEntry(
                       customerName: party,
@@ -2139,11 +2217,109 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- 5. INVOICE HISTORY VIEW ----------------
+// ---------------- 5. INVOICE HISTORY VIEW (VIEW & CANCEL STATUS) ----------------
 
 class InvoiceHistoryView extends StatelessWidget {
   final List<DCEstimate> estimates;
-  const InvoiceHistoryView({super.key, required this.estimates});
+  final List<DCItem> items;
+  final List<DCCustomer> customers;
+  final VoidCallback onRefreshRequired;
+
+  const InvoiceHistoryView({
+    super.key,
+    required this.estimates,
+    required this.items,
+    required this.customers,
+    required this.onRefreshRequired,
+  });
+
+  void _showInvoiceDetails(BuildContext context, DCEstimate est) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E242C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Invoice #${est.slNo}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: est.status == 'CANCELLED' ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                est.status,
+                style: TextStyle(
+                  color: est.status == 'CANCELLED' ? Colors.redAccent : Colors.greenAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Date: ${est.date}', style: const TextStyle(color: Color(0xFF94A3B8))),
+              const SizedBox(height: 6),
+              Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              const Divider(color: Color(0xFF242C37), height: 20),
+              const Text('Items Summary:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: const Color(0xFF161B22), borderRadius: BorderRadius.circular(8)),
+                child: Text(est.itemSummary, style: const TextStyle(height: 1.4)),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Coolie: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8))),
+                  Text('SGST: ₹${est.sgst} | CGST: ₹${est.cgst}', style: const TextStyle(color: Color(0xFF94A3B8))),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text('Grand Total: ₹${est.grandTotal}',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          if (est.status != 'CANCELLED')
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await http.post(
+                  Uri.parse(sheetApiUrl),
+                  body: jsonEncode({
+                    "action": "CANCEL_ESTIMATE",
+                    "rowIndex": est.rowIndex,
+                  }),
+                );
+                onRefreshRequired();
+              },
+              child: const Text('Cancel this Bill'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2168,41 +2344,67 @@ class InvoiceHistoryView extends StatelessWidget {
                     separatorBuilder: (ctx, i) => const SizedBox(height: 10),
                     itemBuilder: (ctx, idx) {
                       final est = estimates[idx];
-                      return Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF161B22),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF242C37)),
-                        ),
-                        child: Row(
-                          children: [
-                            Text('#${est.slNo}',
-                                style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(est.customer,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                      const SizedBox(width: 10),
-                                      Text('(${est.date})',
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(est.itemSummary,
-                                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                ],
+                      final isCancelled = est.status == 'CANCELLED';
+
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => _showInvoiceDetails(context, est),
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF161B22),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF242C37)),
+                          ),
+                          child: Row(
+                            children: [
+                              Text('#${est.slNo}',
+                                  style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(est.customer,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                            )),
+                                        const SizedBox(width: 10),
+                                        Text('(${est.date})',
+                                            style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                                        if (isCancelled) ...[
+                                          const SizedBox(width: 10),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Text('CANCELLED',
+                                                style: TextStyle(
+                                                    color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(est.itemSummary,
+                                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Text('₹${est.grandTotal}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF38BDF8))),
-                          ],
+                              Text('₹${est.grandTotal}',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: isCancelled ? Colors.grey : const Color(0xFF38BDF8))),
+                            ],
+                          ),
                         ),
                       );
                     },
