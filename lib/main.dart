@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -22,6 +25,7 @@ class CompanyConfig {
   static String phone = "+91 98470 12345";
   static String email = "davisandcompanyaluva@gmail.com";
   static String gstin = "32AABCD1234E1Z5";
+  static String regType = "Regular";
   static String stateCode = "Kerala (32)";
   static String logoUrl = "";
   static double defaultGstRate = 5.0;
@@ -192,7 +196,7 @@ class InvoiceRowItem {
   double get amount => qty * rate;
 }
 
-// ---------------- APP ROOT (CLEAN PROFESSIONAL DARK THEME) ----------------
+// ---------------- APP ROOT ----------------
 
 class DCPrimeApp extends StatelessWidget {
   const DCPrimeApp({super.key});
@@ -270,6 +274,19 @@ class _MainDashboardState extends State<MainDashboard> {
         final List custList = data['customers'] ?? [];
         final List estList = data['estimates'] ?? [];
 
+        // Load company details from Sheet row 2
+        if (data['company'] != null) {
+          final comp = data['company'];
+          CompanyConfig.logoUrl = comp['logoUrl'] ?? CompanyConfig.logoUrl;
+          CompanyConfig.name = comp['name'] ?? CompanyConfig.name;
+          CompanyConfig.tradeSubtitle = comp['tradeSubtitle'] ?? CompanyConfig.tradeSubtitle;
+          CompanyConfig.address = comp['address'] ?? CompanyConfig.address;
+          CompanyConfig.phone = comp['phone'] ?? CompanyConfig.phone;
+          CompanyConfig.email = comp['email'] ?? CompanyConfig.email;
+          CompanyConfig.gstin = comp['gstin'] ?? CompanyConfig.gstin;
+          CompanyConfig.regType = comp['regType'] ?? CompanyConfig.regType;
+        }
+
         setState(() {
           _items = itemList.map((i) => DCItem.fromJson(i)).toList();
           _customers = custList.map((c) => DCCustomer.fromJson(c)).toList();
@@ -293,68 +310,158 @@ class _MainDashboardState extends State<MainDashboard> {
     final phoneCtrl = TextEditingController(text: CompanyConfig.phone);
     final emailCtrl = TextEditingController(text: CompanyConfig.email);
     final gstinCtrl = TextEditingController(text: CompanyConfig.gstin);
-    final logoCtrl = TextEditingController(text: CompanyConfig.logoUrl);
+    final regTypeCtrl = TextEditingController(text: CompanyConfig.regType);
+    String logoBase64 = "";
+    String logoPathLocal = "";
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF161D27),
-        title: const Row(
-          children: [
-            Icon(Icons.business, color: Color(0xFF38BDF8)),
-            SizedBox(width: 10),
-            Text('Company Profile & Invoice Header'),
-          ],
-        ),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Company / Firm Name')),
-                const SizedBox(height: 10),
-                TextField(controller: subCtrl, decoration: const InputDecoration(labelText: 'Trade Subtitle / Slogan')),
-                const SizedBox(height: 10),
-                TextField(controller: addrCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Full Address')),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Contact Phone'))),
-                    const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address'))),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(controller: gstinCtrl, decoration: const InputDecoration(labelText: 'GSTIN / UIN Number')),
-                const SizedBox(height: 10),
-                TextField(controller: logoCtrl, decoration: const InputDecoration(labelText: 'Logo Image URL / Path (Optional)')),
-              ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          backgroundColor: const Color(0xFF161D27),
+          title: const Row(
+            children: [
+              Icon(Icons.business, color: Color(0xFF38BDF8)),
+              SizedBox(width: 10),
+              Text('Company Profile & Invoice Header (Saved to Sheet)'),
+            ],
+          ),
+          content: SizedBox(
+            width: 540,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Logo Selector Bar
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121822),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF2B384D)),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: const Color(0xFF1C2533),
+                          backgroundImage: logoPathLocal.isNotEmpty
+                              ? FileImage(File(logoPathLocal))
+                              : (CompanyConfig.logoUrl.isNotEmpty ? NetworkImage(CompanyConfig.logoUrl) as ImageProvider : null),
+                          child: (logoPathLocal.isEmpty && CompanyConfig.logoUrl.isEmpty)
+                              ? const Icon(Icons.image, color: Color(0xFF94A3B8))
+                              : null,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(logoPathLocal.isNotEmpty
+                                  ? 'Selected: ${logoPathLocal.split(Platform.pathSeparator).last}'
+                                  : (CompanyConfig.logoUrl.isNotEmpty ? 'Active Cloud Logo' : 'No Logo Uploaded')),
+                              const SizedBox(height: 4),
+                              const Text('Supports PNG, JPG (Auto-uploads to Google Drive)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.file_upload, size: 16),
+                          label: const Text('Select File'),
+                          onPressed: () async {
+                            final res = await FilePicker.platform.pickFiles(type: FileType.image);
+                            if (res != null && res.files.single.path != null) {
+                              final filePath = res.files.single.path!;
+                              final bytes = await File(filePath).readAsBytes();
+                              setDlgState(() {
+                                logoPathLocal = filePath;
+                                logoBase64 = base64Encode(bytes);
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Company / Firm Name')),
+                  const SizedBox(height: 10),
+                  TextField(controller: subCtrl, decoration: const InputDecoration(labelText: 'Trade Subtitle / Slogan')),
+                  const SizedBox(height: 10),
+                  TextField(controller: addrCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Full Address')),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Contact Phone'))),
+                      const SizedBox(width: 10),
+                      Expanded(child: TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address'))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: gstinCtrl, decoration: const InputDecoration(labelText: 'GSTIN / UIN Number'))),
+                      const SizedBox(width: 10),
+                      Expanded(child: TextField(controller: regTypeCtrl, decoration: const InputDecoration(labelText: 'Reg. Type'))),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-            onPressed: () {
-              setState(() {
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Saving Company Details to Sheet...')),
+                );
+
+                setState(() => _isBackgroundSyncing = true);
+
+                try {
+                  final resp = await http.post(
+                    Uri.parse(sheetApiUrl),
+                    body: jsonEncode({
+                      "action": "SAVE_COMPANY_DETAILS",
+                      "name": nameCtrl.text.trim(),
+                      "tradeSubtitle": subCtrl.text.trim(),
+                      "address": addrCtrl.text.trim(),
+                      "phone": phoneCtrl.text.trim(),
+                      "email": emailCtrl.text.trim(),
+                      "gstin": gstinCtrl.text.trim(),
+                      "regType": regTypeCtrl.text.trim(),
+                      "imageBase64": logoBase64,
+                      "logoUrl": CompanyConfig.logoUrl,
+                    }),
+                  );
+                  if (resp.statusCode == 200 || resp.statusCode == 302) {
+                    final resData = jsonDecode(resp.body);
+                    if (resData['logoUrl'] != null && resData['logoUrl'].toString().isNotEmpty) {
+                      CompanyConfig.logoUrl = resData['logoUrl'];
+                    }
+                  }
+                } catch (e) {}
+
                 CompanyConfig.name = nameCtrl.text.trim();
                 CompanyConfig.tradeSubtitle = subCtrl.text.trim();
                 CompanyConfig.address = addrCtrl.text.trim();
                 CompanyConfig.phone = phoneCtrl.text.trim();
                 CompanyConfig.email = emailCtrl.text.trim();
                 CompanyConfig.gstin = gstinCtrl.text.trim();
-                CompanyConfig.logoUrl = logoCtrl.text.trim();
-              });
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Company profile updated successfully!')),
-              );
-            },
-            child: const Text('Save Profile'),
-          ),
-        ],
+                CompanyConfig.regType = regTypeCtrl.text.trim();
+
+                setState(() => _isBackgroundSyncing = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Company Profile saved permanently!')),
+                );
+              },
+              child: const Text('Save to Sheet'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -380,7 +487,7 @@ class _MainDashboardState extends State<MainDashboard> {
                   leading: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     child: Tooltip(
-                      message: 'Click to edit Company Header / Logo',
+                      message: 'Click to edit Company Header & Logo',
                       child: InkWell(
                         borderRadius: BorderRadius.circular(10),
                         onTap: _openCompanyProfileDialog,
@@ -1627,6 +1734,17 @@ Future<Uint8List> generateTallyPdf({
 }) async {
   final doc = pw.Document();
 
+  // Attempt logo download if available
+  pw.ImageProvider? logoImage;
+  if (CompanyConfig.logoUrl.isNotEmpty) {
+    try {
+      final res = await http.get(Uri.parse(CompanyConfig.logoUrl));
+      if (res.statusCode == 200) {
+        logoImage = pw.MemoryImage(res.bodyBytes);
+      }
+    } catch (e) {}
+  }
+
   doc.addPage(
     pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -1637,18 +1755,32 @@ Future<Uint8List> generateTallyPdf({
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header with Logo
               pw.Container(
-                padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 alignment: pw.Alignment.center,
                 decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
-                child: pw.Column(
+                child: pw.Row(
                   children: [
-                    pw.Text("TAX INVOICE", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 2),
-                    pw.Text(CompanyConfig.name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("${CompanyConfig.tradeSubtitle}, ${CompanyConfig.address}", style: const pw.TextStyle(fontSize: 9)),
-                    pw.Text("GSTIN/UIN: ${CompanyConfig.gstin}  |  State: ${CompanyConfig.stateCode}", style: const pw.TextStyle(fontSize: 9)),
+                    if (logoImage != null)
+                      pw.Container(
+                        width: 50,
+                        height: 50,
+                        margin: const pw.EdgeInsets.only(right: 12),
+                        child: pw.Image(logoImage),
+                      ),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: logoImage != null ? pw.CrossAxisAlignment.start : pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Text("TAX INVOICE", style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                          pw.SizedBox(height: 2),
+                          pw.Text(CompanyConfig.name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                          pw.Text("${CompanyConfig.tradeSubtitle}, ${CompanyConfig.address}", style: const pw.TextStyle(fontSize: 9)),
+                          pw.Text("GSTIN/UIN: ${CompanyConfig.gstin}  |  State: ${CompanyConfig.stateCode}  |  Ph: ${CompanyConfig.phone}", style: const pw.TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1808,7 +1940,7 @@ pw.Widget _pdfSummaryRow(String label, String value) {
   );
 }
 
-// ---------------- 3. INVOICE HISTORY VIEW (PROMINENT PRINT BUTTON) ----------------
+// ---------------- 3. INVOICE HISTORY VIEW ----------------
 
 class InvoiceHistoryView extends StatelessWidget {
   final List<DCEstimate> estimates;
@@ -2102,7 +2234,7 @@ class InvoiceHistoryView extends StatelessWidget {
   }
 }
 
-// ---------------- 4. PRICE LIST VIEW (WITH DELETE OPTION) ----------------
+// ---------------- 4. PRICE LIST VIEW (WITH WORKING EDIT & DELETE) ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -2182,7 +2314,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF161D27),
         title: const Text('Confirm Delete Item'),
-        content: Text('Are you sure you want to remove "${item.name}" from Google Sheet?'),
+        content: Text('Are you sure you want to permanently remove "${item.name}" from Google Sheet?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
@@ -2429,7 +2561,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-// ---------------- 5. CUSTOMERS VIEW (WITH DELETE OPTION) ----------------
+// ---------------- 5. CUSTOMERS VIEW (WITH WORKING EDIT & DELETE) ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -2544,7 +2676,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF161D27),
         title: const Text('Confirm Delete Customer'),
-        content: Text('Are you sure you want to delete party "${customer.name}" from Google Sheet?'),
+        content: Text('Are you sure you want to permanently delete party "${customer.name}" from Google Sheet?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
@@ -2617,7 +2749,8 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                 await http.post(
                   Uri.parse(sheetApiUrl),
                   body: jsonEncode({
-                    "action": "ADD_CUSTOMER",
+                    "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
+                    if (!isNew) "rowIndex": customer.rowIndex,
                     "name": nameCtrl.text.trim(),
                     "contact": contactCtrl.text.trim(),
                     "address": addressCtrl.text.trim(),
@@ -3019,7 +3152,7 @@ class SettingsDesktopView extends StatelessWidget {
           Expanded(
             child: ListView(
               children: [
-                _buildSectionHeader('Company & Header Setup'),
+                _buildSectionHeader('Company & Header Setup (Google Sheets Linked)'),
                 _buildCard(
                   title: 'Firm Details & GST Settings',
                   subtitle: '${CompanyConfig.name} • ${CompanyConfig.gstin}',
@@ -3075,7 +3208,7 @@ class SettingsDesktopView extends StatelessWidget {
                       const SizedBox(height: 10),
                       _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
                       _supportRow('Application Suite', 'DC Prime Desktop (TallyPrime Workflow Edition)'),
-                      _supportRow('Release Version', 'v2.5.0 (Desktop 64-bit Build)'),
+                      _supportRow('Release Version', 'v2.6.0 (Desktop 64-bit Build)'),
                       _supportRow('Target Framework', 'Flutter 3.x (Windows Runner)'),
                     ],
                   ),
