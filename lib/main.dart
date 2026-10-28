@@ -10,8 +10,21 @@ void main() {
   runApp(const DCPrimeApp());
 }
 
-const String sheetApiUrl =
+String sheetApiUrl =
     "https://script.google.com/macros/s/AKfycbzFDW5eeT4abGSRNLHlKs43JJ81YiKt0UrNEbbK2_cQIylsU_zGylqE8IMBqtpmXsjOEg/exec";
+
+// ---------------- CONFIG & COMPANY PROFILE ----------------
+
+class CompanyConfig {
+  static String name = "DAVIS & COMPANY";
+  static String tradeSubtitle = "Wholesale Rice Merchants";
+  static String address = "Market Road, Aluva, Ernakulam, Kerala - 683101";
+  static String phone = "+91 98470 12345";
+  static String email = "davisandcompanyaluva@gmail.com";
+  static String gstin = "32AABCD1234E1Z5";
+  static String stateCode = "Kerala (32)";
+  static double defaultGstRate = 5.0; // 2.5% + 2.5%
+}
 
 // ---------------- MODELS ----------------
 
@@ -156,15 +169,17 @@ class LoadingEntry {
 
 class InvoiceRowItem {
   DCItem? item;
-  double qty;
   double rate;
+  double qty;
+  int bags;
   final FocusNode itemSearchFocus = FocusNode();
   final FocusNode rateFocus = FocusNode();
   final FocusNode qtyFocus = FocusNode();
+  final FocusNode bagsFocus = FocusNode();
   final TextEditingController textCtrl = TextEditingController();
   final LayerLink layerLink = LayerLink();
 
-  InvoiceRowItem({this.item, this.qty = 1.0, this.rate = 0.0});
+  InvoiceRowItem({this.item, this.rate = 0.0, this.qty = 1.0, this.bags = 1});
 
   double get amount => qty * rate;
 }
@@ -182,18 +197,19 @@ class DCPrimeApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF111418),
+        scaffoldBackgroundColor: const Color(0xFF0B0E14),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF3B82F6),
-          surface: Color(0xFF181E26),
-          onSurface: Color(0xFFE2E8F0),
+          primary: Color(0xFF2563EB),
+          secondary: Color(0xFF06B6D4),
+          surface: Color(0xFF151A23),
+          onSurface: Color(0xFFF1F5F9),
         ),
         inputDecorationTheme: const InputDecorationTheme(
           filled: true,
-          fillColor: Color(0xFF1E242C),
-          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2C3540))),
-          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2C3540))),
-          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF64748B))),
+          fillColor: Color(0xFF1B2230),
+          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2E384D))),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF242C3D))),
+          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF38BDF8), width: 1.5)),
           labelStyle: TextStyle(color: Color(0xFF94A3B8)),
         ),
       ),
@@ -255,6 +271,75 @@ class _MainDashboardState extends State<MainDashboard> {
     }
   }
 
+  void _openCompanyProfileDialog() {
+    final nameCtrl = TextEditingController(text: CompanyConfig.name);
+    final subCtrl = TextEditingController(text: CompanyConfig.tradeSubtitle);
+    final addrCtrl = TextEditingController(text: CompanyConfig.address);
+    final phoneCtrl = TextEditingController(text: CompanyConfig.phone);
+    final emailCtrl = TextEditingController(text: CompanyConfig.email);
+    final gstinCtrl = TextEditingController(text: CompanyConfig.gstin);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF151A23),
+        title: const Row(
+          children: [
+            Icon(Icons.business, color: Color(0xFF38BDF8)),
+            SizedBox(width: 10),
+            Text('Company Profile & Invoice Header'),
+          ],
+        ),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Company / Firm Name')),
+                const SizedBox(height: 10),
+                TextField(controller: subCtrl, decoration: const InputDecoration(labelText: 'Trade Subtitle / Slogan')),
+                const SizedBox(height: 10),
+                TextField(controller: addrCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Full Address')),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Contact Phone'))),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address'))),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(controller: gstinCtrl, decoration: const InputDecoration(labelText: 'GSTIN / UIN Number')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+            onPressed: () {
+              setState(() {
+                CompanyConfig.name = nameCtrl.text.trim();
+                CompanyConfig.tradeSubtitle = subCtrl.text.trim();
+                CompanyConfig.address = addrCtrl.text.trim();
+                CompanyConfig.phone = phoneCtrl.text.trim();
+                CompanyConfig.email = emailCtrl.text.trim();
+                CompanyConfig.gstin = gstinCtrl.text.trim();
+              });
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Company profile updated successfully!')),
+              );
+            },
+            child: const Text('Save Profile'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -263,68 +348,77 @@ class _MainDashboardState extends State<MainDashboard> {
           if (_isBackgroundSyncing)
             const LinearProgressIndicator(
               minHeight: 3,
-              backgroundColor: Color(0xFF161B22),
+              backgroundColor: Color(0xFF151A23),
               valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
             ),
           Expanded(
             child: Row(
               children: [
                 NavigationRail(
-                  backgroundColor: const Color(0xFF14181F),
+                  backgroundColor: const Color(0xFF0F131C),
                   selectedIndex: _navIndex,
                   onDestinationSelected: (val) => setState(() => _navIndex = val),
                   labelType: NavigationRailLabelType.all,
                   leading: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB),
-                        borderRadius: BorderRadius.circular(8),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: Tooltip(
+                      message: 'Click to edit Company Header / Logo',
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: _openCompanyProfileDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF06B6D4)]),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3)),
+                            ],
+                          ),
+                          child: const Text('DC', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
+                        ),
                       ),
-                      child: const Text('DC',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
-                    tooltip: 'Reload from Google Sheet',
+                    tooltip: 'Sync from Google Sheet',
                     onPressed: () => _fetchData(silent: true),
                   ),
                   destinations: const [
                     NavigationRailDestination(
                       icon: Icon(Icons.receipt_long_outlined),
-                      selectedIcon: Icon(Icons.receipt_long),
+                      selectedIcon: Icon(Icons.receipt_long, color: Color(0xFF38BDF8)),
                       label: Text('Billing'),
                     ),
                     NavigationRailDestination(
                       icon: Icon(Icons.inventory_2_outlined),
-                      selectedIcon: Icon(Icons.inventory_2),
+                      selectedIcon: Icon(Icons.inventory_2, color: Color(0xFF38BDF8)),
                       label: Text('Price List'),
                     ),
                     NavigationRailDestination(
                       icon: Icon(Icons.people_outline),
-                      selectedIcon: Icon(Icons.people),
+                      selectedIcon: Icon(Icons.people, color: Color(0xFF38BDF8)),
                       label: Text('Customers'),
                     ),
                     NavigationRailDestination(
                       icon: Icon(Icons.local_shipping_outlined),
-                      selectedIcon: Icon(Icons.local_shipping),
+                      selectedIcon: Icon(Icons.local_shipping, color: Color(0xFF38BDF8)),
                       label: Text('Packing Slip'),
                     ),
                     NavigationRailDestination(
                       icon: Icon(Icons.history_outlined),
-                      selectedIcon: Icon(Icons.history),
+                      selectedIcon: Icon(Icons.history, color: Color(0xFF38BDF8)),
                       label: Text('Invoices'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.calculate_outlined),
-                      selectedIcon: Icon(Icons.calculate),
-                      label: Text('Calculator'),
+                      icon: Icon(Icons.settings_outlined),
+                      selectedIcon: Icon(Icons.settings, color: Color(0xFF38BDF8)),
+                      label: Text('Settings'),
                     ),
                   ],
                 ),
-                const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF242C37)),
+                const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF1E2638)),
                 Expanded(
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -357,7 +451,10 @@ class _MainDashboardState extends State<MainDashboard> {
                               customers: _customers,
                               onRefreshRequired: () => _fetchData(silent: true),
                             ),
-                            PackSizeCalculatorView(items: _items),
+                            SettingsDesktopView(
+                              onReloadSheet: () => _fetchData(silent: true),
+                              onOpenProfile: _openCompanyProfileDialog,
+                            ),
                           ],
                         ),
                 ),
@@ -404,15 +501,17 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   final List<InvoiceRowItem> _rows = [];
 
-  // Popup overlay entries
+  // Overlays & Scroll
   OverlayEntry? _partyOverlay;
   int _partySelectedIndex = 0;
   List<DCCustomer> _filteredParties = [];
+  final ScrollController _partyScrollCtrl = ScrollController();
 
   OverlayEntry? _itemOverlay;
   int? _activeItemRowIndex;
   int _itemSelectedIndex = 0;
   List<DCItem> _filteredItems = [];
+  final ScrollController _itemScrollCtrl = ScrollController();
 
   @override
   void initState() {
@@ -423,7 +522,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   void _addRow() {
     setState(() {
-      _rows.add(InvoiceRowItem(item: null, qty: 1.0, rate: 0.0));
+      _rows.add(InvoiceRowItem(item: null, rate: 0.0, qty: 1.0, bags: 1));
     });
   }
 
@@ -461,14 +560,15 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     return sum;
   }
 
-  double get _sgst => _taxableAmount * 0.025;
-  double get _cgst => _taxableAmount * 0.025;
+  double get _sgst => _taxableAmount * (CompanyConfig.defaultGstRate / 200.0);
+  double get _cgst => _taxableAmount * (CompanyConfig.defaultGstRate / 200.0);
   double get _coolie => double.tryParse(_coolieCtrl.text.trim()) ?? 0.0;
   double get _exactTotal => _subTotal + _sgst + _cgst + _coolie;
   double get _grandTotal => _exactTotal.roundToDouble();
   double get _roundOff => _grandTotal - _exactTotal;
+  int get _totalBags => _rows.fold(0, (sum, r) => sum + r.bags);
 
-  // ---------------- PARTY OVERLAY LOGIC ----------------
+  // ---------------- PARTY OVERLAY WITH AUTO SCROLL ----------------
 
   void _showPartyOverlay() {
     _hidePartyOverlay();
@@ -485,23 +585,24 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
             ),
           ),
           Positioned(
-            width: 450,
+            width: 460,
             child: CompositedTransformFollower(
               link: _partyLayerLink,
               showWhenUnlinked: false,
               offset: const Offset(0, 52),
               child: Material(
-                elevation: 12,
-                color: const Color(0xFF1E242C),
+                elevation: 14,
+                color: const Color(0xFF1B2230),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 220),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E242C),
+                    color: const Color(0xFF1B2230),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF2C3540)),
+                    border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4), width: 1.2),
                   ),
                   child: ListView.builder(
+                    controller: _partyScrollCtrl,
                     padding: EdgeInsets.zero,
                     itemCount: _filteredParties.length,
                     itemBuilder: (context, index) {
@@ -510,7 +611,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                       return InkWell(
                         onTap: () => _selectParty(p),
                         child: Container(
-                          color: isSelected ? const Color(0xFF2563EB).withOpacity(0.25) : null,
+                          color: isSelected ? const Color(0xFF2563EB).withOpacity(0.3) : null,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           child: Row(
                             children: [
@@ -560,12 +661,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
           setState(() {
             _partySelectedIndex = (_partySelectedIndex + 1).clamp(0, _filteredParties.length - 1);
           });
+          _scrollListTo(_partyScrollCtrl, _partySelectedIndex, 40.0);
           _partyOverlay?.markNeedsBuild();
           return KeyEventResult.handled;
         } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
           setState(() {
             _partySelectedIndex = (_partySelectedIndex - 1).clamp(0, _filteredParties.length - 1);
           });
+          _scrollListTo(_partyScrollCtrl, _partySelectedIndex, 40.0);
           _partyOverlay?.markNeedsBuild();
           return KeyEventResult.handled;
         } else if (event.logicalKey == LogicalKeyboardKey.enter) {
@@ -590,11 +693,24 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     });
   }
 
-  // ---------------- ITEM OVERLAY LOGIC ----------------
+  // ---------------- ITEM OVERLAY WITH AUTO SCROLL ----------------
 
   void _showItemOverlay(int rowIdx) {
     _hideItemOverlay();
     if (_filteredItems.isEmpty) return;
+
+    final renderBox = _rows[rowIdx].itemSearchFocus.context?.findRenderObject() as RenderBox?;
+    double offsetY = 48.0;
+    const double popupHeight = 200.0;
+
+    if (renderBox != null) {
+      final position = renderBox.localToGlobal(Offset.zero);
+      final screenHeight = MediaQuery.of(context).size.height;
+      final spaceBelow = screenHeight - position.dy - renderBox.size.height;
+      if (spaceBelow < 230) {
+        offsetY = -(popupHeight + 8);
+      }
+    }
 
     final overlay = Overlay.of(context);
     _itemOverlay = OverlayEntry(
@@ -607,23 +723,27 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
             ),
           ),
           Positioned(
-            width: 380,
+            width: 400,
             child: CompositedTransformFollower(
               link: _rows[rowIdx].layerLink,
               showWhenUnlinked: false,
-              offset: const Offset(0, 48),
+              offset: Offset(0, offsetY),
               child: Material(
                 elevation: 16,
-                color: const Color(0xFF1E242C),
+                color: const Color(0xFF1B2230),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  constraints: const BoxConstraints(maxHeight: 200),
+                  height: popupHeight,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E242C),
+                    color: const Color(0xFF1B2230),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF3B82F6), width: 1.2),
+                    border: Border.all(color: const Color(0xFF38BDF8), width: 1.2),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 10, offset: const Offset(0, 4)),
+                    ],
                   ),
                   child: ListView.builder(
+                    controller: _itemScrollCtrl,
                     padding: EdgeInsets.zero,
                     itemCount: _filteredItems.length,
                     itemBuilder: (context, index) {
@@ -633,7 +753,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         onTap: () => _selectItem(rowIdx, item),
                         child: Container(
                           color: isSelected ? const Color(0xFF2563EB).withOpacity(0.35) : null,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -650,7 +770,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                   ),
                                 ],
                               ),
-                              Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                              Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold, fontSize: 13)),
                             ],
                           ),
                         ),
@@ -667,10 +787,18 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     overlay.insert(_itemOverlay!);
   }
 
+  void _scrollListTo(ScrollController ctrl, int index, double itemHeight) {
+    if (!ctrl.hasClients) return;
+    final targetOffset = index * itemHeight;
+    final maxScroll = ctrl.position.maxScrollExtent;
+    final minScroll = ctrl.position.minScrollExtent;
+    final clamped = targetOffset.clamp(minScroll, maxScroll);
+    ctrl.animateTo(clamped, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+  }
+
   void _hideItemOverlay() {
     _itemOverlay?.remove();
     _itemOverlay = null;
-    _activeItemRowIndex = null;
   }
 
   KeyEventResult _handleItemKeyEvent(int rowIdx, FocusNode node, KeyEvent event) {
@@ -687,12 +815,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
           setState(() {
             _itemSelectedIndex = (_itemSelectedIndex + 1).clamp(0, _filteredItems.length - 1);
           });
+          _scrollListTo(_itemScrollCtrl, _itemSelectedIndex, 38.0);
           _itemOverlay?.markNeedsBuild();
           return KeyEventResult.handled;
         } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
           setState(() {
             _itemSelectedIndex = (_itemSelectedIndex - 1).clamp(0, _filteredItems.length - 1);
           });
+          _scrollListTo(_itemScrollCtrl, _itemSelectedIndex, 38.0);
           _itemOverlay?.markNeedsBuild();
           return KeyEventResult.handled;
         } else if (event.logicalKey == LogicalKeyboardKey.enter) {
@@ -727,7 +857,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
+        backgroundColor: const Color(0xFF151A23),
         title: const Text('Instant Add Customer (Alt + C)'),
         content: SizedBox(
           width: 480,
@@ -817,7 +947,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E242C),
+          backgroundColor: const Color(0xFF151A23),
           title: const Text('Instant Add Item (Alt + C)'),
           content: SizedBox(
             width: 480,
@@ -837,7 +967,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty (50)'))),
+                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty (Pack Size)'))),
                       const SizedBox(width: 10),
                       Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
                     ],
@@ -927,7 +1057,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
     final now = DateTime.now();
     final dateStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
-    final summary = validRows.map((r) => "${r.item!.name} (${r.qty.toInt()}x${r.rate})").join(", ");
+    final summary = validRows.map((r) => "${r.item!.name} (${r.qty}x${r.rate}) [${r.bags}B]").join(", ");
 
     widget.onSetSyncing(true);
 
@@ -978,16 +1108,16 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF1E242C),
+        backgroundColor: const Color(0xFF151A23),
         insetPadding: const EdgeInsets.all(20),
         child: SizedBox(
-          width: 900,
-          height: 700,
+          width: 920,
+          height: 720,
           child: Column(
             children: [
               AppBar(
-                backgroundColor: const Color(0xFF14181F),
-                title: Text('Invoice #$billNo Preview (Tally Format)'),
+                backgroundColor: const Color(0xFF0F131C),
+                title: Text('Invoice #$billNo (Tally Prime Format)'),
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -1043,17 +1173,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 Row(
                   children: [
                     const Text('Customer Bill',
-                        style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFE2E8F0))),
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFF1F5F9))),
                     const SizedBox(width: 14),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E242C),
+                        color: const Color(0xFF1B2230),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF2C3540)),
+                        border: Border.all(color: const Color(0xFF2E384D)),
                       ),
                       child: Text('Bill #${widget.nextBillNo}',
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
@@ -1088,13 +1215,13 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Party Input with CompositedTransformTarget
+                // Party Input
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161B22),
+                    color: const Color(0xFF151A23),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF242C37)),
+                    border: Border.all(color: const Color(0xFF242C3D)),
                   ),
                   child: Row(
                     children: [
@@ -1157,43 +1284,45 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Table Area with CompositedTransformTarget for each row
+                // Table Area (Order: No | Item | Rate | Qty | Bags | Net Amount)
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161B22),
+                      color: const Color(0xFF151A23),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF242C37)),
+                      border: Border.all(color: const Color(0xFF242C3D)),
                     ),
                     child: Column(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: const BoxDecoration(
-                            color: Color(0xFF1E242C),
+                            color: Color(0xFF1B2230),
                             borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
                           ),
                           child: const Row(
                             children: [
-                              SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 16),
+                              SizedBox(width: 35, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                              SizedBox(width: 14),
                               Expanded(flex: 4, child: Text('Name of Item', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 16),
+                              SizedBox(width: 14),
                               Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 16),
+                              SizedBox(width: 14),
                               Expanded(flex: 2, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 16),
+                              SizedBox(width: 14),
+                              Expanded(flex: 1, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                              SizedBox(width: 14),
                               Expanded(flex: 2, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 40),
+                              SizedBox(width: 35),
                             ],
                           ),
                         ),
-                        const Divider(height: 1, color: Color(0xFF242C37)),
+                        const Divider(height: 1, color: Color(0xFF242C3D)),
                         Expanded(
                           child: ListView.separated(
                             padding: const EdgeInsets.all(12),
                             itemCount: _rows.length,
-                            separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C37)),
+                            separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C3D)),
                             itemBuilder: (ctx, idx) {
                               final row = _rows[idx];
 
@@ -1202,9 +1331,10 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 children: [
                                   Padding(
                                     padding: const EdgeInsets.only(top: 14),
-                                    child: SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
+                                    child: SizedBox(width: 35, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
                                   ),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 14),
+                                  // Item Name
                                   Expanded(
                                     flex: 4,
                                     child: CompositedTransformTarget(
@@ -1228,7 +1358,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                           ),
                                           onChanged: (val) {
                                             setState(() {
-                                              _activeItemRowIndex = idx;
                                               _itemSelectedIndex = 0;
                                               _filteredItems = widget.items.where((i) {
                                                 return i.name.toLowerCase().contains(val.toLowerCase()) ||
@@ -1239,7 +1368,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                           },
                                           onTap: () {
                                             setState(() {
-                                              _activeItemRowIndex = idx;
                                               _filteredItems = widget.items;
                                             });
                                             _showItemOverlay(idx);
@@ -1248,7 +1376,8 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 14),
+                                  // Rate
                                   Expanded(
                                     flex: 2,
                                     child: TextFormField(
@@ -1265,7 +1394,8 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                       onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 14),
+                                  // Qty
                                   Expanded(
                                     flex: 2,
                                     child: TextFormField(
@@ -1276,6 +1406,23 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                       onChanged: (val) {
                                         setState(() {
                                           row.qty = double.tryParse(val) ?? 1.0;
+                                        });
+                                      },
+                                      onFieldSubmitted: (_) => row.bagsFocus.requestFocus(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  // Bags
+                                  Expanded(
+                                    flex: 1,
+                                    child: TextFormField(
+                                      initialValue: row.bags.toString(),
+                                      focusNode: row.bagsFocus,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                      onChanged: (val) {
+                                        setState(() {
+                                          row.bags = int.tryParse(val) ?? 1;
                                         });
                                       },
                                       onFieldSubmitted: (_) {
@@ -1290,11 +1437,12 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                       },
                                     ),
                                   ),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 14),
+                                  // Net Amount
                                   Padding(
                                     padding: const EdgeInsets.only(top: 14),
                                     child: SizedBox(
-                                      width: 120,
+                                      width: 110,
                                       child: Text(
                                         '₹${row.amount.toStringAsFixed(2)}',
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -1302,7 +1450,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                     ),
                                   ),
                                   SizedBox(
-                                    width: 40,
+                                    width: 35,
                                     child: IconButton(
                                       icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
                                       onPressed: () => _removeRow(idx),
@@ -1315,13 +1463,17 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('+ Add Item Row (Enter on Qty)'),
-                              onPressed: _addRow,
-                            ),
+                          child: Row(
+                            children: [
+                              TextButton.icon(
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text('+ Add Item Row (Enter on Bags)'),
+                                onPressed: _addRow,
+                              ),
+                              const Spacer(),
+                              Text('Total Bags in Bill: $_totalBags Bags',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                            ],
                           ),
                         ),
                       ],
@@ -1334,9 +1486,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161B22),
+                    color: const Color(0xFF151A23),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF242C37)),
+                    border: Border.all(color: const Color(0xFF242C3D)),
                   ),
                   child: Row(
                     children: [
@@ -1357,7 +1509,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                             ),
                             const SizedBox(width: 20),
                             Text(
-                              'Taxable Subtotal: ₹${_taxableAmount.toStringAsFixed(2)}',
+                              'Taxable: ₹${_taxableAmount.toStringAsFixed(2)}',
                               style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
                             ),
                           ],
@@ -1373,17 +1525,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                             if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
                             if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
                             _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
-                            const Divider(height: 12, color: Color(0xFF242C37)),
+                            const Divider(height: 12, color: Color(0xFF242C3D)),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 const Text('Grand Total: ',
                                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
                                 Text('₹${_grandTotal.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF38BDF8))),
+                                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                               ],
                             ),
                           ],
@@ -1419,7 +1568,7 @@ class SaveIntent extends Intent {
   const SaveIntent();
 }
 
-// ---------------- 2. TALLY PRIME PDF GENERATOR ----------------
+// ---------------- 2. TALLY PRIME TAX INVOICE PDF ----------------
 
 Future<Uint8List> generateTallyPdf({
   required PdfPageFormat format,
@@ -1455,9 +1604,9 @@ Future<Uint8List> generateTallyPdf({
                   children: [
                     pw.Text("TAX INVOICE", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 2),
-                    pw.Text("DAVIS & COMPANY", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("Wholesale Rice Merchants, Market Road, Aluva - 683101", style: const pw.TextStyle(fontSize: 9)),
-                    pw.Text("GSTIN/UIN: 32AABCD1234E1Z5  |  State: Kerala, Code: 32", style: const pw.TextStyle(fontSize: 9)),
+                    pw.Text(CompanyConfig.name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                    pw.Text("${CompanyConfig.tradeSubtitle}, ${CompanyConfig.address}", style: const pw.TextStyle(fontSize: 9)),
+                    pw.Text("GSTIN/UIN: ${CompanyConfig.gstin}  |  State: ${CompanyConfig.stateCode}", style: const pw.TextStyle(fontSize: 9)),
                   ],
                 ),
               ),
@@ -1494,7 +1643,7 @@ Future<Uint8List> generateTallyPdf({
                             pw.SizedBox(height: 4),
                             pw.Text("Dated: $dateStr", style: const pw.TextStyle(fontSize: 9)),
                             pw.SizedBox(height: 4),
-                            pw.Text("Place of Supply: Kerala (32)", style: const pw.TextStyle(fontSize: 9)),
+                            pw.Text("Place of Supply: ${CompanyConfig.stateCode}", style: const pw.TextStyle(fontSize: 9)),
                           ],
                         ),
                       ),
@@ -1511,8 +1660,9 @@ Future<Uint8List> generateTallyPdf({
                   children: [
                     pw.SizedBox(width: 25, child: pw.Text("Sl", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
                     pw.Expanded(flex: 5, child: pw.Text("Description of Goods", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-                    pw.SizedBox(width: 45, child: pw.Text("Qty", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
-                    pw.SizedBox(width: 60, child: pw.Text("Rate", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 50, child: pw.Text("Rate", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 40, child: pw.Text("Qty", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 35, child: pw.Text("Bags", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
                     pw.SizedBox(width: 70, child: pw.Text("Amount", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
                   ],
                 ),
@@ -1531,8 +1681,9 @@ Future<Uint8List> generateTallyPdf({
                         children: [
                           pw.SizedBox(width: 25, child: pw.Text("${idx + 1}", style: const pw.TextStyle(fontSize: 9))),
                           pw.Expanded(flex: 5, child: pw.Text(itm.item?.name ?? '', style: const pw.TextStyle(fontSize: 9))),
-                          pw.SizedBox(width: 45, child: pw.Text("${itm.qty.toInt()}", textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
-                          pw.SizedBox(width: 60, child: pw.Text(itm.rate.toStringAsFixed(2), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 50, child: pw.Text(itm.rate.toStringAsFixed(2), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 40, child: pw.Text("${itm.qty.toInt()}", textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 35, child: pw.Text("${itm.bags}", textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
                           pw.SizedBox(width: 70, child: pw.Text(itm.amount.toStringAsFixed(2), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
                         ],
                       ),
@@ -1556,7 +1707,7 @@ Future<Uint8List> generateTallyPdf({
                             pw.Text("Bank: SBI Aluva Branch", style: const pw.TextStyle(fontSize: 8)),
                             pw.Text("A/c No: 12345678901 | IFS Code: SBIN0001234", style: const pw.TextStyle(fontSize: 8)),
                             pw.SizedBox(height: 25),
-                            pw.Text("for DAVIS & COMPANY", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                            pw.Text("for ${CompanyConfig.name}", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                             pw.SizedBox(height: 15),
                             pw.Text("Authorised Signatory", style: const pw.TextStyle(fontSize: 8)),
                           ],
@@ -1633,7 +1784,7 @@ class InvoiceHistoryView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
+        backgroundColor: const Color(0xFF151A23),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1665,13 +1816,13 @@ class InvoiceHistoryView extends StatelessWidget {
               Text('Date: ${est.date}', style: const TextStyle(color: Color(0xFF94A3B8))),
               const SizedBox(height: 6),
               Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-              const Divider(color: Color(0xFF242C37), height: 20),
+              const Divider(color: Color(0xFF242C3D), height: 20),
               const Text('Items Summary:', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: const Color(0xFF161B22), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: const Color(0xFF0F131C), borderRadius: BorderRadius.circular(8)),
                 child: Text(est.itemSummary, style: const TextStyle(height: 1.4)),
               ),
               const SizedBox(height: 12),
@@ -1758,8 +1909,9 @@ class InvoiceHistoryView extends StatelessWidget {
               billedIn: '',
               isTaxable: false,
             ),
-            qty: 1,
             rate: double.tryParse(est.grandTotal) ?? 0,
+            qty: 1,
+            bags: 1,
           ),
         );
       }
@@ -1768,15 +1920,15 @@ class InvoiceHistoryView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF1E242C),
+        backgroundColor: const Color(0xFF151A23),
         insetPadding: const EdgeInsets.all(20),
         child: SizedBox(
-          width: 900,
-          height: 700,
+          width: 920,
+          height: 720,
           child: Column(
             children: [
               AppBar(
-                backgroundColor: const Color(0xFF14181F),
+                backgroundColor: const Color(0xFF0F131C),
                 title: Text('Invoice #${est.slNo} - Tally Print View'),
                 actions: [
                   IconButton(
@@ -1838,10 +1990,10 @@ class InvoiceHistoryView extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF161B22),
+                            color: const Color(0xFF151A23),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF242C37)),
+                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF242C3D)),
                           ),
                           child: Row(
                             children: [
@@ -1924,7 +2076,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
+        backgroundColor: const Color(0xFF151A23),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -1947,7 +2099,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Divider(color: Color(0xFF242C37)),
+                const Divider(color: Color(0xFF242C3D)),
                 _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
                 _buildModalRow('Rate Unit:', item.rateType),
                 _buildModalRow('Quantity / Pack Size:', '${item.qty} KG/Bag'),
@@ -1982,7 +2134,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E242C),
+          backgroundColor: const Color(0xFF151A23),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(isNew ? 'Add New Item to Sheet' : 'Edit Item Details'),
           content: SizedBox(
@@ -2092,7 +2244,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('DAVIS & COMPANY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text(CompanyConfig.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   Text('PRICE LIST (${widget.items.length} ITEMS)', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                 ],
               ),
@@ -2127,16 +2279,16 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161B22),
+                      color: const Color(0xFF151A23),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF242C37)),
+                      border: Border.all(color: const Color(0xFF242C3D)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: const Color(0xFF1E242C),
+                          backgroundColor: const Color(0xFF1B2230),
                           child: Text('${item.no}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 20),
@@ -2155,9 +2307,9 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1E242C),
+                                      color: const Color(0xFF1B2230),
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF2C3540)),
+                                      border: Border.all(color: const Color(0xFF2E384D)),
                                     ),
                                     child: Text(
                                       item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE',
@@ -2239,7 +2391,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
+        backgroundColor: const Color(0xFF151A23),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -2261,7 +2413,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(color: Color(0xFF242C37)),
+                const Divider(color: Color(0xFF242C3D)),
                 _buildCustomerModalRow('Customer Name:', customer.name),
                 _buildCustomerModalRow('Contact Number:', customer.contact.isEmpty ? '-' : customer.contact),
                 _buildCustomerModalRow('Address:', customer.address.isEmpty ? '-' : customer.address),
@@ -2275,7 +2427,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFF161B22), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF242C37))),
+                    decoration: BoxDecoration(color: const Color(0xFF0F131C), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF242C3D))),
                     child: Text(customer.remarks, softWrap: true, style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 14, height: 1.4)),
                   ),
                 ],
@@ -2305,7 +2457,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
+        backgroundColor: const Color(0xFF151A23),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(isNew ? 'Add New Customer to Sheet' : 'Edit Customer Details'),
         content: SizedBox(
@@ -2320,8 +2472,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                   children: [
                     Expanded(child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact'))),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address')),
-                    ),
+                    Expanded(child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address'))),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -2344,8 +2495,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                 await http.post(
                   Uri.parse(sheetApiUrl),
                   body: jsonEncode({
-                    "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
-                    if (!isNew) "rowIndex": customer.rowIndex,
+                    "action": "ADD_CUSTOMER",
                     "name": nameCtrl.text.trim(),
                     "contact": contactCtrl.text.trim(),
                     "address": addressCtrl.text.trim(),
@@ -2418,16 +2568,16 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161B22),
+                      color: const Color(0xFF151A23),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF242C37)),
+                      border: Border.all(color: const Color(0xFF242C3D)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: const Color(0xFF1E242C),
+                          backgroundColor: const Color(0xFF1B2230),
                           child: Text('${c.slNo}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 20),
@@ -2442,9 +2592,9 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1E242C),
+                                      color: const Color(0xFF1B2230),
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF2C3540)),
+                                      border: Border.all(color: const Color(0xFF2E384D)),
                                     ),
                                     child: Text(
                                       c.billingTag,
@@ -2516,7 +2666,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E242C),
+          backgroundColor: const Color(0xFF151A23),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Add to Packing Slip'),
           content: SizedBox(
@@ -2627,7 +2777,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
               ),
               const Spacer(),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E242C), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B2230), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
                 icon: const Icon(Icons.copy, size: 18),
                 label: const Text('Copy Slip'),
                 onPressed: widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
@@ -2653,14 +2803,14 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                       return Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF161B22),
+                          color: const Color(0xFF151A23),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF242C37)),
+                          border: Border.all(color: const Color(0xFF242C3D)),
                         ),
                         child: Row(
                           children: [
                             CircleAvatar(
-                              backgroundColor: const Color(0xFF1E242C),
+                              backgroundColor: const Color(0xFF1B2230),
                               child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8))),
                             ),
                             const SizedBox(width: 16),
@@ -2675,7 +2825,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                                         const SizedBox(width: 8),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: const Color(0xFF1E242C), borderRadius: BorderRadius.circular(4)),
+                                          decoration: BoxDecoration(color: const Color(0xFF1B2230), borderRadius: BorderRadius.circular(4)),
                                           child: Text(entry.place, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                                         ),
                                       ],
@@ -2704,9 +2854,9 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
+              color: const Color(0xFF151A23),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF242C37)),
+              border: Border.all(color: const Color(0xFF242C3D)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2722,93 +2872,152 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- 7. CALCULATOR VIEW ----------------
+// ---------------- 7. SETTINGS & SUPPORT VIEW ----------------
 
-class PackSizeCalculatorView extends StatefulWidget {
-  final List<DCItem> items;
-  const PackSizeCalculatorView({super.key, required this.items});
+class SettingsDesktopView extends StatelessWidget {
+  final VoidCallback onReloadSheet;
+  final VoidCallback onOpenProfile;
 
-  @override
-  State<PackSizeCalculatorView> createState() => _PackSizeCalculatorViewState();
-}
-
-class _PackSizeCalculatorViewState extends State<PackSizeCalculatorView> {
-  DCItem? _selectedItem;
-  final _qtyCtrl = TextEditingController(text: '1');
-  double _totalCalculated = 0.0;
-
-  void _calculate() {
-    if (_selectedItem == null) return;
-    final qty = double.tryParse(_qtyCtrl.text.trim()) ?? 0.0;
-    final rate = double.tryParse(_selectedItem!.rate) ?? 0.0;
-    setState(() {
-      _totalCalculated = qty * rate;
-    });
-  }
+  const SettingsDesktopView({
+    super.key,
+    required this.onReloadSheet,
+    required this.onOpenProfile,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('PACK SIZE & RATE CALCULATOR', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const Text('QUICK ESTIMATE PER BAG / KG', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF242C37)),
-            ),
-            child: Column(
+          const Text('SYSTEM SETTINGS & SUPPORT', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const Text('Configure DC Prime Billing & Developer Support', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+          const SizedBox(height: 24),
+          Expanded(
+            child: ListView(
               children: [
-                DropdownButtonFormField<DCItem>(
-                  value: _selectedItem,
-                  hint: const Text('Select an Item from Price List'),
-                  isExpanded: true,
-                  items: widget.items.map((i) => DropdownMenuItem(value: i, child: Text('${i.name} — ₹${i.rate} (${i.rateType})'))).toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      _selectedItem = v;
-                    });
-                    _calculate();
+                _buildSectionHeader('Company & Header Setup'),
+                _buildCard(
+                  title: 'Firm Details & GST Settings',
+                  subtitle: '${CompanyConfig.name} • ${CompanyConfig.gstin}',
+                  icon: Icons.storefront,
+                  actionText: 'Configure Header',
+                  onTap: onOpenProfile,
+                ),
+                const SizedBox(height: 20),
+                _buildSectionHeader('Backend & Sheet Sync'),
+                _buildCard(
+                  title: 'Google Apps Script Webhook',
+                  subtitle: sheetApiUrl,
+                  icon: Icons.sync_alt,
+                  actionText: 'Force Reload',
+                  onTap: () {
+                    onReloadSheet();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Syncing data with Google Sheets...')),
+                    );
                   },
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _qtyCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: _selectedItem != null && _selectedItem!.rateType.contains('BAG') ? 'Number of Bags' : 'Quantity in KGs',
-                        ),
-                        onChanged: (v) => _calculate(),
+                const SizedBox(height: 20),
+                _buildSectionHeader('Developer & Technical Support'),
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF151A23),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF242C3D)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Color(0xFF2563EB),
+                            child: Icon(Icons.support_agent, color: Colors.white, size: 24),
+                          ),
+                          SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Sudheesh P Unnikrishnan', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                              Text('Software Architect & Desktop Systems Engineer', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(color: const Color(0xFF1E242C), borderRadius: BorderRadius.circular(10)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Estimated Amount:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                            Text('₹${_totalCalculated.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      const Divider(color: Color(0xFF242C3D)),
+                      const SizedBox(height: 10),
+                      _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
+                      _supportRow('Application Suite', 'DC Prime Desktop (TallyPrime Workflow Edition)'),
+                      _supportRow('Release Version', 'v2.4.0 (Desktop 64-bit Build)'),
+                      _supportRow('Target Framework', 'Flutter 3.x (Windows Runner)'),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+    );
+  }
+
+  Widget _buildCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required String actionText,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF151A23),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF242C3D)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF38BDF8), size: 28),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)), overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1B2230), side: const BorderSide(color: Color(0xFF2E384D))),
+            onPressed: onTap,
+            child: Text(actionText, style: const TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _supportRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(width: 160, child: Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFF1F5F9)))),
         ],
       ),
     );
