@@ -369,7 +369,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. TALLY PRIME BILLING SCREEN (PRECISE KEYBOARD FLOW) ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -402,7 +402,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   final List<InvoiceRowItem> _rows = [];
 
-  // Popup overlay selection states
   bool _showPartyList = false;
   int _partySelectedIndex = 0;
   List<DCCustomer> _filteredParties = [];
@@ -464,7 +463,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   double get _grandTotal => _exactTotal.roundToDouble();
   double get _roundOff => _grandTotal - _exactTotal;
 
-  // Key Event for Party Input
   KeyEventResult _handlePartyKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
       final isAlt = HardwareKeyboard.instance.isAltPressed;
@@ -499,13 +497,13 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       _partyTextCtrl.text = cust.name;
       _showPartyList = false;
     });
-    // Direct Jump to First Item Row
-    if (_rows.isNotEmpty) {
-      _rows[0].itemSearchFocus.requestFocus();
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_rows.isNotEmpty) {
+        _rows[0].itemSearchFocus.requestFocus();
+      }
+    });
   }
 
-  // Key Event for Item Input
   KeyEventResult _handleItemKeyEvent(int rowIdx, FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
       final isAlt = HardwareKeyboard.instance.isAltPressed;
@@ -541,7 +539,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       _rows[rowIdx].rate = double.tryParse(itm.rate) ?? 0.0;
       _activeItemRowIndex = null;
     });
-    _rows[rowIdx].rateFocus.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _rows[rowIdx].rateFocus.requestFocus();
+    });
   }
 
   void _openInstantAddCustomerDialog(String presetName) {
@@ -556,14 +556,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E242C),
-        title: const Text('Instant Add Customer to Sheet (Alt + C)'),
+        title: const Text('Instant Add Customer (Alt + C)'),
         content: SizedBox(
           width: 480,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Customer / Party Name')),
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -619,9 +619,11 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   }),
                 );
                 widget.onSaved();
-                if (_rows.isNotEmpty) {
-                  _rows[0].itemSearchFocus.requestFocus();
-                }
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_rows.isNotEmpty) {
+                    _rows[0].itemSearchFocus.requestFocus();
+                  }
+                });
               }
             },
             child: const Text('Save & Select'),
@@ -645,7 +647,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E242C),
-          title: const Text('Instant Add Item to Sheet (Alt + C)'),
+          title: const Text('Instant Add Item (Alt + C)'),
           content: SizedBox(
             width: 480,
             child: SingleChildScrollView(
@@ -664,7 +666,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty (e.g. 50)'))),
+                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty (50)'))),
                       const SizedBox(width: 10),
                       Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
                     ],
@@ -721,7 +723,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     }),
                   );
                   widget.onSaved();
-                  _rows[rowIndex].rateFocus.requestFocus();
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _rows[rowIndex].rateFocus.requestFocus();
+                  });
                 }
               },
               child: const Text('Save & Select'),
@@ -740,12 +744,17 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       return;
     }
 
+    final validRows = _rows.where((r) => r.item != null).toList();
+    if (validRows.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one item')),
+      );
+      return;
+    }
+
     final now = DateTime.now();
-    final dateStr = "${now.day}/${now.month}/${now.year}";
-    final summary = _rows
-        .where((r) => r.item != null)
-        .map((r) => "${r.item!.name} (${r.qty}x${r.rate})")
-        .join(", ");
+    final dateStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+    final summary = validRows.map((r) => "${r.item!.name} (${r.qty.toInt()}x${r.rate})").join(", ");
 
     widget.onSetSyncing(true);
 
@@ -766,546 +775,521 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     );
 
     widget.onSaved();
-    _showPrintDialog(dateStr);
+    _showTallyPrintPreview(
+      billNo: widget.nextBillNo.toString(),
+      dateStr: dateStr,
+      customer: _selectedParty!,
+      items: validRows,
+      subTotal: _subTotal,
+      coolie: _coolie,
+      sgst: _sgst,
+      cgst: _cgst,
+      roundOff: _roundOff,
+      grandTotal: _grandTotal,
+    );
+    _clearBilling();
   }
 
-  void _showPrintDialog(String dateStr) {
+  void _showTallyPrintPreview({
+    required String billNo,
+    required String dateStr,
+    required DCCustomer customer,
+    required List<InvoiceRowItem> items,
+    required double subTotal,
+    required double coolie,
+    required double sgst,
+    required double cgst,
+    required double roundOff,
+    required double grandTotal,
+  }) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => Dialog(
         backgroundColor: const Color(0xFF1E242C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Invoice Saved Successfully'),
-        content: const Text('Would you like to print or save the PDF Invoice now?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _clearBilling();
-            },
-            child: const Text('Close & New Bill', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-            icon: const Icon(Icons.print, size: 18),
-            label: const Text('Print / Export PDF'),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _generateAndPrintPdf(dateStr);
-              _clearBilling();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _generateAndPrintPdf(String dateStr) async {
-    final doc = pw.Document();
-
-    doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Container(
-            padding: const pw.EdgeInsets.all(24),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Center(
-                  child: pw.Text("DAVIS & COMPANY",
-                      style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
-                ),
-                pw.Center(
-                  child: pw.Text("WHOLESALE RICE MERCHANTS - ALUVA",
-                      style: const pw.TextStyle(fontSize: 11)),
-                ),
-                pw.SizedBox(height: 16),
-                pw.Divider(),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("Bill No: ${widget.nextBillNo}"),
-                    pw.Text("Date: $dateStr"),
-                  ],
-                ),
-                pw.Text("Party Name: ${_selectedParty?.name ?? ''}"),
-                if (_selectedParty?.b2b.isNotEmpty ?? false)
-                  pw.Text("B2B Firm: ${_selectedParty?.b2b ?? ''}"),
-                pw.SizedBox(height: 12),
-                pw.TableHelper.fromTextArray(
-                  headers: ['No', 'Item Name', 'Rate', 'Qty', 'Amount'],
-                  data: _rows.where((r) => r.item != null).map((r) {
-                    final idx = _rows.indexOf(r) + 1;
-                    return [
-                      '$idx',
-                      r.item!.name,
-                      r.rate.toStringAsFixed(2),
-                      r.qty.toStringAsFixed(0),
-                      r.amount.toStringAsFixed(2),
-                    ];
-                  }).toList(),
-                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                  cellAlignment: pw.Alignment.centerLeft,
-                ),
-                pw.Divider(),
-                pw.Align(
-                  alignment: pw.Alignment.centerRight,
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text("Sub Total: Rs ${_subTotal.toStringAsFixed(2)}"),
-                      pw.Text("Coolie: Rs ${_coolie.toStringAsFixed(2)}"),
-                      if (_sgst > 0) pw.Text("SGST (2.5%): Rs ${_sgst.toStringAsFixed(2)}"),
-                      if (_cgst > 0) pw.Text("CGST (2.5%): Rs ${_cgst.toStringAsFixed(2)}"),
-                      pw.Text("Round Off: Rs ${_roundOff.toStringAsFixed(2)}"),
-                      pw.SizedBox(height: 6),
-                      pw.Text(
-                        "Grand Total: Rs ${_grandTotal.toStringAsFixed(2)}",
-                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
-                      ),
-                    ],
+        insetPadding: const EdgeInsets.all(20),
+        child: SizedBox(
+          width: 900,
+          height: 700,
+          child: Column(
+            children: [
+              AppBar(
+                backgroundColor: const Color(0xFF14181F),
+                title: Text('Invoice #$billNo Preview (Tally Format)'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
                   ),
+                ],
+              ),
+              Expanded(
+                child: PdfPreview(
+                  build: (format) => generateTallyPdf(
+                    format: format,
+                    billNo: billNo,
+                    dateStr: dateStr,
+                    customer: customer,
+                    items: items,
+                    subTotal: subTotal,
+                    coolie: coolie,
+                    sgst: sgst,
+                    cgst: cgst,
+                    roundOff: roundOff,
+                    grandTotal: grandTotal,
+                  ),
+                  allowPrinting: true,
+                  allowSharing: true,
+                  canChangePageFormat: false,
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ),
+        ),
       ),
-    );
-
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => doc.save(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('Customer Bill',
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFE2E8F0))),
-              const SizedBox(width: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E242C),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF2C3540)),
-                ),
-                child: Text('Auto Bill #${widget.nextBillNo}',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-              ),
-              const SizedBox(width: 14),
-              const Text('Alt + C: Instant Add  |  Ctrl + A: Save',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-              const Spacer(),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
-                  side: const BorderSide(color: Colors.redAccent),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                icon: const Icon(Icons.cancel_outlined, size: 18),
-                label: const Text('Cancel Bill'),
-                onPressed: _clearBilling,
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                icon: const Icon(Icons.save, color: Colors.white, size: 18),
-                label: const Text('Save & Print (Ctrl+A)',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                onPressed: _saveInvoice,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Party Selection Bar with Custom Tally Popup Table
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF242C37)),
-            ),
-            child: Row(
+    return Shortcuts(
+      shortcuts: <LogicalKeySet, Intent>{
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyS): const SaveIntent(),
+        LogicalKeySet(LogicalKeyboardKey.f8): const SaveIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          SaveIntent: CallbackAction<SaveIntent>(onInvoke: (intent) => _saveInvoice()),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 4,
-                  child: Focus(
-                    onKeyEvent: _handlePartyKeyEvent,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextField(
-                          controller: _partyTextCtrl,
-                          focusNode: _partyFocus,
-                          decoration: InputDecoration(
-                            labelText: 'Party / Customer Name (Type & Arrow Navigate)',
-                            hintText: 'Search customer...',
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.person_add, size: 18),
-                              tooltip: 'Instant Add Customer (Alt + C)',
-                              onPressed: () => _openInstantAddCustomerDialog(_partyTextCtrl.text.trim()),
-                            ),
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              _showPartyList = true;
-                              _partySelectedIndex = 0;
-                              _filteredParties = widget.customers.where((c) {
-                                return c.name.toLowerCase().contains(val.toLowerCase()) ||
-                                    c.b2b.toLowerCase().contains(val.toLowerCase());
-                              }).toList();
-                            });
-                          },
-                          onTap: () {
-                            setState(() {
-                              _showPartyList = true;
-                              _filteredParties = widget.customers;
-                            });
-                          },
-                        ),
-                        if (_showPartyList && _filteredParties.isNotEmpty)
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            height: 200,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E242C),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFF2C3540)),
-                            ),
-                            child: ListView.builder(
-                              itemCount: _filteredParties.length,
-                              itemBuilder: (ctx, index) {
-                                final p = _filteredParties[index];
-                                final isSelected = index == _partySelectedIndex;
-                                return InkWell(
-                                  onTap: () => _selectParty(p),
-                                  child: Container(
-                                    color: isSelected ? const Color(0xFF2563EB).withOpacity(0.25) : null,
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                    child: Row(
-                                      children: [
-                                        if (isSelected)
-                                          const Text('> ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
-                                        Expanded(
-                                          child: Text(
-                                            "${p.name} ${p.b2b.isNotEmpty ? '(${p.b2b})' : ''}",
-                                            style: TextStyle(
-                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                              color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                SizedBox(
-                  width: 180,
-                  child: DropdownButtonFormField<String>(
-                    value: _invoiceType,
-                    decoration: const InputDecoration(labelText: 'Supply Type'),
-                    items: const [
-                      DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
-                      DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
-                    ],
-                    onChanged: (v) => setState(() => _invoiceType = v!),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Tally Grid Table (Qty without Bags)
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF161B22),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF242C37)),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1E242C),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                    ),
-                    child: const Row(
-                      children: [
-                        SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 16),
-                        Expanded(flex: 4, child: Text('Name of Item (Arrow Navigate & Enter)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 16),
-                        Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 16),
-                        Expanded(flex: 2, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 16),
-                        Expanded(flex: 2, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 40),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1, color: Color(0xFF242C37)),
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: _rows.length,
-                      separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C37)),
-                      itemBuilder: (ctx, idx) {
-                        final row = _rows[idx];
-                        final isItemPopupOpen = _activeItemRowIndex == idx;
-
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 14),
-                              child: SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 4,
-                              child: Focus(
-                                onKeyEvent: (node, event) => _handleItemKeyEvent(idx, node, event),
-                                child: Column(
-                                  children: [
-                                    TextField(
-                                      controller: row.textCtrl,
-                                      focusNode: row.itemSearchFocus,
-                                      decoration: InputDecoration(
-                                        hintText: 'Search item...',
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                        suffixIcon: IconButton(
-                                          icon: const Icon(Icons.add, size: 16),
-                                          tooltip: 'Instant Add Item (Alt + C)',
-                                          onPressed: () => _openInstantAddItemDialog(idx, row.textCtrl.text.trim()),
-                                        ),
-                                      ),
-                                      onChanged: (val) {
-                                        setState(() {
-                                          _activeItemRowIndex = idx;
-                                          _itemSelectedIndex = 0;
-                                          _filteredItems = widget.items.where((i) {
-                                            return i.name.toLowerCase().contains(val.toLowerCase()) ||
-                                                i.tallyName.toLowerCase().contains(val.toLowerCase());
-                                          }).toList();
-                                        });
-                                      },
-                                      onTap: () {
-                                        setState(() {
-                                          _activeItemRowIndex = idx;
-                                          _filteredItems = widget.items;
-                                        });
-                                      },
-                                    ),
-                                    if (isItemPopupOpen && _filteredItems.isNotEmpty)
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 4),
-                                        height: 180,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF1E242C),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: const Color(0xFF2C3540)),
-                                        ),
-                                        child: ListView.builder(
-                                          itemCount: _filteredItems.length,
-                                          itemBuilder: (ctx, itemIdx) {
-                                            final item = _filteredItems[itemIdx];
-                                            final isSelected = itemIdx == _itemSelectedIndex;
-                                            return InkWell(
-                                              onTap: () => _selectItem(idx, item),
-                                              child: Container(
-                                                color: isSelected ? const Color(0xFF2563EB).withOpacity(0.25) : null,
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                child: Row(
-                                                  children: [
-                                                    if (isSelected)
-                                                      const Text('> ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
-                                                    Expanded(
-                                                      child: Text(
-                                                        item.name,
-                                                        style: TextStyle(
-                                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                                          color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                key: ValueKey('rate_${row.item?.name}_$idx'),
-                                initialValue: row.rate.toStringAsFixed(2),
-                                focusNode: row.rateFocus,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                onChanged: (val) {
-                                  setState(() {
-                                    row.rate = double.tryParse(val) ?? 0.0;
-                                  });
-                                },
-                                onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                initialValue: row.qty.toStringAsFixed(0),
-                                focusNode: row.qtyFocus,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                onChanged: (val) {
-                                  setState(() {
-                                    row.qty = double.tryParse(val) ?? 1.0;
-                                  });
-                                },
-                                onFieldSubmitted: (_) {
-                                  if (idx == _rows.length - 1) {
-                                    _addRow();
-                                    Future.delayed(const Duration(milliseconds: 50), () {
-                                      _rows[idx + 1].itemSearchFocus.requestFocus();
-                                    });
-                                  } else {
-                                    _rows[idx + 1].itemSearchFocus.requestFocus();
-                                  }
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 14),
-                              child: SizedBox(
-                                width: 120,
-                                child: Text(
-                                  '₹${row.amount.toStringAsFixed(2)}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 40,
-                              child: IconButton(
-                                icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
-                                onPressed: () => _removeRow(idx),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('+ Add Item Row (Enter on Qty)'),
-                        onPressed: _addRow,
+                Row(
+                  children: [
+                    const Text('Customer Bill',
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFE2E8F0))),
+                    const SizedBox(width: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E242C),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF2C3540)),
                       ),
+                      child: Text('Bill #${widget.nextBillNo}',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+                    const SizedBox(width: 14),
+                    const Text('Ctrl + S / F8: Save & Print  |  Alt + C: Instant Add',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.redAccent,
+                        side: const BorderSide(color: Colors.redAccent),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                      icon: const Icon(Icons.cancel_outlined, size: 18),
+                      label: const Text('Cancel Bill'),
+                      onPressed: _clearBilling,
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.print, color: Colors.white, size: 18),
+                      label: const Text('Save & Print (Ctrl+S / F8)',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      onPressed: _saveInvoice,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-          // Tally Summary & Auto-Calculation Footer
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF242C37)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
+                // Party Input
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161B22),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF242C37)),
+                  ),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 140,
-                        child: TextField(
-                          controller: _coolieCtrl,
-                          focusNode: _coolieFocus,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Coolie (₹)'),
-                          onChanged: (v) => setState(() {}),
-                          onSubmitted: (_) => _saveInvoice(),
+                      Expanded(
+                        flex: 4,
+                        child: Focus(
+                          onKeyEvent: _handlePartyKeyEvent,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextField(
+                                controller: _partyTextCtrl,
+                                focusNode: _partyFocus,
+                                decoration: InputDecoration(
+                                  labelText: 'Party / Customer Name (Type & Arrow Navigate)',
+                                  hintText: 'Search customer...',
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.person_add, size: 18),
+                                    tooltip: 'Instant Add Customer (Alt + C)',
+                                    onPressed: () => _openInstantAddCustomerDialog(_partyTextCtrl.text.trim()),
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  setState(() {
+                                    _showPartyList = true;
+                                    _partySelectedIndex = 0;
+                                    _filteredParties = widget.customers.where((c) {
+                                      return c.name.toLowerCase().contains(val.toLowerCase()) ||
+                                          c.b2b.toLowerCase().contains(val.toLowerCase());
+                                    }).toList();
+                                  });
+                                },
+                                onTap: () {
+                                  setState(() {
+                                    _showPartyList = true;
+                                    _filteredParties = widget.customers;
+                                  });
+                                },
+                              ),
+                              if (_showPartyList && _filteredParties.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 4),
+                                  height: 180,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E242C),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFF2C3540)),
+                                  ),
+                                  child: ListView.builder(
+                                    itemCount: _filteredParties.length,
+                                    itemBuilder: (ctx, index) {
+                                      final p = _filteredParties[index];
+                                      final isSelected = index == _partySelectedIndex;
+                                      return InkWell(
+                                        onTap: () => _selectParty(p),
+                                        child: Container(
+                                          color: isSelected ? const Color(0xFF2563EB).withOpacity(0.25) : null,
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                          child: Row(
+                                            children: [
+                                              if (isSelected)
+                                                const Text('> ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                                              Expanded(
+                                                child: Text(
+                                                  "${p.name} ${p.b2b.isNotEmpty ? '(${p.b2b})' : ''}",
+                                                  style: TextStyle(
+                                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                    color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      Text(
-                        'Taxable Subtotal: ₹${_taxableAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                      const SizedBox(width: 14),
+                      SizedBox(
+                        width: 180,
+                        child: DropdownButtonFormField<String>(
+                          value: _invoiceType,
+                          decoration: const InputDecoration(labelText: 'Supply Type'),
+                          items: const [
+                            DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
+                            DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
+                          ],
+                          onChanged: (v) => setState(() => _invoiceType = v!),
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Table Area
                 Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF161B22),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF242C37)),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF1E242C),
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+                          ),
+                          child: const Row(
+                            children: [
+                              SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                              SizedBox(width: 16),
+                              Expanded(flex: 4, child: Text('Name of Item', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                              SizedBox(width: 16),
+                              Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                              SizedBox(width: 16),
+                              Expanded(flex: 2, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                              SizedBox(width: 16),
+                              Expanded(flex: 2, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                              SizedBox(width: 40),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1, color: Color(0xFF242C37)),
+                        Expanded(
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(12),
+                            itemCount: _rows.length,
+                            separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C37)),
+                            itemBuilder: (ctx, idx) {
+                              final row = _rows[idx];
+                              final isItemPopupOpen = _activeItemRowIndex == idx;
+
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 14),
+                                    child: SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    flex: 4,
+                                    child: Focus(
+                                      onKeyEvent: (node, event) => _handleItemKeyEvent(idx, node, event),
+                                      child: Column(
+                                        children: [
+                                          TextField(
+                                            controller: row.textCtrl,
+                                            focusNode: row.itemSearchFocus,
+                                            decoration: InputDecoration(
+                                              hintText: 'Search item...',
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                              suffixIcon: IconButton(
+                                                icon: const Icon(Icons.add, size: 16),
+                                                tooltip: 'Instant Add Item (Alt + C)',
+                                                onPressed: () => _openInstantAddItemDialog(idx, row.textCtrl.text.trim()),
+                                              ),
+                                            ),
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _activeItemRowIndex = idx;
+                                                _itemSelectedIndex = 0;
+                                                _filteredItems = widget.items.where((i) {
+                                                  return i.name.toLowerCase().contains(val.toLowerCase()) ||
+                                                      i.tallyName.toLowerCase().contains(val.toLowerCase());
+                                                }).toList();
+                                              });
+                                            },
+                                            onTap: () {
+                                              setState(() {
+                                                _activeItemRowIndex = idx;
+                                                _filteredItems = widget.items;
+                                              });
+                                            },
+                                          ),
+                                          if (isItemPopupOpen && _filteredItems.isNotEmpty)
+                                            Container(
+                                              margin: const EdgeInsets.only(top: 4),
+                                              height: 140,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF1E242C),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: const Color(0xFF2C3540)),
+                                              ),
+                                              child: ListView.builder(
+                                                itemCount: _filteredItems.length,
+                                                itemBuilder: (ctx, itemIdx) {
+                                                  final item = _filteredItems[itemIdx];
+                                                  final isSelected = itemIdx == _itemSelectedIndex;
+                                                  return InkWell(
+                                                    onTap: () => _selectItem(idx, item),
+                                                    child: Container(
+                                                      color: isSelected ? const Color(0xFF2563EB).withOpacity(0.25) : null,
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                      child: Row(
+                                                        children: [
+                                                          if (isSelected)
+                                                            const Text('> ', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+                                                          Expanded(
+                                                            child: Text(
+                                                              item.name,
+                                                              style: TextStyle(
+                                                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                                color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    flex: 2,
+                                    child: TextFormField(
+                                      key: ValueKey('rate_${row.item?.name}_$idx'),
+                                      initialValue: row.rate.toStringAsFixed(2),
+                                      focusNode: row.rateFocus,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                      onChanged: (val) {
+                                        setState(() {
+                                          row.rate = double.tryParse(val) ?? 0.0;
+                                        });
+                                      },
+                                      onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    flex: 2,
+                                    child: TextFormField(
+                                      initialValue: row.qty.toStringAsFixed(0),
+                                      focusNode: row.qtyFocus,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                      onChanged: (val) {
+                                        setState(() {
+                                          row.qty = double.tryParse(val) ?? 1.0;
+                                        });
+                                      },
+                                      onFieldSubmitted: (_) {
+                                        if (idx == _rows.length - 1) {
+                                          _addRow();
+                                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                                            _rows[idx + 1].itemSearchFocus.requestFocus();
+                                          });
+                                        } else {
+                                          _rows[idx + 1].itemSearchFocus.requestFocus();
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 14),
+                                    child: SizedBox(
+                                      width: 120,
+                                      child: Text(
+                                        '₹${row.amount.toStringAsFixed(2)}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: 40,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
+                                      onPressed: () => _removeRow(idx),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('+ Add Item Row (Enter on Qty)'),
+                              onPressed: _addRow,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Calculation Footer
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161B22),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF242C37)),
+                  ),
+                  child: Row(
                     children: [
-                      _summaryLine('Sub Total:', '₹${_subTotal.toStringAsFixed(2)}'),
-                      if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
-                      if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
-                      if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
-                      _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
-                      const Divider(height: 12, color: Color(0xFF242C37)),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          const Text('Grand Total: ',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                          Text('₹${_grandTotal.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF38BDF8))),
-                        ],
+                      Expanded(
+                        flex: 2,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 140,
+                              child: TextField(
+                                controller: _coolieCtrl,
+                                focusNode: _coolieFocus,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Coolie (₹)'),
+                                onChanged: (v) => setState(() {}),
+                                onSubmitted: (_) => _saveInvoice(),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Text(
+                              'Taxable Subtotal: ₹${_taxableAmount.toStringAsFixed(2)}',
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            _summaryLine('Sub Total:', '₹${_subTotal.toStringAsFixed(2)}'),
+                            if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
+                            if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
+                            if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
+                            _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
+                            const Divider(height: 12, color: Color(0xFF242C37)),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                const Text('Grand Total: ',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                                Text('₹${_grandTotal.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF38BDF8))),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -1313,7 +1297,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1333,964 +1317,205 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   }
 }
 
-// ---------------- 2. PRICE LIST VIEW ----------------
-
-class PriceListDesktopView extends StatefulWidget {
-  final List<DCItem> items;
-  final VoidCallback onRefreshRequired;
-  const PriceListDesktopView({
-    super.key,
-    required this.items,
-    required this.onRefreshRequired,
-  });
-
-  @override
-  State<PriceListDesktopView> createState() => _PriceListDesktopViewState();
+class SaveIntent extends Intent {
+  const SaveIntent();
 }
 
-class _PriceListDesktopViewState extends State<PriceListDesktopView> {
-  String _query = '';
+// ---------------- 2. TALLY PRIME PDF GENERATOR ----------------
 
-  void _showItemPreviewModal(DCItem item) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(item.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Color(0xFF38BDF8)),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _openEditItemDialog(item: item);
-              },
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 580,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Divider(color: Color(0xFF242C37)),
-                _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
-                _buildModalRow('Rate Unit:', item.rateType),
-                _buildModalRow('Quantity / Pack Size:', '${item.qty} KG/Bag'),
-                _buildModalRow('Item Name on Tally:', item.tallyName),
-                _buildModalRow('Billed Unit:', item.billedIn),
-                _buildModalRow('Tax Status:',
-                    item.isTaxable ? 'TAXABLE (5%)' : 'NON-TAXABLE'),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-        ],
-      ),
-    );
-  }
+Future<Uint8List> generateTallyPdf({
+  required PdfPageFormat format,
+  required String billNo,
+  required String dateStr,
+  required DCCustomer customer,
+  required List<InvoiceRowItem> items,
+  required double subTotal,
+  required double coolie,
+  required double sgst,
+  required double cgst,
+  required double roundOff,
+  required double grandTotal,
+}) async {
+  final doc = pw.Document();
 
-  void _openEditItemDialog({DCItem? item}) {
-    final isNew = item == null;
-    final nameCtrl = TextEditingController(text: isNew ? '' : item.name);
-    final rateCtrl = TextEditingController(text: isNew ? '' : item.rate);
-    final rateTypeCtrl =
-        TextEditingController(text: isNew ? 'RATE PER KG' : item.rateType);
-    final qtyCtrl = TextEditingController(text: isNew ? '50' : '${item.qty}');
-    final tallyCtrl =
-        TextEditingController(text: isNew ? '' : item.tallyName);
-    final billedCtrl =
-        TextEditingController(text: isNew ? 'KILOGRAM' : item.billedIn);
-    bool isTaxable = isNew ? false : item.isTaxable;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E242C),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isNew ? 'Add New Item to Sheet' : 'Edit Item Details'),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Item Name')),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: TextField(
-                              controller: rateCtrl,
-                              decoration: const InputDecoration(labelText: 'Rate (₹)'))),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: TextField(
-                              controller: rateTypeCtrl,
-                              decoration: const InputDecoration(labelText: 'Rate Type'))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: TextField(
-                              controller: qtyCtrl,
-                              decoration: const InputDecoration(labelText: 'Quantity'))),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: TextField(
-                              controller: billedCtrl,
-                              decoration: const InputDecoration(labelText: 'Billed In'))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Item Name on Tally')),
-                  const SizedBox(height: 10),
-                  SwitchListTile(
-                    title: const Text('Taxable'),
-                    value: isTaxable,
-                    onChanged: (v) => setDialogState(() => isTaxable = v),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-              onPressed: () async {
-                if (nameCtrl.text.trim().isNotEmpty) {
-                  Navigator.pop(ctx);
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
-                      if (!isNew) "rowIndex": item.rowIndex,
-                      "name": nameCtrl.text.trim(),
-                      "rateType": rateTypeCtrl.text.trim(),
-                      "rate": rateCtrl.text.trim(),
-                      "qty": qtyCtrl.text.trim(),
-                      "tallyName": tallyCtrl.text.trim(),
-                      "billedIn": billedCtrl.text.trim(),
-                      "isTaxable": isTaxable,
-                    }),
-                  );
-                  widget.onRefreshRequired();
-                }
-              },
-              child: Text(isNew ? 'Save to Sheet' : 'Update Sheet',
-                  style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModalRow(String title, String val, {bool isColor = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 160,
-            child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              val,
-              softWrap: true,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: isColor ? const Color(0xFF38BDF8) : Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = widget.items
-        .where((i) =>
-            i.name.toLowerCase().contains(_query.toLowerCase()) ||
-            i.tallyName.toLowerCase().contains(_query.toLowerCase()))
-        .toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  doc.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(24),
+      build: (pw.Context context) {
+        return pw.Container(
+          decoration: pw.BoxDecoration(border: pw.Border.all(width: 1)),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('DAVIS & COMPANY',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('PRICE LIST (${widget.items.length} ITEMS)',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const Spacer(),
-              SizedBox(
-                width: 300,
-                child: TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search, size: 20),
-                    hintText: 'Search items...',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Item', style: TextStyle(color: Colors.white)),
-                onPressed: () => _openEditItemDialog(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
-              itemBuilder: (ctx, idx) {
-                final item = filtered[idx];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showItemPreviewModal(item),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF161B22),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF242C37)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: const Color(0xFF1E242C),
-                          child: Text('${item.no}',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF94A3B8),
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 17, letterSpacing: 0.3),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Text(
-                                    '₹${item.rate}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
-                                      color: Color(0xFF38BDF8),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '(${item.rateType})',
-                                    style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1E242C),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF2C3540)),
-                                    ),
-                                    child: Text(
-                                      item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: item.isTaxable
-                                              ? Colors.orangeAccent
-                                              : const Color(0xFF94A3B8)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Tally: ${item.tallyName}  |  Pack: ${item.qty}  |  Unit: ${item.billedIn}',
-                                style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_note, color: Color(0xFF94A3B8), size: 24),
-                          tooltip: 'Edit Item',
-                          onPressed: () => _openEditItemDialog(item: item),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 3. CUSTOMERS VIEW ----------------
-
-class CustomerDesktopView extends StatefulWidget {
-  final List<DCCustomer> customers;
-  final VoidCallback onRefreshRequired;
-  const CustomerDesktopView({
-    super.key,
-    required this.customers,
-    required this.onRefreshRequired,
-  });
-
-  @override
-  State<CustomerDesktopView> createState() => _CustomerDesktopViewState();
-}
-
-class _CustomerDesktopViewState extends State<CustomerDesktopView> {
-  String _query = '';
-
-  Widget _buildCustomerModalRow(String title, String val, {bool isHighlight = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 150,
-            child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              val,
-              softWrap: true,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: isHighlight ? const Color(0xFF38BDF8) : Colors.white,
-                height: 1.3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCustomerPreviewModal(DCCustomer customer) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(customer.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Color(0xFF38BDF8)),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _openEditCustomerDialog(customer: customer);
-              },
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 600,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Divider(color: Color(0xFF242C37)),
-                _buildCustomerModalRow('Customer Name:', customer.name),
-                _buildCustomerModalRow('Contact Number:',
-                    customer.contact.isEmpty ? '-' : customer.contact),
-                _buildCustomerModalRow(
-                    'Address:', customer.address.isEmpty ? '-' : customer.address),
-                _buildCustomerModalRow(
-                    'B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b,
-                    isHighlight: true),
-                _buildCustomerModalRow(
-                    'B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c),
-                _buildCustomerModalRow('Billing Category:', customer.billingTag),
-                if (customer.remarks.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('Special Delivery & Billing Remarks:',
-                      style: TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                        color: const Color(0xFF161B22),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF242C37))),
-                    child: Text(
-                      customer.remarks,
-                      softWrap: true,
-                      style: const TextStyle(
-                          color: Color(0xFFE2E8F0), fontSize: 14, height: 1.4),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openEditCustomerDialog({DCCustomer? customer}) {
-    final isNew = customer == null;
-    final nameCtrl = TextEditingController(text: isNew ? '' : customer.name);
-    final contactCtrl =
-        TextEditingController(text: isNew ? '' : customer.contact);
-    final addressCtrl =
-        TextEditingController(text: isNew ? '' : customer.address);
-    final b2bCtrl = TextEditingController(text: isNew ? '' : customer.b2b);
-    final b2cCtrl = TextEditingController(text: isNew ? '' : customer.b2c);
-    final remarksCtrl =
-        TextEditingController(text: isNew ? '' : customer.remarks);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E242C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isNew ? 'Add New Customer to Sheet' : 'Edit Customer Details'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
-                const SizedBox(height: 10),
-                Row(
+              // Header
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(vertical: 8),
+                alignment: pw.Alignment.center,
+                decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
+                child: pw.Column(
                   children: [
-                    Expanded(
-                      child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact')),
+                    pw.Text("TAX INVOICE", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 2),
+                    pw.Text("DAVIS & COMPANY", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                    pw.Text("Wholesale Rice Merchants, Market Road, Aluva - 683101", style: const pw.TextStyle(fontSize: 9)),
+                    pw.Text("GSTIN/UIN: 32AABCD1234E1Z5  |  State: Kerala, Code: 32", style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ),
+              ),
+              // Meta info
+              pw.Container(
+                decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
+                child: pw.Row(
+                  children: [
+                    pw.Expanded(
+                      flex: 6,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1))),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text("Buyer / Consignee:", style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                            pw.Text(customer.name, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                            if (customer.b2b.isNotEmpty) pw.Text("Trade Name: ${customer.b2b}", style: const pw.TextStyle(fontSize: 9)),
+                            if (customer.address.isNotEmpty) pw.Text("Address: ${customer.address}", style: const pw.TextStyle(fontSize: 9)),
+                            if (customer.contact.isNotEmpty) pw.Text("Phone: ${customer.contact}", style: const pw.TextStyle(fontSize: 9)),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address')),
+                    pw.Expanded(
+                      flex: 4,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text("Invoice No: $billNo", style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            pw.SizedBox(height: 4),
+                            pw.Text("Dated: $dateStr", style: const pw.TextStyle(fontSize: 9)),
+                            pw.SizedBox(height: 4),
+                            pw.Text("Place of Supply: Kerala (32)", style: const pw.TextStyle(fontSize: 9)),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'B2B Trade Name')),
-                const SizedBox(height: 10),
-                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Reference')),
-                const SizedBox(height: 10),
-                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules')),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-            onPressed: () async {
-              if (nameCtrl.text.trim().isNotEmpty) {
-                Navigator.pop(ctx);
-                await http.post(
-                  Uri.parse(sheetApiUrl),
-                  body: jsonEncode({
-                    "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
-                    if (!isNew) "rowIndex": customer.rowIndex,
-                    "name": nameCtrl.text.trim(),
-                    "contact": contactCtrl.text.trim(),
-                    "address": addressCtrl.text.trim(),
-                    "b2b": b2bCtrl.text.trim(),
-                    "b2c": b2cCtrl.text.trim(),
-                    "remarks": remarksCtrl.text.trim(),
-                  }),
-                );
-                widget.onRefreshRequired();
-              }
-            },
-            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet',
-                style: const TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = widget.customers.where((c) {
-      return c.name.toLowerCase().contains(_query.toLowerCase()) ||
-          c.b2b.toLowerCase().contains(_query.toLowerCase()) ||
-          c.b2c.toLowerCase().contains(_query.toLowerCase()) ||
-          c.contact.contains(_query);
-    }).toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('CUSTOMERS DIRECTORY',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('TOTAL ${widget.customers.length} PARTIES',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
               ),
-              const Spacer(),
-              SizedBox(
-                width: 300,
-                child: TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search, size: 20),
-                    hintText: 'Search customer name...',
-                  ),
+              // Items Table Header
+              pw.Container(
+                color: PdfColors.grey200,
+                decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
+                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: pw.Row(
+                  children: [
+                    pw.SizedBox(width: 25, child: pw.Text("Sl", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.Expanded(flex: 5, child: pw.Text("Description of Goods", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 45, child: pw.Text("Qty", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 60, child: pw.Text("Rate", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 70, child: pw.Text("Amount", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                  ],
                 ),
               ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              // Items Rows
+              pw.Expanded(
+                child: pw.ListView.builder(
+                  padding: pw.EdgeInsets.zero,
+                  itemCount: items.length,
+                  itemBuilder: (ctx, idx) {
+                    final itm = items[idx];
+                    return pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 0.5, color: PdfColors.grey400))),
+                      child: pw.Row(
+                        children: [
+                          pw.SizedBox(width: 25, child: pw.Text("${idx + 1}", style: const pw.TextStyle(fontSize: 9))),
+                          pw.Expanded(flex: 5, child: pw.Text(itm.item?.name ?? '', style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 45, child: pw.Text("${itm.qty.toInt()}", textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 60, child: pw.Text(itm.rate.toStringAsFixed(2), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 70, child: pw.Text(itm.amount.toStringAsFixed(2), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-                icon: const Icon(Icons.person_add, color: Colors.white, size: 18),
-                label: const Text('Add Customer', style: TextStyle(color: Colors.white)),
-                onPressed: () => _openEditCustomerDialog(),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
-              itemBuilder: (ctx, i) {
-                final c = filtered[i];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showCustomerPreviewModal(c),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF161B22),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF242C37)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: const Color(0xFF1E242C),
-                          child: Text('${c.slNo}',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF94A3B8),
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(c.name,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                                  const SizedBox(width: 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1E242C),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF2C3540)),
-                                    ),
-                                    child: Text(
-                                      c.billingTag,
-                                      style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF94A3B8)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              if (c.contact.isNotEmpty || c.address.isNotEmpty)
-                                Text(
-                                  '📞 ${c.contact.isNotEmpty ? c.contact : "-"}  |  📍 ${c.address.isNotEmpty ? c.address : "-"}',
-                                  style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                                ),
-                              if (c.b2b.isNotEmpty)
-                                Text('B2B: ${c.b2b}',
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF38BDF8),
-                                        fontWeight: FontWeight.w500)),
-                              if (c.b2c.isNotEmpty)
-                                Text('B2C: ${c.b2c}',
-                                    style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                              if (c.remarks.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text('Note: ${c.remarks}',
-                                      style: const TextStyle(fontSize: 12, color: Color(0xFFCBD5E1))),
-                                ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_note, color: Color(0xFF94A3B8), size: 24),
-                          tooltip: 'Edit Customer',
-                          onPressed: () => _openEditCustomerDialog(customer: c),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 4. PACKING SLIP VIEW ----------------
-
-class LoadingSlipView extends StatefulWidget {
-  final List<LoadingEntry> loadingSlip;
-  final List<DCItem> items;
-  final List<DCCustomer> customers;
-
-  const LoadingSlipView({
-    super.key,
-    required this.loadingSlip,
-    required this.items,
-    required this.customers,
-  });
-
-  @override
-  State<LoadingSlipView> createState() => _LoadingSlipViewState();
-}
-
-class _LoadingSlipViewState extends State<LoadingSlipView> {
-  void _openAddPackingSlipDialog() {
-    String? selectedCust =
-        widget.customers.isNotEmpty ? widget.customers.first.name : null;
-    final placeCtrl = TextEditingController();
-    final summaryCtrl = TextEditingController();
-    final bagsCtrl = TextEditingController(text: '10');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E242C),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Add to Packing Slip'),
-          content: SizedBox(
-            width: 500,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedCust,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Party / Customer Name'),
-                    items: widget.customers
-                        .map((c) => DropdownMenuItem(value: c.name, child: Text(c.name)))
-                        .toList(),
-                    onChanged: (v) => setDialogState(() => selectedCust = v),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(controller: placeCtrl, decoration: const InputDecoration(labelText: 'Place (സ്ഥലം)')),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: summaryCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Item Summary (ഉദാ: Sadhya Vadi 5, Priyam 5)',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: bagsCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Total Nos of Bags (ചാക്ക്)'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-              onPressed: () async {
-                if (selectedCust != null && bagsCtrl.text.trim().isNotEmpty) {
-                  final party = selectedCust!;
-                  final place = placeCtrl.text.trim();
-                  final summary = summaryCtrl.text.trim();
-                  final bags = int.tryParse(bagsCtrl.text.trim()) ?? 0;
-
-                  Navigator.pop(ctx);
-                  setState(() {
-                    widget.loadingSlip.add(LoadingEntry(
-                      customerName: party,
-                      place: place,
-                      summary: summary.isEmpty ? 'Rice Bags' : summary,
-                      bags: bags,
-                    ));
-                  });
-
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": "ADD_PACKING_SLIP",
-                      "party": party,
-                      "place": place,
-                      "itemSummary": summary,
-                      "totalBags": bags,
-                    }),
-                  );
-                }
-              },
-              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _copySlipToClipboard() {
-    final buffer = StringBuffer();
-    buffer.writeln("--- DAVIS & COMPANY PACKING SLIP ---");
-    int total = 0;
-    for (int i = 0; i < widget.loadingSlip.length; i++) {
-      final e = widget.loadingSlip[i];
-      total += e.bags;
-      buffer.writeln(
-          "${i + 1}. ${e.customerName} (${e.place}) : ${e.summary} - ${e.bags} Bags");
-    }
-    buffer.writeln("TOTAL BAGS: $total");
-
-    Clipboard.setData(ClipboardData(text: buffer.toString()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Packing slip copied to clipboard!')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    int totalBags = widget.loadingSlip.fold(0, (sum, entry) => sum + entry.bags);
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('PACKING / LOADING SLIP',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('LINKED DIRECTLY TO GOOGLE SHEET',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const Spacer(),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E242C),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text('Copy Slip'),
-                onPressed: widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Entry', style: TextStyle(color: Colors.white)),
-                onPressed: _openAddPackingSlipDialog,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: widget.loadingSlip.isEmpty
-                ? const Center(
-                    child: Text('No entries added yet. Tap "Add Entry" to create a slip.',
-                        style: TextStyle(color: Color(0xFF94A3B8))),
-                  )
-                : ListView.separated(
-                    itemCount: widget.loadingSlip.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, idx) {
-                      final entry = widget.loadingSlip[idx];
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF161B22),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF242C37)),
-                        ),
-                        child: Row(
+              // Bottom Calculations
+              pw.Container(
+                decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(width: 1))),
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Expanded(
+                      flex: 5,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
                           children: [
-                            CircleAvatar(
-                              backgroundColor: const Color(0xFF1E242C),
-                              child: Text('${idx + 1}',
-                                  style: const TextStyle(color: Color(0xFF94A3B8))),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(entry.customerName,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                      if (entry.place.isNotEmpty) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF1E242C),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(entry.place,
-                                              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(entry.summary,
-                                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                            Text('${entry.bags} Bags',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF38BDF8))),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Color(0xFF64748B)),
-                              onPressed: () {
-                                setState(() {
-                                  widget.loadingSlip.removeAt(idx);
-                                });
-                              },
+                            pw.Text("Bank: SBI Aluva Branch", style: const pw.TextStyle(fontSize: 8)),
+                            pw.Text("A/c No: 12345678901 | IFS Code: SBIN0001234", style: const pw.TextStyle(fontSize: 8)),
+                            pw.SizedBox(height: 25),
+                            pw.Text("for DAVIS & COMPANY", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                            pw.SizedBox(height: 15),
+                            pw.Text("Authorised Signatory", style: const pw.TextStyle(fontSize: 8)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 5,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: const pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(width: 1))),
+                        child: pw.Column(
+                          children: [
+                            _pdfSummaryRow("Sub Total", "Rs ${subTotal.toStringAsFixed(2)}"),
+                            if (coolie > 0) _pdfSummaryRow("Coolie Charges", "Rs ${coolie.toStringAsFixed(2)}"),
+                            if (sgst > 0) _pdfSummaryRow("SGST @ 2.5%", "Rs ${sgst.toStringAsFixed(2)}"),
+                            if (cgst > 0) _pdfSummaryRow("CGST @ 2.5%", "Rs ${cgst.toStringAsFixed(2)}"),
+                            _pdfSummaryRow("Round Off", "Rs ${roundOff.toStringAsFixed(2)}"),
+                            pw.Divider(thickness: 1),
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Text("Total Amount:", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                                pw.Text("Rs ${grandTotal.toStringAsFixed(2)}", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                              ],
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF242C37)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('TOTAL DISPATCH LOAD:',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('$totalBags BAGS',
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        );
+      },
+    ),
+  );
+
+  return doc.save();
 }
 
-// ---------------- 5. INVOICE HISTORY VIEW ----------------
+pw.Widget _pdfSummaryRow(String label, String value) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
+    child: pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
+        pw.Text(value, style: const pw.TextStyle(fontSize: 9)),
+      ],
+    ),
+  );
+}
+
+// ---------------- 3. INVOICE HISTORY VIEW (WITH PRINT & VIEW) ----------------
 
 class InvoiceHistoryView extends StatelessWidget {
   final List<DCEstimate> estimates;
@@ -2369,6 +1594,15 @@ class InvoiceHistoryView extends StatelessWidget {
           ),
         ),
         actions: [
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+            icon: const Icon(Icons.print, size: 16),
+            label: const Text('Print / View PDF'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _printHistoryInvoice(context, est);
+            },
+          ),
           if (est.status != 'CANCELLED')
             TextButton(
               style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
@@ -2383,13 +1617,99 @@ class InvoiceHistoryView extends StatelessWidget {
                 );
                 onRefreshRequired();
               },
-              child: const Text('Cancel this Bill'),
+              child: const Text('Cancel Bill'),
             ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
           ),
         ],
+      ),
+    );
+  }
+
+  void _printHistoryInvoice(BuildContext context, DCEstimate est) {
+    final matchedCustomer = customers.firstWhere(
+      (c) => c.name.toLowerCase() == est.customer.toLowerCase(),
+      orElse: () => DCCustomer(
+        rowIndex: 0,
+        slNo: 0,
+        name: est.customer,
+        contact: '',
+        address: '',
+        b2c: '',
+        b2b: '',
+        remarks: '',
+      ),
+    );
+
+    final List<InvoiceRowItem> parsedItems = [];
+    final itemsParts = est.itemSummary.split(',');
+    for (var part in itemsParts) {
+      if (part.trim().isNotEmpty) {
+        parsedItems.add(
+          InvoiceRowItem(
+            item: DCItem(
+              rowIndex: 0,
+              no: 1,
+              name: part.trim(),
+              rateType: 'KG',
+              rate: '0',
+              qty: '1',
+              tallyName: '',
+              billedIn: '',
+              isTaxable: false,
+            ),
+            qty: 1,
+            rate: double.tryParse(est.grandTotal) ?? 0,
+          ),
+        );
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF1E242C),
+        insetPadding: const EdgeInsets.all(20),
+        child: SizedBox(
+          width: 900,
+          height: 700,
+          child: Column(
+            children: [
+              AppBar(
+                backgroundColor: const Color(0xFF14181F),
+                title: Text('Invoice #${est.slNo} - Tally Print View'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: PdfPreview(
+                  build: (format) => generateTallyPdf(
+                    format: format,
+                    billNo: est.slNo.toString(),
+                    dateStr: est.date,
+                    customer: matchedCustomer,
+                    items: parsedItems,
+                    subTotal: double.tryParse(est.grandTotal) ?? 0,
+                    coolie: double.tryParse(est.coolie) ?? 0,
+                    sgst: double.tryParse(est.sgst) ?? 0,
+                    cgst: double.tryParse(est.cgst) ?? 0,
+                    roundOff: double.tryParse(est.roundOff) ?? 0,
+                    grandTotal: double.tryParse(est.grandTotal) ?? 0,
+                  ),
+                  allowPrinting: true,
+                  allowSharing: true,
+                  canChangePageFormat: false,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -2401,17 +1721,12 @@ class InvoiceHistoryView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('INVOICE HISTORY',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          Text('${estimates.length} INVOICES LOGGED IN SHEET',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+          const Text('INVOICE HISTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text('${estimates.length} INVOICES LOGGED IN SHEET', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
           const SizedBox(height: 20),
           Expanded(
             child: estimates.isEmpty
-                ? const Center(
-                    child: Text('No invoice history logged yet.',
-                        style: TextStyle(color: Color(0xFF94A3B8))),
-                  )
+                ? const Center(child: Text('No invoice history logged yet.', style: TextStyle(color: Color(0xFF94A3B8))))
                 : ListView.separated(
                     itemCount: estimates.length,
                     separatorBuilder: (ctx, i) => const SizedBox(height: 10),
@@ -2489,7 +1804,826 @@ class InvoiceHistoryView extends StatelessWidget {
   }
 }
 
-// ---------------- 6. CALCULATOR VIEW ----------------
+// ---------------- 4. PRICE LIST VIEW ----------------
+
+class PriceListDesktopView extends StatefulWidget {
+  final List<DCItem> items;
+  final VoidCallback onRefreshRequired;
+  const PriceListDesktopView({
+    super.key,
+    required this.items,
+    required this.onRefreshRequired,
+  });
+
+  @override
+  State<PriceListDesktopView> createState() => _PriceListDesktopViewState();
+}
+
+class _PriceListDesktopViewState extends State<PriceListDesktopView> {
+  String _query = '';
+
+  void _showItemPreviewModal(DCItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E242C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit, color: Color(0xFF38BDF8)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _openEditItemDialog(item: item);
+              },
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 580,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Divider(color: Color(0xFF242C37)),
+                _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
+                _buildModalRow('Rate Unit:', item.rateType),
+                _buildModalRow('Quantity / Pack Size:', '${item.qty} KG/Bag'),
+                _buildModalRow('Item Name on Tally:', item.tallyName),
+                _buildModalRow('Billed Unit:', item.billedIn),
+                _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE (5%)' : 'NON-TAXABLE'),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openEditItemDialog({DCItem? item}) {
+    final isNew = item == null;
+    final nameCtrl = TextEditingController(text: isNew ? '' : item.name);
+    final rateCtrl = TextEditingController(text: isNew ? '' : item.rate);
+    final rateTypeCtrl = TextEditingController(text: isNew ? 'RATE PER KG' : item.rateType);
+    final qtyCtrl = TextEditingController(text: isNew ? '50' : '${item.qty}');
+    final tallyCtrl = TextEditingController(text: isNew ? '' : item.tallyName);
+    final billedCtrl = TextEditingController(text: isNew ? 'KILOGRAM' : item.billedIn);
+    bool isTaxable = isNew ? false : item.isTaxable;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E242C),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(isNew ? 'Add New Item to Sheet' : 'Edit Item Details'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Item Name')),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Rate (₹)'))),
+                      const SizedBox(width: 10),
+                      Expanded(child: TextField(controller: rateTypeCtrl, decoration: const InputDecoration(labelText: 'Rate Type'))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Quantity'))),
+                      const SizedBox(width: 10),
+                      Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Item Name on Tally')),
+                  const SizedBox(height: 10),
+                  SwitchListTile(
+                    title: const Text('Taxable'),
+                    value: isTaxable,
+                    onChanged: (v) => setDialogState(() => isTaxable = v),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              onPressed: () async {
+                if (nameCtrl.text.trim().isNotEmpty) {
+                  Navigator.pop(ctx);
+                  await http.post(
+                    Uri.parse(sheetApiUrl),
+                    body: jsonEncode({
+                      "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
+                      if (!isNew) "rowIndex": item.rowIndex,
+                      "name": nameCtrl.text.trim(),
+                      "rateType": rateTypeCtrl.text.trim(),
+                      "rate": rateCtrl.text.trim(),
+                      "qty": qtyCtrl.text.trim(),
+                      "tallyName": tallyCtrl.text.trim(),
+                      "billedIn": billedCtrl.text.trim(),
+                      "isTaxable": isTaxable,
+                    }),
+                  );
+                  widget.onRefreshRequired();
+                }
+              },
+              child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModalRow(String title, String val, {bool isColor = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 160, child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14))),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              val,
+              softWrap: true,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: isColor ? const Color(0xFF38BDF8) : Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.items
+        .where((i) => i.name.toLowerCase().contains(_query.toLowerCase()) || i.tallyName.toLowerCase().contains(_query.toLowerCase()))
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('DAVIS & COMPANY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('PRICE LIST (${widget.items.length} ITEMS)', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                ],
+              ),
+              const Spacer(),
+              SizedBox(
+                width: 300,
+                child: TextField(
+                  onChanged: (v) => setState(() => _query = v),
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 20), hintText: 'Search items...'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                label: const Text('Add Item', style: TextStyle(color: Colors.white)),
+                onPressed: () => _openEditItemDialog(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: ListView.separated(
+              physics: const BouncingScrollPhysics(),
+              itemCount: filtered.length,
+              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+              itemBuilder: (ctx, idx) {
+                final item = filtered[idx];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _showItemPreviewModal(item),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF161B22),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF242C37)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: const Color(0xFF1E242C),
+                          child: Text('${item.no}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, letterSpacing: 0.3)),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF38BDF8))),
+                                  const SizedBox(width: 8),
+                                  Text('(${item.rateType})', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+                                  const SizedBox(width: 14),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E242C),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFF2C3540)),
+                                    ),
+                                    child: Text(
+                                      item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: item.isTaxable ? Colors.orangeAccent : const Color(0xFF94A3B8)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text('Tally: ${item.tallyName}  |  Pack: ${item.qty}  |  Unit: ${item.billedIn}', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit_note, color: Color(0xFF94A3B8), size: 24),
+                          tooltip: 'Edit Item',
+                          onPressed: () => _openEditItemDialog(item: item),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------- 5. CUSTOMERS VIEW ----------------
+
+class CustomerDesktopView extends StatefulWidget {
+  final List<DCCustomer> customers;
+  final VoidCallback onRefreshRequired;
+  const CustomerDesktopView({
+    super.key,
+    required this.customers,
+    required this.onRefreshRequired,
+  });
+
+  @override
+  State<CustomerDesktopView> createState() => _CustomerDesktopViewState();
+}
+
+class _CustomerDesktopViewState extends State<CustomerDesktopView> {
+  String _query = '';
+
+  Widget _buildCustomerModalRow(String title, String val, {bool isHighlight = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 150, child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14))),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              val,
+              softWrap: true,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: isHighlight ? const Color(0xFF38BDF8) : Colors.white,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCustomerPreviewModal(DCCustomer customer) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E242C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Expanded(child: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20))),
+            IconButton(
+              icon: const Icon(Icons.edit, color: Color(0xFF38BDF8)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _openEditCustomerDialog(customer: customer);
+              },
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 600,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(color: Color(0xFF242C37)),
+                _buildCustomerModalRow('Customer Name:', customer.name),
+                _buildCustomerModalRow('Contact Number:', customer.contact.isEmpty ? '-' : customer.contact),
+                _buildCustomerModalRow('Address:', customer.address.isEmpty ? '-' : customer.address),
+                _buildCustomerModalRow('B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b, isHighlight: true),
+                _buildCustomerModalRow('B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c),
+                _buildCustomerModalRow('Billing Category:', customer.billingTag),
+                if (customer.remarks.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Special Delivery & Billing Remarks:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: const Color(0xFF161B22), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF242C37))),
+                    child: Text(customer.remarks, softWrap: true, style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 14, height: 1.4)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openEditCustomerDialog({DCCustomer? customer}) {
+    final isNew = customer == null;
+    final nameCtrl = TextEditingController(text: isNew ? '' : customer.name);
+    final contactCtrl = TextEditingController(text: isNew ? '' : customer.contact);
+    final addressCtrl = TextEditingController(text: isNew ? '' : customer.address);
+    final b2bCtrl = TextEditingController(text: isNew ? '' : customer.b2b);
+    final b2cCtrl = TextEditingController(text: isNew ? '' : customer.b2c);
+    final remarksCtrl = TextEditingController(text: isNew ? '' : customer.remarks);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E242C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(isNew ? 'Add New Customer to Sheet' : 'Edit Customer Details'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact'))),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address'))),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'B2B Trade Name')),
+                const SizedBox(height: 10),
+                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Reference')),
+                const SizedBox(height: 10),
+                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+            onPressed: () async {
+              if (nameCtrl.text.trim().isNotEmpty) {
+                Navigator.pop(ctx);
+                await http.post(
+                  Uri.parse(sheetApiUrl),
+                  body: jsonEncode({
+                    "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
+                    if (!isNew) "rowIndex": customer.rowIndex,
+                    "name": nameCtrl.text.trim(),
+                    "contact": contactCtrl.text.trim(),
+                    "address": addressCtrl.text.trim(),
+                    "b2b": b2bCtrl.text.trim(),
+                    "b2c": b2cCtrl.text.trim(),
+                    "remarks": remarksCtrl.text.trim(),
+                  }),
+                );
+                widget.onRefreshRequired();
+              }
+            },
+            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.customers.where((c) {
+      return c.name.toLowerCase().contains(_query.toLowerCase()) ||
+          c.b2b.toLowerCase().contains(_query.toLowerCase()) ||
+          c.b2c.toLowerCase().contains(_query.toLowerCase()) ||
+          c.contact.contains(_query);
+    }).toList();
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('CUSTOMERS DIRECTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('TOTAL ${widget.customers.length} PARTIES', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                ],
+              ),
+              const Spacer(),
+              SizedBox(
+                width: 300,
+                child: TextField(
+                  onChanged: (v) => setState(() => _query = v),
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 20), hintText: 'Search customer name...'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+                icon: const Icon(Icons.person_add, color: Colors.white, size: 18),
+                label: const Text('Add Customer', style: TextStyle(color: Colors.white)),
+                onPressed: () => _openEditCustomerDialog(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: ListView.separated(
+              physics: const BouncingScrollPhysics(),
+              itemCount: filtered.length,
+              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+              itemBuilder: (ctx, i) {
+                final c = filtered[i];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _showCustomerPreviewModal(c),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF161B22),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF242C37)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: const Color(0xFF1E242C),
+                          child: Text('${c.slNo}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E242C),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFF2C3540)),
+                                    ),
+                                    child: Text(
+                                      c.billingTag,
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              if (c.contact.isNotEmpty || c.address.isNotEmpty)
+                                Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"}  |  📍 ${c.address.isNotEmpty ? c.address : "-"}',
+                                    style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+                              if (c.b2b.isNotEmpty)
+                                Text('B2B: ${c.b2b}', style: const TextStyle(fontSize: 13, color: Color(0xFF38BDF8), fontWeight: FontWeight.w500)),
+                              if (c.b2c.isNotEmpty)
+                                Text('B2C: ${c.b2c}', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                              if (c.remarks.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text('Note: ${c.remarks}', style: const TextStyle(fontSize: 12, color: Color(0xFFCBD5E1))),
+                                ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit_note, color: Color(0xFF94A3B8), size: 24),
+                          tooltip: 'Edit Customer',
+                          onPressed: () => _openEditCustomerDialog(customer: c),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------- 6. PACKING SLIP VIEW ----------------
+
+class LoadingSlipView extends StatefulWidget {
+  final List<LoadingEntry> loadingSlip;
+  final List<DCItem> items;
+  final List<DCCustomer> customers;
+
+  const LoadingSlipView({
+    super.key,
+    required this.loadingSlip,
+    required this.items,
+    required this.customers,
+  });
+
+  @override
+  State<LoadingSlipView> createState() => _LoadingSlipViewState();
+}
+
+class _LoadingSlipViewState extends State<LoadingSlipView> {
+  void _openAddPackingSlipDialog() {
+    String? selectedCust = widget.customers.isNotEmpty ? widget.customers.first.name : null;
+    final placeCtrl = TextEditingController();
+    final summaryCtrl = TextEditingController();
+    final bagsCtrl = TextEditingController(text: '10');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E242C),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Add to Packing Slip'),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedCust,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Party / Customer Name'),
+                    items: widget.customers.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))).toList(),
+                    onChanged: (v) => setDialogState(() => selectedCust = v),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(controller: placeCtrl, decoration: const InputDecoration(labelText: 'Place (സ്ഥലം)')),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: summaryCtrl,
+                    decoration: const InputDecoration(labelText: 'Item Summary (ഉദാ: Sadhya Vadi 5, Priyam 5)'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: bagsCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Total Nos of Bags (ചാക്ക്)'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+              onPressed: () async {
+                if (selectedCust != null && bagsCtrl.text.trim().isNotEmpty) {
+                  final party = selectedCust!;
+                  final place = placeCtrl.text.trim();
+                  final summary = summaryCtrl.text.trim();
+                  final bags = int.tryParse(bagsCtrl.text.trim()) ?? 0;
+
+                  Navigator.pop(ctx);
+                  setState(() {
+                    widget.loadingSlip.add(LoadingEntry(
+                      customerName: party,
+                      place: place,
+                      summary: summary.isEmpty ? 'Rice Bags' : summary,
+                      bags: bags,
+                    ));
+                  });
+
+                  await http.post(
+                    Uri.parse(sheetApiUrl),
+                    body: jsonEncode({
+                      "action": "ADD_PACKING_SLIP",
+                      "party": party,
+                      "place": place,
+                      "itemSummary": summary,
+                      "totalBags": bags,
+                    }),
+                  );
+                }
+              },
+              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _copySlipToClipboard() {
+    final buffer = StringBuffer();
+    buffer.writeln("--- DAVIS & COMPANY PACKING SLIP ---");
+    int total = 0;
+    for (int i = 0; i < widget.loadingSlip.length; i++) {
+      final e = widget.loadingSlip[i];
+      total += e.bags;
+      buffer.writeln("${i + 1}. ${e.customerName} (${e.place}) : ${e.summary} - ${e.bags} Bags");
+    }
+    buffer.writeln("TOTAL BAGS: $total");
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Packing slip copied to clipboard!')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    int totalBags = widget.loadingSlip.fold(0, (sum, entry) => sum + entry.bags);
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('PACKING / LOADING SLIP', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('LINKED DIRECTLY TO GOOGLE SHEET', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                ],
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E242C), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Copy Slip'),
+                onPressed: widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                label: const Text('Add Entry', style: TextStyle(color: Colors.white)),
+                onPressed: _openAddPackingSlipDialog,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: widget.loadingSlip.isEmpty
+                ? const Center(child: Text('No entries added yet. Tap "Add Entry" to create a slip.', style: TextStyle(color: Color(0xFF94A3B8))))
+                : ListView.separated(
+                    itemCount: widget.loadingSlip.length,
+                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
+                    itemBuilder: (ctx, idx) {
+                      final entry = widget.loadingSlip[idx];
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF161B22),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF242C37)),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: const Color(0xFF1E242C),
+                              child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8))),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(entry.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      if (entry.place.isNotEmpty) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: const Color(0xFF1E242C), borderRadius: BorderRadius.circular(4)),
+                                          child: Text(entry.place, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(entry.summary, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                            Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF38BDF8))),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Color(0xFF64748B)),
+                              onPressed: () {
+                                setState(() {
+                                  widget.loadingSlip.removeAt(idx);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF242C37)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('TOTAL DISPATCH LOAD:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('$totalBags BAGS', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------- 7. CALCULATOR VIEW ----------------
 
 class PackSizeCalculatorView extends StatefulWidget {
   final List<DCItem> items;
@@ -2520,10 +2654,8 @@ class _PackSizeCalculatorViewState extends State<PackSizeCalculatorView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('PACK SIZE & RATE CALCULATOR',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const Text('QUICK ESTIMATE PER BAG / KG',
-              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+          const Text('PACK SIZE & RATE CALCULATOR', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text('QUICK ESTIMATE PER BAG / KG', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(20),
@@ -2538,12 +2670,7 @@ class _PackSizeCalculatorViewState extends State<PackSizeCalculatorView> {
                   value: _selectedItem,
                   hint: const Text('Select an Item from Price List'),
                   isExpanded: true,
-                  items: widget.items
-                      .map((i) => DropdownMenuItem(
-                            value: i,
-                            child: Text('${i.name} — ₹${i.rate} (${i.rateType})'),
-                          ))
-                      .toList(),
+                  items: widget.items.map((i) => DropdownMenuItem(value: i, child: Text('${i.name} — ₹${i.rate} (${i.rateType})'))).toList(),
                   onChanged: (v) {
                     setState(() {
                       _selectedItem = v;
@@ -2559,9 +2686,7 @@ class _PackSizeCalculatorViewState extends State<PackSizeCalculatorView> {
                         controller: _qtyCtrl,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: _selectedItem != null && _selectedItem!.rateType.contains('BAG')
-                              ? 'Number of Bags'
-                              : 'Quantity in KGs',
+                          labelText: _selectedItem != null && _selectedItem!.rateType.contains('BAG') ? 'Number of Bags' : 'Quantity in KGs',
                         ),
                         onChanged: (v) => _calculate(),
                       ),
@@ -2570,22 +2695,12 @@ class _PackSizeCalculatorViewState extends State<PackSizeCalculatorView> {
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E242C),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        decoration: BoxDecoration(color: const Color(0xFF1E242C), borderRadius: BorderRadius.circular(10)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Estimated Amount:',
-                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                            Text(
-                              '₹${_totalCalculated.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF38BDF8)),
-                            ),
+                            const Text('Estimated Amount:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                            Text('₹${_totalCalculated.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
                           ],
                         ),
                       ),
