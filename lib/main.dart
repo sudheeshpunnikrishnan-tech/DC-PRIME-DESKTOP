@@ -177,11 +177,11 @@ class _MainDashboardState extends State<MainDashboard> {
                 : _navIndex == 0
                     ? PriceListDesktopView(
                         items: _items,
-                        onUpdate: () => setState(() {}),
+                        onRefreshRequired: _fetchData,
                       )
                     : CustomerDesktopView(
                         customers: _customers,
-                        onUpdate: () => setState(() {}),
+                        onRefreshRequired: _fetchData,
                       ),
           ),
         ],
@@ -194,8 +194,8 @@ class _MainDashboardState extends State<MainDashboard> {
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
-  final VoidCallback onUpdate;
-  const PriceListDesktopView({super.key, required this.items, required this.onUpdate});
+  final VoidCallback onRefreshRequired;
+  const PriceListDesktopView({super.key, required this.items, required this.onRefreshRequired});
 
   @override
   State<PriceListDesktopView> createState() => _PriceListDesktopViewState();
@@ -210,23 +210,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C2128),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                item.name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blueAccent),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _openItemEditDialog(item: item);
-              },
-            ),
-          ],
-        ),
+        title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         content: SizedBox(
           width: 480,
           child: Column(
@@ -252,15 +236,14 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     );
   }
 
-  void _openItemEditDialog({DCItem? item}) {
-    final isNew = item == null;
-    final nameCtrl = TextEditingController(text: isNew ? '' : item.name);
-    final rateCtrl = TextEditingController(text: isNew ? '' : item.rate);
-    final rateTypeCtrl = TextEditingController(text: isNew ? 'RATE PER KG' : item.rateType);
-    final qtyCtrl = TextEditingController(text: isNew ? '50' : '${item.qty}');
-    final tallyCtrl = TextEditingController(text: isNew ? '' : item.tallyName);
-    final billedCtrl = TextEditingController(text: isNew ? 'KILOGRAM' : item.billedIn);
-    bool isTaxable = isNew ? false : item.isTaxable;
+  void _openAddItemDialog() {
+    final nameCtrl = TextEditingController();
+    final rateCtrl = TextEditingController();
+    final rateTypeCtrl = TextEditingController(text: 'RATE PER KG');
+    final qtyCtrl = TextEditingController(text: '50');
+    final tallyCtrl = TextEditingController();
+    final billedCtrl = TextEditingController(text: 'KILOGRAM');
+    bool isTaxable = false;
 
     showDialog(
       context: context,
@@ -268,7 +251,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1C2128),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isNew ? 'Add New Item' : 'Edit Item Details'),
+          title: const Text('Add New Item to Sheet'),
           content: SizedBox(
             width: 480,
             child: SingleChildScrollView(
@@ -281,15 +264,15 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                     children: [
                       Expanded(child: TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Rate (₹)'))),
                       const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: rateTypeCtrl, decoration: const InputDecoration(labelText: 'Rate Type'))),
+                      Expanded(child: TextField(controller: rateTypeCtrl, decoration: const InputDecoration(labelText: 'Rate Type (e.g. RATE PER KG/BAG)'))),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty'))),
+                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Quantity (e.g. 50)'))),
                       const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
+                      Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In (e.g. KILOGRAM)'))),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -309,34 +292,29 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF238636)),
-              onPressed: () {
-                if (isNew) {
-                  widget.items.insert(
-                    0,
-                    DCItem(
-                      no: widget.items.length + 1,
-                      name: nameCtrl.text.trim(),
-                      rateType: rateTypeCtrl.text.trim(),
-                      rate: rateCtrl.text.trim(),
-                      qty: qtyCtrl.text.trim(),
-                      tallyName: tallyCtrl.text.trim(),
-                      billedIn: billedCtrl.text.trim(),
-                      isTaxable: isTaxable,
-                    ),
+              onPressed: () async {
+                if (nameCtrl.text.trim().isNotEmpty) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Saving to Google Sheet...')),
                   );
-                } else {
-                  item.name = nameCtrl.text.trim();
-                  item.rate = rateCtrl.text.trim();
-                  item.rateType = rateTypeCtrl.text.trim();
-                  item.qty = qtyCtrl.text.trim();
-                  item.tallyName = tallyCtrl.text.trim();
-                  item.billedIn = billedCtrl.text.trim();
-                  item.isTaxable = isTaxable;
+                  await http.post(
+                    Uri.parse(sheetApiUrl),
+                    body: jsonEncode({
+                      "action": "ADD_ITEM",
+                      "name": nameCtrl.text.trim(),
+                      "rateType": rateTypeCtrl.text.trim(),
+                      "rate": rateCtrl.text.trim(),
+                      "qty": qtyCtrl.text.trim(),
+                      "tallyName": tallyCtrl.text.trim(),
+                      "billedIn": billedCtrl.text.trim(),
+                      "isTaxable": isTaxable,
+                    }),
+                  );
+                  widget.onRefreshRequired();
                 }
-                widget.onUpdate();
-                Navigator.pop(ctx);
               },
-              child: const Text('Save', style: TextStyle(color: Colors.white)),
+              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -379,7 +357,6 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Bar
           Row(
             children: [
               Column(
@@ -412,13 +389,11 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                 ),
                 icon: const Icon(Icons.add, color: Colors.white, size: 18),
                 label: const Text('Add Item', style: TextStyle(color: Colors.white)),
-                onPressed: () => _openItemEditDialog(),
+                onPressed: _openAddItemDialog,
               ),
             ],
           ),
           const SizedBox(height: 20),
-
-          // Enlarged Card View with Rate under Title
           Expanded(
             child: ListView.separated(
               physics: const BouncingScrollPhysics(),
@@ -445,7 +420,6 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                           child: Text('${item.no}', style: const TextStyle(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 20),
-                        // Expanded text area for full stretch reading
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +429,6 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, letterSpacing: 0.3),
                               ),
                               const SizedBox(height: 6),
-                              // Rate prominently placed under the name
                               Row(
                                 children: [
                                   Text(
@@ -493,11 +466,6 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                             ],
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_note, color: Colors.white60, size: 24),
-                          tooltip: 'Edit Item',
-                          onPressed: () => _openItemEditDialog(item: item),
-                        ),
                       ],
                     ),
                   ),
@@ -515,8 +483,8 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
-  final VoidCallback onUpdate;
-  const CustomerDesktopView({super.key, required this.customers, required this.onUpdate});
+  final VoidCallback onRefreshRequired;
+  const CustomerDesktopView({super.key, required this.customers, required this.onRefreshRequired});
 
   @override
   State<CustomerDesktopView> createState() => _CustomerDesktopViewState();
@@ -531,20 +499,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C2128),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blueAccent),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _openCustomerEditDialog(customer: customer);
-              },
-            ),
-          ],
-        ),
+        title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         content: SizedBox(
           width: 480,
           child: Column(
@@ -579,19 +534,18 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     );
   }
 
-  void _openCustomerEditDialog({DCCustomer? customer}) {
-    final isNew = customer == null;
-    final nameCtrl = TextEditingController(text: isNew ? '' : customer.name);
-    final b2bCtrl = TextEditingController(text: isNew ? '' : customer.b2b);
-    final b2cCtrl = TextEditingController(text: isNew ? '' : customer.b2c);
-    final remarksCtrl = TextEditingController(text: isNew ? '' : customer.remarks);
+  void _openAddCustomerDialog() {
+    final nameCtrl = TextEditingController();
+    final b2bCtrl = TextEditingController();
+    final b2cCtrl = TextEditingController();
+    final remarksCtrl = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C2128),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isNew ? 'Add New Customer' : 'Edit Customer'),
+        title: const Text('Add New Customer to Sheet'),
         content: SizedBox(
           width: 480,
           child: SingleChildScrollView(
@@ -613,28 +567,26 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF238636)),
-            onPressed: () {
-              if (isNew) {
-                widget.customers.insert(
-                  0,
-                  DCCustomer(
-                    slNo: widget.customers.length + 1,
-                    name: nameCtrl.text.trim(),
-                    b2b: b2bCtrl.text.trim(),
-                    b2c: b2cCtrl.text.trim(),
-                    remarks: remarksCtrl.text.trim(),
-                  ),
+            onPressed: () async {
+              if (nameCtrl.text.trim().isNotEmpty) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Saving customer to Google Sheet...')),
                 );
-              } else {
-                customer.name = nameCtrl.text.trim();
-                customer.b2b = b2bCtrl.text.trim();
-                customer.b2c = b2cCtrl.text.trim();
-                customer.remarks = remarksCtrl.text.trim();
+                await http.post(
+                  Uri.parse(sheetApiUrl),
+                  body: jsonEncode({
+                    "action": "ADD_CUSTOMER",
+                    "name": nameCtrl.text.trim(),
+                    "b2b": b2bCtrl.text.trim(),
+                    "b2c": b2cCtrl.text.trim(),
+                    "remarks": remarksCtrl.text.trim(),
+                  }),
+                );
+                widget.onRefreshRequired();
               }
-              widget.onUpdate();
-              Navigator.pop(ctx);
             },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
+            child: const Text('Save to Sheet', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -706,13 +658,11 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                 ),
                 icon: const Icon(Icons.person_add, color: Colors.white, size: 18),
                 label: const Text('Add Customer', style: TextStyle(color: Colors.white)),
-                onPressed: () => _openCustomerEditDialog(),
+                onPressed: _openAddCustomerDialog,
               ),
             ],
           ),
           const SizedBox(height: 20),
-
-          // Enlarged Customer Cards for One-Stretch Readability
           Expanded(
             child: ListView.separated(
               physics: const BouncingScrollPhysics(),
@@ -759,11 +709,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                 ),
                             ],
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_note, color: Colors.white60, size: 24),
-                          tooltip: 'Edit Customer',
-                          onPressed: () => _openCustomerEditDialog(customer: c),
                         ),
                       ],
                     ),
