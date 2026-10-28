@@ -152,8 +152,10 @@ class InvoiceRowItem {
   DCItem? item;
   double qty;
   double rate;
+  final FocusNode itemSearchFocus = FocusNode();
   final FocusNode rateFocus = FocusNode();
   final FocusNode qtyFocus = FocusNode();
+  final TextEditingController textCtrl = TextEditingController();
 
   InvoiceRowItem({this.item, this.qty = 1.0, this.rate = 0.0});
 
@@ -332,7 +334,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN (WITH ALT+C) ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -354,9 +356,11 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   final _billNoCtrl = TextEditingController(text: '51942');
   final _refCtrl = TextEditingController(text: '75');
   final _coolieCtrl = TextEditingController(text: '0.00');
+  final _partyTextCtrl = TextEditingController();
   String _invoiceType = 'Regular B2C';
   DCCustomer? _selectedParty;
 
+  final FocusNode _partyFocus = FocusNode();
   final FocusNode _billNoFocus = FocusNode();
   final FocusNode _refFocus = FocusNode();
   final FocusNode _coolieFocus = FocusNode();
@@ -402,6 +406,35 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   double get _grandTotal => _exactTotal.roundToDouble();
   double get _roundOff => _grandTotal - _exactTotal;
 
+  // Handle Alt+C and Ctrl+A keyboard shortcuts
+  KeyEventResult _handleGlobalKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent) {
+      final isAlt = HardwareKeyboard.instance.isAltPressed;
+      final isCtrl = HardwareKeyboard.instance.isControlPressed;
+
+      // Alt + C : Instant Creation
+      if (isAlt && event.logicalKey == LogicalKeyboardKey.keyC) {
+        if (_partyFocus.hasFocus) {
+          _openInstantAddCustomerDialog(_partyTextCtrl.text.trim());
+          return KeyEventResult.handled;
+        }
+        for (int i = 0; i < _rows.length; i++) {
+          if (_rows[i].itemSearchFocus.hasFocus) {
+            _openInstantAddItemDialog(i, _rows[i].textCtrl.text.trim());
+            return KeyEventResult.handled;
+          }
+        }
+      }
+
+      // Ctrl + A : Save & Print
+      if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyA) {
+        _saveInvoice();
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
+  }
+
   void _openInstantAddCustomerDialog(String presetName) {
     final nameCtrl = TextEditingController(text: presetName);
     final contactCtrl = TextEditingController();
@@ -414,7 +447,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E242C),
-        title: const Text('Instant Add Customer to Sheet'),
+        title: const Text('Instant Add Customer to Sheet (Alt + C)'),
         content: SizedBox(
           width: 480,
           child: SingleChildScrollView(
@@ -460,6 +493,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 setState(() {
                   widget.customers.insert(0, newCust);
                   _selectedParty = newCust;
+                  _partyTextCtrl.text = newCust.name;
                 });
                 await http.post(
                   Uri.parse(sheetApiUrl),
@@ -474,6 +508,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   }),
                 );
                 widget.onSaved();
+                _billNoFocus.requestFocus();
               }
             },
             child: const Text('Save & Select'),
@@ -497,7 +532,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E242C),
-          title: const Text('Instant Add Item to Sheet'),
+          title: const Text('Instant Add Item to Sheet (Alt + C)'),
           content: SizedBox(
             width: 480,
             child: SingleChildScrollView(
@@ -554,6 +589,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   setState(() {
                     widget.items.insert(0, newItem);
                     _rows[rowIndex].item = newItem;
+                    _rows[rowIndex].textCtrl.text = newItem.name;
                     _rows[rowIndex].rate = double.tryParse(newItem.rate) ?? 0.0;
                   });
                   await http.post(
@@ -570,6 +606,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     }),
                   );
                   widget.onSaved();
+                  _rows[rowIndex].rateFocus.requestFocus();
                 }
               },
               child: const Text('Save & Select'),
@@ -726,210 +763,248 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('Customer Bill',
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFE2E8F0))),
-              const Spacer(),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                icon: const Icon(Icons.save, color: Colors.white, size: 18),
-                label: const Text('Save & Print (Enter)',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                onPressed: _saveInvoice,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Tally Meta Fields Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF242C37)),
-            ),
-            child: Row(
+    return Focus(
+      onKeyEvent: _handleGlobalKeyEvent,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                SizedBox(
-                  width: 140,
-                  child: TextField(
-                    controller: _billNoCtrl,
-                    focusNode: _billNoFocus,
-                    decoration: const InputDecoration(labelText: 'Bill No'),
-                    onSubmitted: (_) => _refFocus.requestFocus(),
-                  ),
-                ),
+                const Text('Customer Bill',
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFE2E8F0))),
                 const SizedBox(width: 14),
-                Expanded(
-                  flex: 3,
-                  child: Autocomplete<DCCustomer>(
-                    displayStringForOption: (c) =>
-                        "${c.name} ${c.b2b.isNotEmpty ? '(${c.b2b})' : ''}",
-                    optionsBuilder: (TextEditingValue textVal) {
-                      if (textVal.text.isEmpty) {
-                        return widget.customers;
-                      }
-                      return widget.customers.where((c) =>
-                          c.name.toLowerCase().contains(textVal.text.toLowerCase()) ||
-                          c.b2b.toLowerCase().contains(textVal.text.toLowerCase()));
-                    },
-                    onSelected: (c) {
-                      setState(() => _selectedParty = c);
-                      _billNoFocus.requestFocus();
-                    },
-                    fieldViewBuilder: (ctx, textCtrl, fNode, onSubmitted) {
-                      return TextField(
-                        controller: textCtrl,
-                        focusNode: fNode,
-                        decoration: InputDecoration(
-                          labelText: 'Party Name (Search)',
-                          hintText: 'Type customer name...',
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.person_add, size: 18),
-                            tooltip: 'Instant Add Customer',
-                            onPressed: () => _openInstantAddCustomerDialog(textCtrl.text.trim()),
-                          ),
-                        ),
-                        onSubmitted: (val) {
-                          if (_selectedParty == null && val.trim().isNotEmpty) {
-                            _openInstantAddCustomerDialog(val.trim());
-                          } else {
-                            _billNoFocus.requestFocus();
-                          }
-                        },
-                      );
-                    },
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E242C),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF2C3540)),
                   ),
+                  child: const Text('Alt + C: Instant Create  |  Ctrl + A: Save Bill',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                 ),
-                const SizedBox(width: 14),
-                SizedBox(
-                  width: 120,
-                  child: TextField(
-                    controller: _refCtrl,
-                    focusNode: _refFocus,
-                    decoration: const InputDecoration(labelText: 'Ref'),
-                    onSubmitted: (_) {
-                      if (_rows.isNotEmpty) {
-                        _rows[0].rateFocus.requestFocus();
-                      }
-                    },
+                const Spacer(),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                ),
-                const SizedBox(width: 14),
-                SizedBox(
-                  width: 160,
-                  child: DropdownButtonFormField<String>(
-                    value: _invoiceType,
-                    decoration: const InputDecoration(labelText: 'Supply Type'),
-                    items: const [
-                      DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
-                      DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
-                    ],
-                    onChanged: (v) => setState(() => _invoiceType = v!),
-                  ),
+                  icon: const Icon(Icons.save, color: Colors.white, size: 18),
+                  label: const Text('Save & Print (Ctrl+A)',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  onPressed: _saveInvoice,
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Tally Grid Table
-          Expanded(
-            child: Container(
+            // Tally Meta Fields Header
+            Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF161B22),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFF242C37)),
               ),
-              child: Column(
+              child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1E242C),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                    ),
-                    child: const Row(
-                      children: [
-                        SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 16),
-                        Expanded(flex: 4, child: Text('Name of Item (Search)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 16),
-                        Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 16),
-                        Expanded(flex: 2, child: Text('Qty (Bags)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 16),
-                        Expanded(flex: 2, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                        SizedBox(width: 40),
-                      ],
+                  SizedBox(
+                    width: 140,
+                    child: TextField(
+                      controller: _billNoCtrl,
+                      focusNode: _billNoFocus,
+                      decoration: const InputDecoration(labelText: 'Bill No'),
+                      onSubmitted: (_) => _refFocus.requestFocus(),
                     ),
                   ),
-                  const Divider(height: 1, color: Color(0xFF242C37)),
+                  const SizedBox(width: 14),
                   Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: _rows.length,
-                      separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C37)),
-                      itemBuilder: (ctx, idx) {
-                        final row = _rows[idx];
-                        return Row(
-                          children: [
-                            SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              flex: 4,
-                              child: Autocomplete<DCItem>(
-                                initialValue: TextEditingValue(text: row.item?.name ?? ''),
-                                displayStringForOption: (i) => i.name,
-                                optionsBuilder: (TextEditingValue tVal) {
-                                  if (tVal.text.isEmpty) {
-                                    return widget.items;
-                                  }
-                                  return widget.items.where((i) =>
-                                      i.name.toLowerCase().contains(tVal.text.toLowerCase()) ||
-                                      i.tallyName.toLowerCase().contains(tVal.text.toLowerCase()));
+                    flex: 3,
+                    child: Autocomplete<DCCustomer>(
+                      displayStringForOption: (c) =>
+                          "${c.name} ${c.b2b.isNotEmpty ? '(${c.b2b})' : ''}",
+                      optionsBuilder: (TextEditingValue textVal) {
+                        if (textVal.text.isEmpty) {
+                          return widget.customers;
+                        }
+                        return widget.customers.where((c) =>
+                            c.name.toLowerCase().contains(textVal.text.toLowerCase()) ||
+                            c.b2b.toLowerCase().contains(textVal.text.toLowerCase()));
+                      },
+                      onSelected: (c) {
+                        setState(() {
+                          _selectedParty = c;
+                          _partyTextCtrl.text = c.name;
+                        });
+                        _billNoFocus.requestFocus();
+                      },
+                      fieldViewBuilder: (ctx, textCtrl, fNode, onSubmitted) {
+                        return Focus(
+                          focusNode: _partyFocus,
+                          child: TextField(
+                            controller: textCtrl,
+                            focusNode: fNode,
+                            decoration: InputDecoration(
+                              labelText: 'Party Name (Search / Alt+C)',
+                              hintText: 'Type & use arrow keys...',
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.person_add, size: 18),
+                                tooltip: 'Instant Add Customer (Alt + C)',
+                                onPressed: () => _openInstantAddCustomerDialog(textCtrl.text.trim()),
+                              ),
+                            ),
+                            onChanged: (v) => _partyTextCtrl.text = v,
+                            onSubmitted: (val) {
+                              if (_selectedParty != null && _selectedParty!.name.toLowerCase() == val.toLowerCase()) {
+                                _billNoFocus.requestFocus();
+                              } else {
+                                final match = widget.customers.where((c) => c.name.toLowerCase().contains(val.toLowerCase()));
+                                if (match.isNotEmpty) {
+                                  setState(() => _selectedParty = match.first);
+                                  textCtrl.text = match.first.name;
+                                  _billNoFocus.requestFocus();
+                                }
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  SizedBox(
+                    width: 120,
+                    child: TextField(
+                      controller: _refCtrl,
+                      focusNode: _refFocus,
+                      decoration: const InputDecoration(labelText: 'Ref'),
+                      onSubmitted: (_) {
+                        if (_rows.isNotEmpty) {
+                          _rows[0].itemSearchFocus.requestFocus();
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  SizedBox(
+                    width: 160,
+                    child: DropdownButtonFormField<String>(
+                      value: _invoiceType,
+                      decoration: const InputDecoration(labelText: 'Supply Type'),
+                      items: const [
+                        DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
+                        DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
+                      ],
+                      onChanged: (v) => setState(() => _invoiceType = v!),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Tally Grid Table
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161B22),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF242C37)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1E242C),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+                      ),
+                      child: const Row(
+                        children: [
+                          SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 16),
+                          Expanded(flex: 4, child: Text('Name of Item (Alt+C to Add)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 16),
+                          Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 16),
+                          Expanded(flex: 2, child: Text('Qty (Bags)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 16),
+                          Expanded(flex: 2, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 40),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFF242C37)),
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _rows.length,
+                        separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C37)),
+                        itemBuilder: (ctx, idx) {
+                          final row = _rows[idx];
+                          return Row(
+                            children: [
+                              SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                flex: 4,
+                                child: Autocomplete<DCItem>(
+                                  initialValue: TextEditingValue(text: row.item?.name ?? ''),
+                                  displayStringForOption: (i) => i.name,
+                                  optionsBuilder: (TextEditingValue tVal) {
+                                    if (tVal.text.isEmpty) {
+                                      return widget.items;
+                                    }
+                                    return widget.items.where((i) =>
+                                        i.name.toLowerCase().contains(tVal.text.toLowerCase()) ||
+                                        i.tallyName.toLowerCase().contains(tVal.text.toLowerCase()));
                                 },
                                 onSelected: (item) {
                                   setState(() {
                                     row.item = item;
                                     row.rate = double.tryParse(item.rate) ?? 0.0;
+                                    row.textCtrl.text = item.name;
                                   });
                                   row.rateFocus.requestFocus();
                                 },
                                 fieldViewBuilder: (ctx, itemTextCtrl, iFocus, onSub) {
-                                  return TextField(
-                                    controller: itemTextCtrl,
-                                    focusNode: iFocus,
-                                    decoration: InputDecoration(
-                                      hintText: 'Search or type item...',
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                      suffixIcon: IconButton(
-                                        icon: const Icon(Icons.add, size: 16),
-                                        tooltip: 'Instant Add Item',
-                                        onPressed: () => _openInstantAddItemDialog(idx, itemTextCtrl.text.trim()),
+                                  return Focus(
+                                    focusNode: row.itemSearchFocus,
+                                    child: TextField(
+                                      controller: itemTextCtrl,
+                                      focusNode: iFocus,
+                                      decoration: InputDecoration(
+                                        hintText: 'Search item (Alt+C to Add)...',
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                        suffixIcon: IconButton(
+                                          icon: const Icon(Icons.add, size: 16),
+                                          tooltip: 'Instant Add Item (Alt + C)',
+                                          onPressed: () => _openInstantAddItemDialog(idx, itemTextCtrl.text.trim()),
+                                        ),
                                       ),
+                                      onChanged: (v) => row.textCtrl.text = v,
+                                      onSubmitted: (val) {
+                                        if (row.item != null && row.item!.name.toLowerCase() == val.toLowerCase()) {
+                                          row.rateFocus.requestFocus();
+                                        } else {
+                                          final match = widget.items.where((i) => i.name.toLowerCase().contains(val.toLowerCase()));
+                                          if (match.isNotEmpty) {
+                                            setState(() {
+                                              row.item = match.first;
+                                              row.rate = double.tryParse(match.first.rate) ?? 0.0;
+                                            });
+                                            itemTextCtrl.text = match.first.name;
+                                            row.rateFocus.requestFocus();
+                                          }
+                                        }
+                                      },
                                     ),
-                                    onSubmitted: (val) {
-                                      if (row.item == null && val.trim().isNotEmpty) {
-                                        _openInstantAddItemDialog(idx, val.trim());
-                                      } else {
-                                        row.rateFocus.requestFocus();
-                                      }
-                                    },
                                   );
                                 },
                               ),
@@ -967,8 +1042,11 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 onFieldSubmitted: (_) {
                                   if (idx == _rows.length - 1) {
                                     _addRow();
+                                    Future.delayed(const Duration(milliseconds: 50), () {
+                                      _rows[idx + 1].itemSearchFocus.requestFocus();
+                                    });
                                   } else {
-                                    _rows[idx + 1].rateFocus.requestFocus();
+                                    _rows[idx + 1].itemSearchFocus.requestFocus();
                                   }
                                 },
                               ),
@@ -1074,8 +1152,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _summaryLine(String label, String value) {
     return Padding(
