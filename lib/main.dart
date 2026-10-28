@@ -210,20 +210,23 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C2128),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
         content: SizedBox(
-          width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Divider(color: Colors.white12),
-              _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
-              _buildModalRow('Rate Unit:', item.rateType),
-              _buildModalRow('Quantity / Pack:', '${item.qty}'),
-              _buildModalRow('Item Name on Tally:', item.tallyName),
-              _buildModalRow('Billed In:', item.billedIn),
-              _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE'),
-            ],
+          width: 580,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Divider(color: Colors.white12),
+                _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
+                _buildModalRow('Rate Unit:', item.rateType),
+                _buildModalRow('Quantity / Pack:', '${item.qty}'),
+                _buildModalRow('Item Name on Tally:', item.tallyName),
+                _buildModalRow('Billed In:', item.billedIn),
+                _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE'),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -253,7 +256,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Add New Item to Sheet'),
           content: SizedBox(
-            width: 480,
+            width: 520,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -326,14 +329,17 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-          Flexible(
+          SizedBox(
+            width: 150,
+            child: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
               val,
-              textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
+              softWrap: true,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -499,35 +505,42 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1C2128),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
         content: SizedBox(
-          width: 480,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Divider(color: Colors.white12),
-              _buildModalRow('Customer Name:', customer.name),
-              _buildModalRow('B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b),
-              _buildModalRow('B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c),
-              if (customer.remarks.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                const Text('Special Remarks:', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                const SizedBox(height: 4),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8)),
-                  child: Text(customer.remarks, style: const TextStyle(color: Colors.amberAccent, fontSize: 13)),
-                ),
+          width: 600, // Widened container for full details
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(color: Colors.white12),
+                _buildCustomerModalRow('Customer Name:', customer.name),
+                _buildCustomerModalRow('B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b, isHighlight: true),
+                _buildCustomerModalRow('B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c),
+                if (customer.remarks.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Special Remarks:', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)),
+                    child: Text(
+                      customer.remarks,
+                      softWrap: true,
+                      style: const TextStyle(color: Colors.amberAccent, fontSize: 14, height: 1.4),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Colors.white70)),
+            child: const Text('Close', style: TextStyle(color: Colors.white70, fontSize: 15)),
           ),
         ],
       ),
@@ -547,7 +560,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Add New Customer to Sheet'),
         content: SizedBox(
-          width: 480,
+          width: 520,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -593,19 +606,27 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     );
   }
 
-  Widget _buildModalRow(String title, String val) {
+  Widget _buildCustomerModalRow(String title, String val, {bool isHighlight = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          Flexible(
+          SizedBox(
+            width: 140,
+            child: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
               val,
-              textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+              softWrap: true, // Multi-line text for long names without cutting off
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: isHighlight ? Colors.lightBlueAccent : Colors.white,
+                height: 1.3,
+              ),
             ),
           ),
         ],
