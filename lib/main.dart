@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,22 @@ void main() {
 
 String sheetApiUrl =
     "https://script.google.com/macros/s/AKfycbzFDW5eeT4abGSRNLHlKs43JJ81YiKt0UrNEbbK2_cQIylsU_zGylqE8IMBqtpmXsjOEg/exec";
+
+// ---------------- 90+ FPS SMOOTH SCROLL BEHAVIOR ----------------
+
+class UltraSmoothScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+      };
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+  }
+}
 
 // ---------------- CONFIG & COMPANY PROFILE ----------------
 
@@ -180,6 +197,7 @@ class InvoiceRowItem {
   final FocusNode itemSearchFocus = FocusNode();
   final FocusNode rateFocus = FocusNode();
   final FocusNode qtyFocus = FocusNode();
+  final FocusNode unitFocus = FocusNode();
   final FocusNode bagsFocus = FocusNode();
   final TextEditingController textCtrl = TextEditingController();
   final LayerLink layerLink = LayerLink();
@@ -195,7 +213,7 @@ class InvoiceRowItem {
   double get amount => qty * rate;
 }
 
-// ---------------- APP ROOT: BALANCED EMERALD MINT THEME ----------------
+// ---------------- APP ROOT ----------------
 
 class DCPrimeApp extends StatelessWidget {
   const DCPrimeApp({super.key});
@@ -204,7 +222,8 @@ class DCPrimeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Davis & Company - DC Prime',
+      title: 'Davis & Company - DC Prime Desktop',
+      scrollBehavior: UltraSmoothScrollBehavior(),
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -341,7 +360,7 @@ class _MainDashboardState extends State<MainDashboard> {
                     child: Row(
                       children: [
                         CircleAvatar(
-                          radius: 24,
+                          radius: 26,
                           backgroundColor: const Color(0xFF1A242E),
                           backgroundImage: logoPathLocal.isNotEmpty
                               ? FileImage(File(logoPathLocal))
@@ -357,9 +376,9 @@ class _MainDashboardState extends State<MainDashboard> {
                             children: [
                               Text(logoPathLocal.isNotEmpty
                                   ? 'Selected: ${logoPathLocal.split(Platform.pathSeparator).last}'
-                                  : (CompanyConfig.logoUrl.isNotEmpty ? 'Cloud Logo Loaded' : 'No Logo Uploaded')),
+                                  : (CompanyConfig.logoUrl.isNotEmpty ? 'Cloud Logo Synced' : 'No Logo Uploaded')),
                               const SizedBox(height: 4),
-                              const Text('Supports PNG, JPG (Uploads to Drive & saves in Sheet)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                              const Text('Select image from desktop (PNG / JPG)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                             ],
                           ),
                         ),
@@ -369,7 +388,7 @@ class _MainDashboardState extends State<MainDashboard> {
                             foregroundColor: const Color(0xFF34D399),
                           ),
                           icon: const Icon(Icons.file_upload, size: 16),
-                          label: const Text('Select File'),
+                          label: const Text('Browse'),
                           onPressed: () async {
                             final res = await FilePicker.platform.pickFiles(type: FileType.image);
                             if (res != null && res.files.single.path != null) {
@@ -424,7 +443,7 @@ class _MainDashboardState extends State<MainDashboard> {
               onPressed: () async {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Saving Company Details to Sheet...')),
+                  const SnackBar(content: Text('Saving Company Details & Logo to Sheet...')),
                 );
 
                 setState(() => _isBackgroundSyncing = true);
@@ -463,7 +482,7 @@ class _MainDashboardState extends State<MainDashboard> {
 
                 setState(() => _isBackgroundSyncing = false);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Company Profile saved permanently to Google Sheets!')),
+                  const SnackBar(content: Text('Company Profile & Logo saved to Sheet permanently!')),
                 );
               },
               child: const Text('Save to Sheet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -476,6 +495,48 @@ class _MainDashboardState extends State<MainDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0D1217),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF10B981)]),
+                  boxShadow: [
+                    BoxShadow(color: const Color(0xFF10B981).withOpacity(0.3), blurRadius: 24, spreadRadius: 4),
+                  ],
+                ),
+                child: const Text('DC', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+              const SizedBox(height: 24),
+              const Text('DC PRIME DESKTOP',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Color(0xFFF8FAFC))),
+              const SizedBox(height: 6),
+              const Text('DEVELOPED BY SUDHEESH',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFF34D399))),
+              const SizedBox(height: 4),
+              const Text('Wholesale Rice Merchants Suite • v2.8.0',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+              const SizedBox(height: 32),
+              const SizedBox(
+                width: 140,
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  backgroundColor: Color(0xFF141C24),
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Column(
         children: [
@@ -499,14 +560,20 @@ class _MainDashboardState extends State<MainDashboard> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(10),
                         onTap: _openCompanyProfileDialog,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF10B981)]),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Text('DC', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
-                        ),
+                        child: CompanyConfig.logoUrl.isNotEmpty
+                            ? CircleAvatar(
+                                radius: 20,
+                                backgroundColor: const Color(0xFF1A242E),
+                                backgroundImage: NetworkImage(CompanyConfig.logoUrl),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF10B981)]),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text('DC', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
+                              ),
                       ),
                     ),
                   ),
@@ -550,43 +617,41 @@ class _MainDashboardState extends State<MainDashboard> {
                 ),
                 const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF1E2833)),
                 Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
-                      : IndexedStack(
-                          index: _navIndex,
-                          children: [
-                            TallyBillingScreen(
-                              items: _items,
-                              customers: _customers,
-                              nextBillNo: _estimates.length + 1,
-                              onSaved: () => _fetchData(silent: true),
-                              onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
-                            ),
-                            PriceListDesktopView(
-                              items: _items,
-                              onRefreshRequired: () => _fetchData(silent: true),
-                            ),
-                            CustomerDesktopView(
-                              customers: _customers,
-                              onRefreshRequired: () => _fetchData(silent: true),
-                            ),
-                            LoadingSlipView(
-                              loadingSlip: _loadingSlip,
-                              items: _items,
-                              customers: _customers,
-                            ),
-                            InvoiceHistoryView(
-                              estimates: _estimates,
-                              items: _items,
-                              customers: _customers,
-                              onRefreshRequired: () => _fetchData(silent: true),
-                            ),
-                            SettingsDesktopView(
-                              onReloadSheet: () => _fetchData(silent: true),
-                              onOpenProfile: _openCompanyProfileDialog,
-                            ),
-                          ],
-                        ),
+                  child: IndexedStack(
+                    index: _navIndex,
+                    children: [
+                      TallyBillingScreen(
+                        items: _items,
+                        customers: _customers,
+                        nextBillNo: _estimates.length + 1,
+                        onSaved: () => _fetchData(silent: true),
+                        onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+                      ),
+                      PriceListDesktopView(
+                        items: _items,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      CustomerDesktopView(
+                        customers: _customers,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      LoadingSlipView(
+                        loadingSlip: _loadingSlip,
+                        items: _items,
+                        customers: _customers,
+                      ),
+                      InvoiceHistoryView(
+                        estimates: _estimates,
+                        items: _items,
+                        customers: _customers,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      SettingsDesktopView(
+                        onReloadSheet: () => _fetchData(silent: true),
+                        onOpenProfile: _openCompanyProfileDialog,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -597,7 +662,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN (KEYBOARD UNIT FLOW) ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -641,8 +706,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   int _itemSelectedIndex = 0;
   List<DCItem> _filteredItems = [];
   final ScrollController _itemScrollCtrl = ScrollController();
-
-  final List<String> _unitOptions = ['KG', 'NOS', 'PKTS', 'BAGS', 'LTR'];
 
   @override
   void initState() {
@@ -969,13 +1032,29 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       _rows[rowIdx].rate = double.tryParse(itm.rate) ?? 0.0;
       if (itm.billedIn.toUpperCase().contains('KILO')) {
         _rows[rowIdx].unit = 'KG';
-      } else if (itm.billedIn.toUpperCase().contains('BAG')) {
-        _rows[rowIdx].unit = 'BAGS';
+      } else {
+        _rows[rowIdx].unit = 'NOS';
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _rows[rowIdx].rateFocus.requestFocus();
     });
+  }
+
+  // Keyboard Navigation for Unit (KG / NOS only)
+  KeyEventResult _handleUnitKeyEvent(int rowIdx, FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown || event.logicalKey == LogicalKeyboardKey.arrowUp) {
+        setState(() {
+          _rows[rowIdx].unit = _rows[rowIdx].unit == 'KG' ? 'NOS' : 'KG';
+        });
+        return KeyEventResult.handled;
+      } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+        _rows[rowIdx].bagsFocus.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
   }
 
   void _openInstantAddCustomerDialog(String presetName) {
@@ -1443,7 +1522,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                               SizedBox(width: 12),
                               SizedBox(width: 100, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                               SizedBox(width: 12),
-                              SizedBox(width: 90, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                              SizedBox(width: 90, child: Text('Unit (KG/NOS)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                               SizedBox(width: 12),
                               SizedBox(width: 80, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                               SizedBox(width: 12),
@@ -1543,24 +1622,55 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                           row.qty = double.tryParse(val) ?? 1.0;
                                         });
                                       },
-                                      onFieldSubmitted: (_) => row.bagsFocus.requestFocus(),
+                                      onFieldSubmitted: (_) => row.unitFocus.requestFocus(),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  // Unit Dropdown
+                                  // Unit Field (KG / NOS Keyboard Driven)
                                   SizedBox(
                                     width: 90,
-                                    child: DropdownButtonFormField<String>(
-                                      value: row.unit,
-                                      decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
-                                      items: _unitOptions
-                                          .map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontSize: 13))))
-                                          .toList(),
-                                      onChanged: (v) {
-                                        setState(() {
-                                          row.unit = v ?? 'KG';
-                                        });
-                                      },
+                                    child: Focus(
+                                      focusNode: row.unitFocus,
+                                      onKeyEvent: (node, event) => _handleUnitKeyEvent(idx, node, event),
+                                      child: Builder(
+                                        builder: (fCtx) {
+                                          final hasFocus = Focus.of(fCtx).hasFocus;
+                                          return InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                row.unit = row.unit == 'KG' ? 'NOS' : 'KG';
+                                              });
+                                              row.unitFocus.requestFocus();
+                                            },
+                                            child: Container(
+                                              height: 48,
+                                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF1A242E),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(
+                                                  color: hasFocus ? const Color(0xFF10B981) : const Color(0xFF283847),
+                                                  width: hasFocus ? 1.5 : 1.0,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    row.unit,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 13,
+                                                      color: hasFocus ? const Color(0xFF34D399) : Colors.white,
+                                                    ),
+                                                  ),
+                                                  const Icon(Icons.swap_vert, size: 16, color: Color(0xFF94A3B8)),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -2080,7 +2190,7 @@ class InvoiceHistoryView extends StatelessWidget {
               name: part.trim(),
               rateType: 'KG',
               rate: '0',
-              qty: '1',
+              qty: 1,
               tallyName: '',
               billedIn: '',
               isTaxable: false,
@@ -2231,7 +2341,7 @@ class InvoiceHistoryView extends StatelessWidget {
   }
 }
 
-// ---------------- 4. PRICE LIST VIEW ----------------
+// ---------------- 4. PRICE LIST VIEW (WORKING EDIT & DELETE) ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -2558,7 +2668,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-// ---------------- 5. CUSTOMERS VIEW ----------------
+// ---------------- 5. CUSTOMERS VIEW (WORKING EDIT & DELETE) ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -3205,7 +3315,7 @@ class SettingsDesktopView extends StatelessWidget {
                       const SizedBox(height: 10),
                       _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
                       _supportRow('Application Suite', 'DC Prime Desktop (TallyPrime Workflow Edition)'),
-                      _supportRow('Release Version', 'v2.7.0 (Desktop 64-bit Build)'),
+                      _supportRow('Release Version', 'v2.8.0 (Desktop 64-bit Build)'),
                       _supportRow('Target Framework', 'Flutter 3.x (Windows Runner)'),
                     ],
                   ),
