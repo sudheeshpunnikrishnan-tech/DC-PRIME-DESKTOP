@@ -1,15 +1,20 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const DCPrimeApp());
 }
 
+// Google Apps Script Web App URL
+const String sheetApiUrl = "https://script.google.com/macros/s/AKfycbzFDW5eeT4abGSRNLHlKs43JJ81YiKt0UrNEbbK2_cQIylsU_zGylqE8IMBqtpmXsjOEg/exec";
+
 class DCItem {
-  final int no;
+  final dynamic no;
   final String name;
   final String rateType;
-  final double rate;
-  final int qty;
+  final String rate;
+  final dynamic qty;
   final String tallyName;
   final String billedIn;
   final bool isTaxable;
@@ -24,20 +29,45 @@ class DCItem {
     required this.billedIn,
     required this.isTaxable,
   });
+
+  factory DCItem.fromJson(Map<String, dynamic> json) {
+    return DCItem(
+      no: json['no'] ?? '',
+      name: json['name'] ?? '',
+      rateType: json['rateType'] ?? '',
+      rate: json['rate']?.toString() ?? '0',
+      qty: json['qty'] ?? '',
+      tallyName: json['tallyName'] ?? '',
+      billedIn: json['billedIn'] ?? '',
+      isTaxable: json['isTaxable'] ?? false,
+    );
+  }
 }
 
 class DCCustomer {
-  final int slNo;
+  final dynamic slNo;
   final String name;
-  final String b2bName;
+  final String b2c;
+  final String b2b;
   final String remarks;
 
   const DCCustomer({
     required this.slNo,
     required this.name,
-    required this.b2bName,
+    required this.b2c,
+    required this.b2b,
     required this.remarks,
   });
+
+  factory DCCustomer.fromJson(Map<String, dynamic> json) {
+    return DCCustomer(
+      slNo: json['slNo'] ?? '',
+      name: json['name'] ?? '',
+      b2c: json['b2c'] ?? '',
+      b2b: json['b2b'] ?? '',
+      remarks: json['remarks'] ?? '',
+    );
+  }
 }
 
 class DCPrimeApp extends StatelessWidget {
@@ -72,41 +102,35 @@ class MainDashboard extends StatefulWidget {
 
 class _MainDashboardState extends State<MainDashboard> {
   int _navIndex = 0;
+  List<DCItem> _items = [];
+  List<DCCustomer> _customers = [];
+  bool _isLoading = true;
 
-  final List<DCItem> _items = const [
-    DCItem(no: 1, name: 'SADHYA VADI 50', rateType: 'RATE PER KG', rate: 61.0, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 2, name: 'PRIYAM VADI 50', rateType: 'RATE PER KG', rate: 59.5, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 3, name: 'MATTANAD VADI 50', rateType: 'RATE PER KG', rate: 59.5, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 4, name: 'MAYIL VADI 50', rateType: 'RATE PER KG', rate: 58.0, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 5, name: 'PAVIZHAM VADI 50', rateType: 'RATE PER KG', rate: 59.0, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 6, name: 'MOTHER VADI 50', rateType: 'RATE PER KG', rate: 57.5, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 7, name: 'NIRMAL VADI 50', rateType: 'RATE PER KG', rate: 57.0, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 8, name: 'PETER VADI 50', rateType: 'RATE PER KG', rate: 57.0, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 9, name: '2 STAR VADI 50', rateType: 'RATE PER KG', rate: 56.0, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 10, name: 'PAVAN VADI 50', rateType: 'RATE PER KG', rate: 54.5, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 11, name: 'RABBIT VADI 50', rateType: 'RATE PER KG', rate: 54.5, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 12, name: 'MALABAR VADI 50', rateType: 'RATE PER KG', rate: 54.5, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 13, name: 'GAYATHRI VADI 50', rateType: 'RATE PER KG', rate: 54.0, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 14, name: 'KAVITHA VADI 50', rateType: 'RATE PER KG', rate: 49.0, qty: 50, tallyName: 'RICE - VADI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 15, name: 'PAVIZHAM UNDA 50', rateType: 'RATE PER KG', rate: 47.0, qty: 50, tallyName: 'RICE - UNDA', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 16, name: 'SADHYA UNDA 50', rateType: 'RATE PER KG', rate: 46.0, qty: 50, tallyName: 'RICE - UNDA', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 22, name: 'NEY KICHADI 30', rateType: 'RATE PER KG', rate: 72.5, qty: 30, tallyName: 'RICE - PONNI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 26, name: '999 PONNI 30', rateType: 'RATE PER BAG', rate: 1740.0, qty: 30, tallyName: 'RICE - PONNI', billedIn: 'KILOGRAM', isTaxable: false),
-    DCItem(no: 44, name: 'SADHYA VADI 10', rateType: 'RATE PER BAG', rate: 656.0, qty: 10, tallyName: 'RICE 10 KG', billedIn: 'KILOGRAM', isTaxable: true),
-    DCItem(no: 46, name: 'PRIYAM VADI 5', rateType: 'RATE PER BAG', rate: 308.0, qty: 5, tallyName: 'RICE 05 KG', billedIn: 'KILOGRAM', isTaxable: true),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
 
-  final List<DCCustomer> _customers = const [
-    DCCustomer(slNo: 1, name: 'ALANCE', b2bName: 'ALAN TRADERS', remarks: 'NON TAXABLE IN B2B, TAXABLE IN B2C (VAZHI BILL)'),
-    DCCustomer(slNo: 2, name: 'HOMELY FOODS', b2bName: 'YUSAF EDAPPALLY', remarks: ''),
-    DCCustomer(slNo: 3, name: 'DILEEP KUNDOOR', b2bName: 'J MART', remarks: ''),
-    DCCustomer(slNo: 4, name: 'SHAHIDAMOL', b2bName: 'PLAPILLI TRADERS', remarks: ''),
-    DCCustomer(slNo: 5, name: 'AISWARYA PATTIMATTOM', b2bName: 'AISWARYA TRADERS', remarks: ''),
-    DCCustomer(slNo: 8, name: 'ARUN STORES', b2bName: 'ARUN STORES', remarks: 'CORRECT AMOUNT + COOLI'),
-    DCCustomer(slNo: 9, name: 'MK STORE', b2bName: 'MK TRADING COMPANY', remarks: 'KAREEM , MANAF'),
-    DCCustomer(slNo: 14, name: 'THANNIKODAN', b2bName: 'STAR AGENCIES', remarks: ''),
-    DCCustomer(slNo: 22, name: 'MKB', b2bName: 'S AND S TRADES', remarks: 'MEETHEEKUNJU, RAJU CHUNANGAMVELY'),
-  ];
+  Future<void> _fetchData() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await http.get(Uri.parse(sheetApiUrl));
+      if (res.statusCode == 200 || res.statusCode == 302) {
+        final data = jsonDecode(res.body);
+        final List itemList = data['items'] ?? [];
+        final List custList = data['customers'] ?? [];
+
+        setState(() {
+          _items = itemList.map((i) => DCItem.fromJson(i)).toList();
+          _customers = custList.map((c) => DCCustomer.fromJson(c)).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +153,11 @@ class _MainDashboardState extends State<MainDashboard> {
                 child: const Text('DC', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
+            trailing: IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.grey),
+              tooltip: 'Reload from Google Sheet',
+              onPressed: _fetchData,
+            ),
             destinations: const [
               NavigationRailDestination(
                 icon: Icon(Icons.inventory_2_outlined),
@@ -144,9 +173,11 @@ class _MainDashboardState extends State<MainDashboard> {
           ),
           const VerticalDivider(thickness: 1, width: 1, color: Colors.white10),
           Expanded(
-            child: _navIndex == 0
-                ? PriceListDesktopView(items: _items)
-                : CustomerDesktopView(customers: _customers),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _navIndex == 0
+                    ? PriceListDesktopView(items: _items)
+                    : CustomerDesktopView(customers: _customers),
           ),
         ],
       ),
@@ -182,7 +213,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
               _buildModalRow('Packing Qty:', '${item.qty} KG/Bag'),
               _buildModalRow('Tally Ledger:', item.tallyName),
               _buildModalRow('Billed Unit:', item.billedIn),
-              _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE (5%)' : 'NON-TAXABLE'),
+              _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE'),
             ],
           ),
         ),
@@ -233,11 +264,11 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
         children: [
           Row(
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('DAVIS & COMPANY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('PRICE LIST DIRECTORY (ALUVA)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('DAVIS & COMPANY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('PRICE LIST (${widget.items.length} ITEMS)', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
               const Spacer(),
@@ -296,7 +327,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.lightGreenAccent)),
-                            Text(item.isTaxable ? 'Taxable (5%)' : 'Non Taxable', style: TextStyle(fontSize: 11, color: item.isTaxable ? Colors.orangeAccent : Colors.grey)),
+                            Text(item.isTaxable ? 'Taxable' : 'Non Taxable', style: TextStyle(fontSize: 11, color: item.isTaxable ? Colors.orangeAccent : Colors.grey)),
                           ],
                         ),
                       ],
@@ -312,27 +343,64 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-class CustomerDesktopView extends StatelessWidget {
+class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
   const CustomerDesktopView({super.key, required this.customers});
 
   @override
+  State<CustomerDesktopView> createState() => _CustomerDesktopViewState();
+}
+
+class _CustomerDesktopViewState extends State<CustomerDesktopView> {
+  String _query = '';
+
+  @override
   Widget build(BuildContext context) {
+    final filtered = widget.customers.where((c) {
+      return c.name.toLowerCase().contains(_query.toLowerCase()) ||
+          c.b2b.toLowerCase().contains(_query.toLowerCase()) ||
+          c.b2c.toLowerCase().contains(_query.toLowerCase());
+    }).toList();
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('CUSTOMERS DIRECTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const Text('B2B, B2C and Special billing rules', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('CUSTOMERS DIRECTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('TOTAL ${widget.customers.length} PARTIES', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              const Spacer(),
+              SizedBox(
+                width: 320,
+                child: TextField(
+                  onChanged: (v) => setState(() => _query = v),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    hintText: 'Search customer name, B2B...',
+                    filled: true,
+                    fillColor: const Color(0xFF181E26),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 20),
           Expanded(
             child: ListView.separated(
               physics: const BouncingScrollPhysics(),
-              itemCount: customers.length,
+              itemCount: filtered.length,
               separatorBuilder: (ctx, i) => const SizedBox(height: 10),
               itemBuilder: (ctx, i) {
-                final c = customers[i];
+                final c = filtered[i];
                 return Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -352,7 +420,8 @@ class CustomerDesktopView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                            if (c.b2bName.isNotEmpty) Text('B2B: ${c.b2bName}', style: const TextStyle(fontSize: 13, color: Colors.blueAccent)),
+                            if (c.b2b.isNotEmpty) Text('B2B: ${c.b2b}', style: const TextStyle(fontSize: 13, color: Colors.blueAccent)),
+                            if (c.b2c.isNotEmpty) Text('B2C: ${c.b2c}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                             if (c.remarks.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
