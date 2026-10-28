@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 void main() {
   runApp(const DCPrimeApp());
@@ -131,18 +134,14 @@ class DCEstimate {
   }
 }
 
-class LoadingEntry {
-  final String customerName;
-  final String place;
-  final String summary;
-  final int bags;
+class InvoiceRowItem {
+  DCItem? item;
+  double qty;
+  double rate;
 
-  LoadingEntry({
-    required this.customerName,
-    required this.place,
-    required this.summary,
-    required this.bags,
-  });
+  InvoiceRowItem({this.item, this.qty = 1.0, this.rate = 0.0});
+
+  double get amount => qty * rate;
 }
 
 // ---------------- APP ROOT ----------------
@@ -154,15 +153,23 @@ class DCPrimeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Davis & Company - DC Prime',
+      title: 'Davis & Company - Tally Billing',
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0D1117),
+        scaffoldBackgroundColor: const Color(0xFF111418),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF238636),
-          surface: Color(0xFF161B22),
-          onSurface: Colors.white,
+          primary: Color(0xFF3B82F6),
+          surface: Color(0xFF1A1F26),
+          onSurface: Color(0xFFE2E8F0),
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          filled: true,
+          fillColor: Color(0xFF1E242C),
+          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF333D4B))),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2C3540))),
+          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF64748B))),
+          labelStyle: TextStyle(color: Color(0xFF94A3B8)),
         ),
       ),
       home: const MainDashboard(),
@@ -182,7 +189,6 @@ class _MainDashboardState extends State<MainDashboard> {
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
-  final List<LoadingEntry> _loadingSlip = [];
   bool _isLoading = true;
 
   @override
@@ -223,8 +229,8 @@ class _MainDashboardState extends State<MainDashboard> {
       body: Row(
         children: [
           NavigationRail(
-            backgroundColor: const Color(0xFF161B22),
-            selectedIndex: _navIndex > 3 ? 0 : _navIndex,
+            backgroundColor: const Color(0xFF14181F),
+            selectedIndex: _navIndex > 2 ? 0 : _navIndex,
             onDestinationSelected: (val) => setState(() => _navIndex = val),
             labelType: NavigationRailLabelType.all,
             leading: Padding(
@@ -232,77 +238,63 @@ class _MainDashboardState extends State<MainDashboard> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade700,
-                  borderRadius: BorderRadius.circular(10),
+                  color: const Color(0xFF2563EB),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text('DC',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
             trailing: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.grey),
+              icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
               tooltip: 'Reload from Google Sheet',
               onPressed: _fetchData,
             ),
             destinations: const [
               NavigationRailDestination(
+                icon: Icon(Icons.receipt_outlined),
+                selectedIcon: Icon(Icons.receipt),
+                label: Text('Tally Invoice'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.history_outlined),
+                selectedIcon: Icon(Icons.history),
+                label: Text('History'),
+              ),
+              NavigationRailDestination(
                 icon: Icon(Icons.home_outlined),
                 selectedIcon: Icon(Icons.home),
-                label: Text('Home'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long),
-                label: Text('Invoices'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.local_shipping_outlined),
-                selectedIcon: Icon(Icons.local_shipping),
-                label: Text('Packing Slip'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.calculate_outlined),
-                selectedIcon: Icon(Icons.calculate),
-                label: Text('Calculator'),
+                label: Text('Directory'),
               ),
             ],
           ),
-          const VerticalDivider(thickness: 1, width: 1, color: Colors.white10),
+          const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF242C37)),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : IndexedStack(
                     index: _navIndex,
                     children: [
-                      HomeDashboardView(
+                      TallyBillingScreen(
+                        items: _items,
+                        customers: _customers,
+                        onSaved: _fetchData,
+                      ),
+                      InvoiceHistoryView(estimates: _estimates),
+                      HomeDirectoryView(
                         itemCount: _items.length,
                         customerCount: _customers.length,
-                        invoiceCount: _estimates.length,
-                        onOpenPriceList: () => _navigateTo(4),
-                        onOpenCustomers: () => _navigateTo(5),
-                        onOpenPackingSlip: () => _navigateTo(2),
-                        onOpenInvoices: () => _navigateTo(1),
+                        onOpenPriceList: () => _navigateTo(3),
+                        onOpenCustomers: () => _navigateTo(4),
                       ),
-                      InvoiceHistoryView(
-                        estimates: _estimates,
-                        customers: _customers,
-                        items: _items,
-                        onRefreshRequired: _fetchData,
-                      ),
-                      LoadingSlipView(
-                        loadingSlip: _loadingSlip,
-                        items: _items,
-                        customers: _customers,
-                      ),
-                      PackSizeCalculatorView(items: _items),
                       PriceListDesktopView(
                         items: _items,
-                        onBack: () => _navigateTo(0),
+                        onBack: () => _navigateTo(2),
                         onRefreshRequired: _fetchData,
                       ),
                       CustomerDesktopView(
                         customers: _customers,
-                        onBack: () => _navigateTo(0),
+                        onBack: () => _navigateTo(2),
                         onRefreshRequired: _fetchData,
                       ),
                     ],
@@ -314,74 +306,501 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. HOME VIEW ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
 
-class HomeDashboardView extends StatelessWidget {
-  final int itemCount;
-  final int customerCount;
-  final int invoiceCount;
-  final VoidCallback onOpenPriceList;
-  final VoidCallback onOpenCustomers;
-  final VoidCallback onOpenPackingSlip;
-  final VoidCallback onOpenInvoices;
+class TallyBillingScreen extends StatefulWidget {
+  final List<DCItem> items;
+  final List<DCCustomer> customers;
+  final VoidCallback onSaved;
 
-  const HomeDashboardView({
+  const TallyBillingScreen({
     super.key,
-    required this.itemCount,
-    required this.customerCount,
-    required this.invoiceCount,
-    required this.onOpenPriceList,
-    required this.onOpenCustomers,
-    required this.onOpenPackingSlip,
-    required this.onOpenInvoices,
+    required this.items,
+    required this.customers,
+    required this.onSaved,
   });
+
+  @override
+  State<TallyBillingScreen> createState() => _TallyBillingScreenState();
+}
+
+class _TallyBillingScreenState extends State<TallyBillingScreen> {
+  final _billNoCtrl = TextEditingController(text: '51942');
+  final _refCtrl = TextEditingController(text: '75');
+  final _coolieCtrl = TextEditingController(text: '0.00');
+  String _invoiceType = 'Regular B2C';
+  DCCustomer? _selectedParty;
+
+  final List<InvoiceRowItem> _rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _addRow();
+  }
+
+  void _addRow() {
+    setState(() {
+      _rows.add(InvoiceRowItem(item: null, qty: 1.0, rate: 0.0));
+    });
+  }
+
+  void _removeRow(int idx) {
+    if (_rows.length > 1) {
+      setState(() {
+        _rows.removeAt(idx);
+      });
+    }
+  }
+
+  double get _subTotal => _rows.fold(0.0, (sum, r) => sum + r.amount);
+
+  double get _taxableAmount {
+    double sum = 0.0;
+    for (var r in _rows) {
+      if (r.item != null && r.item!.isTaxable) {
+        sum += r.amount;
+      }
+    }
+    return sum;
+  }
+
+  double get _sgst => _taxableAmount * 0.025;
+  double get _cgst => _taxableAmount * 0.025;
+  double get _coolie => double.tryParse(_coolieCtrl.text.trim()) ?? 0.0;
+
+  double get _exactTotal => _subTotal + _sgst + _cgst + _coolie;
+  double get _grandTotal => _exactTotal.roundToDouble();
+  double get _roundOff => _grandTotal - _exactTotal;
+
+  Future<void> _saveInvoice() async {
+    if (_selectedParty == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a Party / Customer')),
+      );
+      return;
+    }
+
+    final now = DateTime.now();
+    final dateStr = "${now.day}/${now.month}/${now.year}";
+    final summary = _rows
+        .where((r) => r.item != null)
+        .map((r) => "${r.item!.name} (${r.qty}x${r.rate})")
+        .join(", ");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Saving invoice to Google Sheets...')),
+    );
+
+    await http.post(
+      Uri.parse(sheetApiUrl),
+      body: jsonEncode({
+        "action": "ADD_ESTIMATE",
+        "date": dateStr,
+        "customer": _selectedParty!.name,
+        "itemSummary": summary,
+        "coolie": _coolie.toStringAsFixed(2),
+        "sgst": _sgst.toStringAsFixed(2),
+        "cgst": _cgst.toStringAsFixed(2),
+        "roundOff": _roundOff.toStringAsFixed(2),
+        "grandTotal": _grandTotal.toStringAsFixed(2),
+      }),
+    );
+
+    widget.onSaved();
+    _showPrintDialog(dateStr);
+  }
+
+  void _showPrintDialog(String dateStr) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E242C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Invoice Saved Successfully'),
+        content: const Text('Would you like to print or save the PDF Invoice now?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+            ),
+            icon: const Icon(Icons.print, size: 18),
+            label: const Text('Print / Export PDF'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _generateAndPrintPdf(dateStr);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateAndPrintPdf(String dateStr) async {
+    final doc = pw.Document();
+
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Container(
+            padding: const pw.EdgeInsets.all(24),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Center(
+                  child: pw.Text("DAVIS & COMPANY",
+                      style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+                ),
+                pw.Center(
+                  child: pw.Text("WHOLESALE RICE MERCHANTS - ALUVA",
+                      style: const pw.TextStyle(fontSize: 11)),
+                ),
+                pw.SizedBox(height: 16),
+                pw.Divider(),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text("Bill No: ${_billNoCtrl.text}"),
+                    pw.Text("Date: $dateStr"),
+                  ],
+                ),
+                pw.Text("Party Name: ${_selectedParty?.name ?? ''}"),
+                if (_selectedParty?.b2b.isNotEmpty ?? false)
+                  pw.Text("B2B Firm: ${_selectedParty?.b2b ?? ''}"),
+                pw.SizedBox(height: 12),
+                pw.TableHelper.fromTextArray(
+                  headers: ['No', 'Item Name', 'Rate', 'Qty', 'Amount'],
+                  data: _rows.where((r) => r.item != null).map((r) {
+                    final idx = _rows.indexOf(r) + 1;
+                    return [
+                      '$idx',
+                      r.item!.name,
+                      r.rate.toStringAsFixed(2),
+                      r.qty.toStringAsFixed(0),
+                      r.amount.toStringAsFixed(2),
+                    ];
+                  }).toList(),
+                  headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  cellAlignment: pw.Alignment.centerLeft,
+                ),
+                pw.Divider(),
+                pw.Align(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Text("Sub Total: Rs ${_subTotal.toStringAsFixed(2)}"),
+                      pw.Text("Coolie: Rs ${_coolie.toStringAsFixed(2)}"),
+                      if (_sgst > 0) pw.Text("SGST (2.5%): Rs ${_sgst.toStringAsFixed(2)}"),
+                      if (_cgst > 0) pw.Text("CGST (2.5%): Rs ${_cgst.toStringAsFixed(2)}"),
+                      pw.Text("Round Off: Rs ${_roundOff.toStringAsFixed(2)}"),
+                      pw.SizedBox(height: 6),
+                      pw.Text(
+                        "Grand Total: Rs ${_grandTotal.toStringAsFixed(2)}",
+                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => doc.save(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(32.0),
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('DAVIS & COMPANY, ALUVA',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-          const Text('Operations, Billing & Wholesale Manager',
-              style: TextStyle(fontSize: 14, color: Colors.grey)),
-          const SizedBox(height: 30),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 20,
-              mainAxisSpacing: 20,
-              childAspectRatio: 1.6,
+          // Header Bar
+          Row(
+            children: [
+              const Text('Customer Bill',
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFE2E8F0))),
+              const Spacer(),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.save, color: Colors.white, size: 18),
+                label: const Text('Save & Print',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: _saveInvoice,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Tally Meta Fields Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF242C37)),
+            ),
+            child: Row(
               children: [
-                _buildActionCard(
-                  title: 'Price List',
-                  subtitle: '$itemCount Items Catalogued',
-                  icon: Icons.inventory_2,
-                  color: Colors.blueAccent,
-                  onTap: onOpenPriceList,
+                SizedBox(
+                  width: 140,
+                  child: TextField(
+                    controller: _billNoCtrl,
+                    decoration: const InputDecoration(labelText: 'Bill No'),
+                  ),
                 ),
-                _buildActionCard(
-                  title: 'Customers Directory',
-                  subtitle: '$customerCount Registered Parties',
-                  icon: Icons.people,
-                  color: Colors.tealAccent,
-                  onTap: onOpenCustomers,
+                const SizedBox(width: 14),
+                Expanded(
+                  flex: 3,
+                  child: DropdownButtonFormField<DCCustomer>(
+                    value: _selectedParty,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Party Name'),
+                    items: widget.customers
+                        .map((c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(
+                                c.name + (c.b2b.isNotEmpty ? ' (${c.b2b})' : ''),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedParty = v),
+                  ),
                 ),
-                _buildActionCard(
-                  title: 'Invoice History',
-                  subtitle: '$invoiceCount Recorded Estimates',
-                  icon: Icons.receipt_long,
-                  color: Colors.amberAccent,
-                  onTap: onOpenInvoices,
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 120,
+                  child: TextField(
+                    controller: _refCtrl,
+                    decoration: const InputDecoration(labelText: 'Ref'),
+                  ),
                 ),
-                _buildActionCard(
-                  title: 'Vehicle Packing Slip',
-                  subtitle: 'Dispatch & Bag Allocation',
-                  icon: Icons.local_shipping,
-                  color: Colors.purpleAccent,
-                  onTap: onOpenPackingSlip,
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: 160,
+                  child: DropdownButtonFormField<String>(
+                    value: _invoiceType,
+                    decoration: const InputDecoration(labelText: 'Supply Type'),
+                    items: const [
+                      DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
+                      DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
+                    ],
+                    onChanged: (v) => setState(() => _invoiceType = v!),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Tally Grid Table
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF161B22),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF242C37)),
+              ),
+              child: Column(
+                children: [
+                  // Table Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1E242C),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+                    ),
+                    child: const Row(
+                      children: [
+                        SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 16),
+                        Expanded(flex: 4, child: Text('Name of Item', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 16),
+                        Expanded(flex: 2, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 16),
+                        Expanded(flex: 2, child: Text('Qty (Bags)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 16),
+                        Expanded(flex: 2, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                        SizedBox(width: 40),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFF242C37)),
+
+                  // Rows List
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _rows.length,
+                      separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF242C37)),
+                      itemBuilder: (ctx, idx) {
+                        final row = _rows[idx];
+                        return Row(
+                          children: [
+                            SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 4,
+                              child: DropdownButtonFormField<DCItem>(
+                                value: row.item,
+                                isExpanded: true,
+                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                hint: const Text('Select item...'),
+                                items: widget.items
+                                    .map((item) => DropdownMenuItem(
+                                          value: item,
+                                          child: Text(item.name, overflow: TextOverflow.ellipsis),
+                                        ))
+                                    .toList(),
+                                onChanged: (v) {
+                                  setState(() {
+                                    row.item = v;
+                                    row.rate = double.tryParse(v?.rate ?? '0') ?? 0.0;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                key: ValueKey('rate_${row.item?.name}_$idx'),
+                                initialValue: row.rate.toStringAsFixed(2),
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                onChanged: (val) {
+                                  setState(() {
+                                    row.rate = double.tryParse(val) ?? 0.0;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                initialValue: row.qty.toStringAsFixed(0),
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                onChanged: (val) {
+                                  setState(() {
+                                    row.qty = double.tryParse(val) ?? 1.0;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                '₹${row.amount.toStringAsFixed(2)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 40,
+                              child: IconButton(
+                                icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
+                                onPressed: () => _removeRow(idx),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('+ Add Item Row'),
+                        onPressed: _addRow,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Tally Summary & Auto-Calculation Footer
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161B22),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF242C37)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 140,
+                        child: TextField(
+                          controller: _coolieCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Coolie (₹)'),
+                          onChanged: (v) => setState(() {}),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Text(
+                        'Taxable Subtotal: ₹${_taxableAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _summaryLine('Sub Total:', '₹${_subTotal.toStringAsFixed(2)}'),
+                      if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
+                      if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
+                      if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
+                      _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
+                      const Divider(height: 12, color: Color(0xFF242C37)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          const Text('Grand Total: ',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                          Text('₹${_grandTotal.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF38BDF8))),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -391,39 +810,101 @@ class HomeDashboardView extends StatelessWidget {
     );
   }
 
-  Widget _buildActionCard({
+  Widget _summaryLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+          const SizedBox(width: 14),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------- 2. DIRECTORY & ACTION CARDS ----------------
+
+class HomeDirectoryView extends StatelessWidget {
+  final int itemCount;
+  final int customerCount;
+  final VoidCallback onOpenPriceList;
+  final VoidCallback onOpenCustomers;
+
+  const HomeDirectoryView({
+    super.key,
+    required this.itemCount,
+    required this.customerCount,
+    required this.onOpenPriceList,
+    required this.onOpenCustomers,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('MASTER DIRECTORY',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFE2E8F0))),
+          const Text('Davis & Company - Rates and Party Management',
+              style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
+          const SizedBox(height: 28),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 20,
+              mainAxisSpacing: 20,
+              childAspectRatio: 1.8,
+              children: [
+                _buildCard(
+                  title: 'Price List',
+                  subtitle: '$itemCount Items Catalogued',
+                  icon: Icons.inventory_2_outlined,
+                  onTap: onOpenPriceList,
+                ),
+                _buildCard(
+                  title: 'Customers Directory',
+                  subtitle: '$customerCount Parties & Billing Rules',
+                  icon: Icons.people_outline,
+                  onTap: onOpenCustomers,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard({
     required String title,
     required String subtitle,
     required IconData icon,
-    required Color color,
     required VoidCallback onTap,
   }) {
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: const Color(0xFF161B22),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF242C37)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 26,
-              backgroundColor: color.withOpacity(0.15),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(height: 16),
-            Text(title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Icon(icon, color: const Color(0xFF38BDF8), size: 30),
+            const SizedBox(height: 14),
+            Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(subtitle,
-                style: const TextStyle(fontSize: 14, color: Colors.grey)),
+            Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
           ],
         ),
       ),
@@ -431,263 +912,61 @@ class HomeDashboardView extends StatelessWidget {
   }
 }
 
-// ---------------- 2. INVOICE HISTORY VIEW ----------------
+// ---------------- 3. INVOICE HISTORY VIEW ----------------
 
-class InvoiceHistoryView extends StatefulWidget {
+class InvoiceHistoryView extends StatelessWidget {
   final List<DCEstimate> estimates;
-  final List<DCCustomer> customers;
-  final List<DCItem> items;
-  final VoidCallback onRefreshRequired;
-
-  const InvoiceHistoryView({
-    super.key,
-    required this.estimates,
-    required this.customers,
-    required this.items,
-    required this.onRefreshRequired,
-  });
-
-  @override
-  State<InvoiceHistoryView> createState() => _InvoiceHistoryViewState();
-}
-
-class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
-  String _query = '';
-
-  void _openAddInvoiceDialog() {
-    String? selectedCust =
-        widget.customers.isNotEmpty ? widget.customers.first.name : null;
-    final summaryCtrl = TextEditingController();
-    final coolieCtrl = TextEditingController(text: '0');
-    final sgstCtrl = TextEditingController(text: '0');
-    final cgstCtrl = TextEditingController(text: '0');
-    final totalCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1C2128),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Record New Invoice / Estimate'),
-          content: SizedBox(
-            width: 500,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedCust,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Customer'),
-                    items: widget.customers
-                        .map((c) =>
-                            DropdownMenuItem(value: c.name, child: Text(c.name)))
-                        .toList(),
-                    onChanged: (v) => setDialogState(() => selectedCust = v),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: summaryCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'Item Summary (Items, Rates, Bags)'),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: TextField(
-                              controller: coolieCtrl,
-                              decoration:
-                                  const InputDecoration(labelText: 'Coolie (₹)'))),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: TextField(
-                              controller: sgstCtrl,
-                              decoration:
-                                  const InputDecoration(labelText: 'SGST (₹)'))),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: TextField(
-                              controller: cgstCtrl,
-                              decoration:
-                                  const InputDecoration(labelText: 'CGST (₹)'))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: totalCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Grand Total (₹)'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF238636)),
-              onPressed: () async {
-                if (selectedCust != null && totalCtrl.text.trim().isNotEmpty) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Saving Estimate to Sheet...')),
-                  );
-                  final now = DateTime.now();
-                  final dateStr = "${now.day}/${now.month}/${now.year}";
-
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": "ADD_ESTIMATE",
-                      "date": dateStr,
-                      "customer": selectedCust,
-                      "itemSummary": summaryCtrl.text.trim(),
-                      "coolie": coolieCtrl.text.trim(),
-                      "sgst": sgstCtrl.text.trim(),
-                      "cgst": cgstCtrl.text.trim(),
-                      "roundOff": "0",
-                      "grandTotal": totalCtrl.text.trim(),
-                    }),
-                  );
-                  widget.onRefreshRequired();
-                }
-              },
-              child: const Text('Save Estimate',
-                  style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  const InvoiceHistoryView({super.key, required this.estimates});
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.estimates
-        .where((e) =>
-            e.customer.toLowerCase().contains(_query.toLowerCase()) ||
-            e.itemSummary.toLowerCase().contains(_query.toLowerCase()))
-        .toList();
-
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('INVOICE & ESTIMATES HISTORY',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('${widget.estimates.length} BILLS LOGGED',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
-              const Spacer(),
-              SizedBox(
-                width: 300,
-                child: TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    hintText: 'Search customer, items...',
-                    filled: true,
-                    fillColor: const Color(0xFF161B22),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF238636),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Record Invoice',
-                    style: TextStyle(color: Colors.white)),
-                onPressed: _openAddInvoiceDialog,
-              ),
-            ],
-          ),
+          const Text('INVOICE HISTORY',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text('${estimates.length} INVOICES RECORDED',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
           const SizedBox(height: 20),
           Expanded(
-            child: filtered.isEmpty
+            child: estimates.isEmpty
                 ? const Center(
-                    child: Text('No invoice history found in Sheet.',
-                        style: TextStyle(color: Colors.grey)),
+                    child: Text('No invoice history logged yet.',
+                        style: TextStyle(color: Color(0xFF94A3B8))),
                   )
                 : ListView.separated(
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: filtered.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+                    itemCount: estimates.length,
+                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
                     itemBuilder: (ctx, idx) {
-                      final est = filtered[idx];
+                      final est = estimates[idx];
                       return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 22, vertical: 18),
+                        padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           color: const Color(0xFF161B22),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF242C37)),
                         ),
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              backgroundColor: Colors.amber.shade900,
-                              child: Text('${est.slNo}',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold)),
-                            ),
+                            Text('#${est.slNo}',
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                             const SizedBox(width: 20),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Text(est.customer,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 17)),
-                                      const SizedBox(width: 10),
-                                      Text('(${est.date})',
-                                          style: const TextStyle(
-                                              fontSize: 12, color: Colors.grey)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
+                                  Text(est.customer,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                   Text(est.itemSummary,
-                                      style: const TextStyle(
-                                          color: Colors.white70, fontSize: 14)),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Coolie: ₹${est.coolie}  |  SGST: ₹${est.sgst}  |  CGST: ₹${est.cgst}',
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Colors.grey),
-                                  ),
+                                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
                                 ],
                               ),
                             ),
                             Text('₹${est.grandTotal}',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
-                                    color: Colors.greenAccent)),
+                                    fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF38BDF8))),
                           ],
                         ),
                       );
@@ -700,7 +979,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   }
 }
 
-// ---------------- 3. PRICE LIST (WITH EDIT & ADD) ----------------
+// ---------------- 4. PRICE LIST VIEW ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -720,127 +999,49 @@ class PriceListDesktopView extends StatefulWidget {
 class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   String _query = '';
 
-  void _showItemPreviewModal(DCItem item) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1C2128),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(item.name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 19)),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blueAccent),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _openEditItemDialog(item: item);
-              },
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 580,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Divider(color: Colors.white12),
-                _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
-                _buildModalRow('Rate Unit:', item.rateType),
-                _buildModalRow('Quantity / Pack Size:', '${item.qty} KG/Bag'),
-                _buildModalRow('Item Name on Tally:', item.tallyName),
-                _buildModalRow('Billed Unit:', item.billedIn),
-                _buildModalRow('Tax Status:',
-                    item.isTaxable ? 'TAXABLE (5%)' : 'NON-TAXABLE'),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Colors.white70)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _openEditItemDialog({DCItem? item}) {
     final isNew = item == null;
     final nameCtrl = TextEditingController(text: isNew ? '' : item.name);
     final rateCtrl = TextEditingController(text: isNew ? '' : item.rate);
-    final rateTypeCtrl =
-        TextEditingController(text: isNew ? 'RATE PER KG' : item.rateType);
+    final rateTypeCtrl = TextEditingController(text: isNew ? 'RATE PER KG' : item.rateType);
     final qtyCtrl = TextEditingController(text: isNew ? '50' : '${item.qty}');
-    final tallyCtrl =
-        TextEditingController(text: isNew ? '' : item.tallyName);
-    final billedCtrl =
-        TextEditingController(text: isNew ? 'KILOGRAM' : item.billedIn);
+    final tallyCtrl = TextEditingController(text: isNew ? '' : item.tallyName);
+    final billedCtrl = TextEditingController(text: isNew ? 'KILOGRAM' : item.billedIn);
     bool isTaxable = isNew ? false : item.isTaxable;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1C2128),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isNew ? 'Add New Item to Sheet' : 'Edit Item Details'),
+          backgroundColor: const Color(0xFF1E242C),
+          title: Text(isNew ? 'Add Item' : 'Edit Item'),
           content: SizedBox(
-            width: 520,
+            width: 480,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                      controller: nameCtrl,
-                      decoration: const InputDecoration(labelText: 'Item Name')),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Item Name')),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(
-                          child: TextField(
-                              controller: rateCtrl,
-                              decoration:
-                                  const InputDecoration(labelText: 'Rate (₹)'))),
+                      Expanded(child: TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Rate (₹)'))),
                       const SizedBox(width: 10),
-                      Expanded(
-                          child: TextField(
-                              controller: rateTypeCtrl,
-                              decoration: const InputDecoration(
-                                  labelText: 'Rate Type'))),
+                      Expanded(child: TextField(controller: rateTypeCtrl, decoration: const InputDecoration(labelText: 'Rate Type'))),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(
-                          child: TextField(
-                              controller: qtyCtrl,
-                              decoration:
-                                  const InputDecoration(labelText: 'Quantity'))),
+                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty'))),
                       const SizedBox(width: 10),
-                      Expanded(
-                          child: TextField(
-                              controller: billedCtrl,
-                              decoration: const InputDecoration(
-                                  labelText: 'Billed In'))),
+                      Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  TextField(
-                      controller: tallyCtrl,
-                      decoration: const InputDecoration(
-                          labelText: 'Item Name on Tally')),
+                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Tally Ledger')),
                   const SizedBox(height: 10),
                   SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
                     title: const Text('Taxable'),
                     value: isTaxable,
                     onChanged: (v) => setDialogState(() => isTaxable = v),
@@ -850,38 +1051,28 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
             ),
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF238636)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
               onPressed: () async {
-                if (nameCtrl.text.trim().isNotEmpty) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Updating Google Sheet...')),
-                  );
-
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
-                      if (!isNew) "rowIndex": item.rowIndex,
-                      "name": nameCtrl.text.trim(),
-                      "rateType": rateTypeCtrl.text.trim(),
-                      "rate": rateCtrl.text.trim(),
-                      "qty": qtyCtrl.text.trim(),
-                      "tallyName": tallyCtrl.text.trim(),
-                      "billedIn": billedCtrl.text.trim(),
-                      "isTaxable": isTaxable,
-                    }),
-                  );
-                  widget.onRefreshRequired();
-                }
+                Navigator.pop(ctx);
+                await http.post(
+                  Uri.parse(sheetApiUrl),
+                  body: jsonEncode({
+                    "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
+                    if (!isNew) "rowIndex": item.rowIndex,
+                    "name": nameCtrl.text.trim(),
+                    "rateType": rateTypeCtrl.text.trim(),
+                    "rate": rateCtrl.text.trim(),
+                    "qty": qtyCtrl.text.trim(),
+                    "tallyName": tallyCtrl.text.trim(),
+                    "billedIn": billedCtrl.text.trim(),
+                    "isTaxable": isTaxable,
+                  }),
+                );
+                widget.onRefreshRequired();
               },
-              child: Text(isNew ? 'Save to Sheet' : 'Update Sheet',
-                  style: const TextStyle(color: Colors.white)),
+              child: const Text('Save to Sheet'),
             ),
           ],
         ),
@@ -889,40 +1080,10 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     );
   }
 
-  Widget _buildModalRow(String title, String val, {bool isColor = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 160,
-            child: Text(title,
-                style: const TextStyle(color: Colors.grey, fontSize: 14)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              val,
-              softWrap: true,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: isColor ? Colors.greenAccent : Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final filtered = widget.items
-        .where((i) =>
-            i.name.toLowerCase().contains(_query.toLowerCase()) ||
-            i.tallyName.toLowerCase().contains(_query.toLowerCase()))
+        .where((i) => i.name.toLowerCase().contains(_query.toLowerCase()) || i.tallyName.toLowerCase().contains(_query.toLowerCase()))
         .toList();
 
     return Padding(
@@ -932,49 +1093,22 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
         children: [
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                tooltip: 'Back to Home',
-                onPressed: widget.onBack,
-              ),
+              IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('DAVIS & COMPANY',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('PRICE LIST (${widget.items.length} ITEMS)',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
+              const Text('PRICE LIST', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const Spacer(),
               SizedBox(
                 width: 300,
                 child: TextField(
                   onChanged: (v) => setState(() => _query = v),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    hintText: 'Search items...',
-                    filled: true,
-                    fillColor: const Color(0xFF161B22),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none),
-                  ),
+                  decoration: const InputDecoration(hintText: 'Search items...'),
                 ),
               ),
               const SizedBox(width: 12),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF238636),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Item',
-                    style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Item'),
                 onPressed: () => _openEditItemDialog(),
               ),
             ],
@@ -982,104 +1116,37 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
           const SizedBox(height: 20),
           Expanded(
             child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
               itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+              separatorBuilder: (ctx, i) => const SizedBox(height: 10),
               itemBuilder: (ctx, idx) {
                 final item = filtered[idx];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showItemPreviewModal(item),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF161B22),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.blueGrey.shade900,
-                          child: Text('${item.no}',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.bold)),
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161B22),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF242C37)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text('${item.no}', style: const TextStyle(color: Color(0xFF94A3B8))),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Text('₹${item.rate} (${item.rateType})  •  Tally: ${item.tallyName}',
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                          ],
                         ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17,
-                                    letterSpacing: 0.3),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Text(
-                                    '₹${item.rate}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
-                                      color: Color(0xFF39D353),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '(${item.rateType})',
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.white70,
-                                        fontWeight: FontWeight.w500),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: item.isTaxable
-                                          ? Colors.orange.withOpacity(0.2)
-                                          : Colors.blueGrey.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: item.isTaxable
-                                              ? Colors.orangeAccent
-                                              : Colors.grey),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Tally: ${item.tallyName}  |  Pack: ${item.qty}  |  Unit: ${item.billedIn}',
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_note,
-                              color: Colors.white60, size: 24),
-                          tooltip: 'Edit Item',
-                          onPressed: () => _openEditItemDialog(item: item),
-                        ),
-                      ],
-                    ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 18, color: Color(0xFF94A3B8)),
+                        onPressed: () => _openEditItemDialog(item: item),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -1091,7 +1158,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-// ---------------- 4. CUSTOMERS DIRECTORY (WITH EDIT & ADD) ----------------
+// ---------------- 5. CUSTOMERS VIEW ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -1111,238 +1178,81 @@ class CustomerDesktopView extends StatefulWidget {
 class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   String _query = '';
 
-  void _showCustomerPreviewModal(DCCustomer customer) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1C2128),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(customer.name,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 20)),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Colors.blueAccent),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _openEditCustomerDialog(customer: customer);
-              },
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 600,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Divider(color: Colors.white12),
-                _buildCustomerModalRow('Customer Name:', customer.name),
-                _buildCustomerModalRow('Contact Number:',
-                    customer.contact.isEmpty ? '-' : customer.contact),
-                _buildCustomerModalRow(
-                    'Address:', customer.address.isEmpty ? '-' : customer.address),
-                _buildCustomerModalRow(
-                    'B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b,
-                    isHighlight: true),
-                _buildCustomerModalRow(
-                    'B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c),
-                _buildCustomerModalRow('Billing Category:', customer.billingTag),
-                if (customer.remarks.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('Special Delivery & Billing Remarks:',
-                      style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                        color: Colors.black38,
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Text(
-                      customer.remarks,
-                      softWrap: true,
-                      style: const TextStyle(
-                          color: Colors.amberAccent, fontSize: 14, height: 1.4),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close',
-                style: TextStyle(color: Colors.white70, fontSize: 15)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _openEditCustomerDialog({DCCustomer? customer}) {
     final isNew = customer == null;
     final nameCtrl = TextEditingController(text: isNew ? '' : customer.name);
-    final contactCtrl =
-        TextEditingController(text: isNew ? '' : customer.contact);
-    final addressCtrl =
-        TextEditingController(text: isNew ? '' : customer.address);
+    final contactCtrl = TextEditingController(text: isNew ? '' : customer.contact);
+    final addressCtrl = TextEditingController(text: isNew ? '' : customer.address);
     final b2bCtrl = TextEditingController(text: isNew ? '' : customer.b2b);
     final b2cCtrl = TextEditingController(text: isNew ? '' : customer.b2c);
-    final remarksCtrl =
-        TextEditingController(text: isNew ? '' : customer.remarks);
+    final remarksCtrl = TextEditingController(text: isNew ? '' : customer.remarks);
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1C2128),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isNew ? 'Add New Customer to Sheet' : 'Edit Customer Details'),
+        backgroundColor: const Color(0xFF1E242C),
+        title: Text(isNew ? 'Add Customer' : 'Edit Customer'),
         content: SizedBox(
-          width: 520,
+          width: 480,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'Customer / Party Name')),
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                          controller: contactCtrl,
-                          decoration: const InputDecoration(
-                              labelText: 'Contact Number')),
-                    ),
+                    Expanded(child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact'))),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                          controller: addressCtrl,
-                          decoration:
-                              const InputDecoration(labelText: 'Address')),
-                    ),
+                    Expanded(child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address'))),
                   ],
                 ),
                 const SizedBox(height: 10),
-                TextField(
-                    controller: b2bCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'B2B Trade Name')),
+                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'B2B Firm Name')),
                 const SizedBox(height: 10),
-                TextField(
-                    controller: b2cCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'B2C Reference Names')),
+                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Reference Names')),
                 const SizedBox(height: 10),
-                TextField(
-                    controller: remarksCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'Delivery Remarks / Rules')),
+                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Remarks / Billing Notes')),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF238636)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
             onPressed: () async {
-              if (nameCtrl.text.trim().isNotEmpty) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Updating Customer to Sheet...')),
-                );
-                await http.post(
-                  Uri.parse(sheetApiUrl),
-                  body: jsonEncode({
-                    "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
-                    if (!isNew) "rowIndex": customer.rowIndex,
-                    "name": nameCtrl.text.trim(),
-                    "contact": contactCtrl.text.trim(),
-                    "address": addressCtrl.text.trim(),
-                    "b2b": b2bCtrl.text.trim(),
-                    "b2c": b2cCtrl.text.trim(),
-                    "remarks": remarksCtrl.text.trim(),
-                  }),
-                );
-                widget.onRefreshRequired();
-              }
+              Navigator.pop(ctx);
+              await http.post(
+                Uri.parse(sheetApiUrl),
+                body: jsonEncode({
+                  "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
+                  if (!isNew) "rowIndex": customer.rowIndex,
+                  "name": nameCtrl.text.trim(),
+                  "contact": contactCtrl.text.trim(),
+                  "address": addressCtrl.text.trim(),
+                  "b2b": b2bCtrl.text.trim(),
+                  "b2c": b2cCtrl.text.trim(),
+                  "remarks": remarksCtrl.text.trim(),
+                }),
+              );
+              widget.onRefreshRequired();
             },
-            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet',
-                style: const TextStyle(color: Colors.white)),
+            child: const Text('Save to Sheet'),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildCustomerModalRow(String title, String val,
-      {bool isHighlight = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 150,
-            child: Text(title,
-                style: const TextStyle(color: Colors.grey, fontSize: 14)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              val,
-              softWrap: true,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: isHighlight ? Colors.lightBlueAccent : Colors.white,
-                height: 1.3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getTagColor(String tag) {
-    switch (tag) {
-      case 'CREDIT':
-        return Colors.redAccent;
-      case 'VAZHI BILL':
-        return Colors.amberAccent;
-      case 'NO COOLI':
-        return Colors.purpleAccent;
-      default:
-        return Colors.tealAccent;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.customers.where((c) {
-      return c.name.toLowerCase().contains(_query.toLowerCase()) ||
-          c.b2b.toLowerCase().contains(_query.toLowerCase()) ||
-          c.b2c.toLowerCase().contains(_query.toLowerCase()) ||
-          c.contact.contains(_query);
-    }).toList();
+    final filtered = widget.customers
+        .where((c) =>
+            c.name.toLowerCase().contains(_query.toLowerCase()) ||
+            c.b2b.toLowerCase().contains(_query.toLowerCase()) ||
+            c.contact.contains(_query))
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -1351,49 +1261,22 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
         children: [
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                tooltip: 'Back to Home',
-                onPressed: widget.onBack,
-              ),
+              IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('CUSTOMERS DIRECTORY',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('TOTAL ${widget.customers.length} PARTIES',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
+              const Text('CUSTOMERS DIRECTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const Spacer(),
               SizedBox(
                 width: 300,
                 child: TextField(
                   onChanged: (v) => setState(() => _query = v),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    hintText: 'Search customer name, contact...',
-                    filled: true,
-                    fillColor: const Color(0xFF161B22),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none),
-                  ),
+                  decoration: const InputDecoration(hintText: 'Search customer name...'),
                 ),
               ),
               const SizedBox(width: 12),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF238636),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                ),
-                icon: const Icon(Icons.person_add, color: Colors.white, size: 18),
-                label: const Text('Add Customer',
-                    style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
+                icon: const Icon(Icons.person_add, size: 18),
+                label: const Text('Add Customer'),
                 onPressed: () => _openEditCustomerDialog(),
               ),
             ],
@@ -1401,522 +1284,43 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           const SizedBox(height: 20),
           Expanded(
             child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
               itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
-              itemBuilder: (ctx, i) {
-                final c = filtered[i];
-                final tagColor = _getTagColor(c.billingTag);
-                return InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showCustomerPreviewModal(c),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF161B22),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.teal.shade900,
-                          child: Text('${c.slNo}',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(c.name,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 17)),
-                                  const SizedBox(width: 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: tagColor.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                          color: tagColor.withOpacity(0.5)),
-                                    ),
-                                    child: Text(
-                                      c.billingTag,
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: tagColor),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              if (c.contact.isNotEmpty || c.address.isNotEmpty)
-                                Text(
-                                  '📞 ${c.contact.isNotEmpty ? c.contact : "-"}  |  📍 ${c.address.isNotEmpty ? c.address : "-"}',
-                                  style: const TextStyle(
-                                      fontSize: 13, color: Colors.white70),
-                                ),
-                              if (c.b2b.isNotEmpty)
-                                Text('B2B: ${c.b2b}',
-                                    style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.lightBlueAccent,
-                                        fontWeight: FontWeight.w500)),
-                              if (c.b2c.isNotEmpty)
-                                Text('B2C: ${c.b2c}',
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Colors.grey)),
-                              if (c.remarks.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text('Note: ${c.remarks}',
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.amberAccent)),
-                                ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_note,
-                              color: Colors.white60, size: 24),
-                          tooltip: 'Edit Customer',
-                          onPressed: () =>
-                              _openEditCustomerDialog(customer: c),
-                        ),
-                      ],
-                    ),
+              separatorBuilder: (ctx, i) => const SizedBox(height: 10),
+              itemBuilder: (ctx, idx) {
+                final c = filtered[idx];
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161B22),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF242C37)),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 5. PACKING SLIP VIEW ----------------
-
-class LoadingSlipView extends StatefulWidget {
-  final List<LoadingEntry> loadingSlip;
-  final List<DCItem> items;
-  final List<DCCustomer> customers;
-
-  const LoadingSlipView({
-    super.key,
-    required this.loadingSlip,
-    required this.items,
-    required this.customers,
-  });
-
-  @override
-  State<LoadingSlipView> createState() => _LoadingSlipViewState();
-}
-
-class _LoadingSlipViewState extends State<LoadingSlipView> {
-  void _openAddPackingSlipDialog() {
-    String? selectedCust =
-        widget.customers.isNotEmpty ? widget.customers.first.name : null;
-    final placeCtrl = TextEditingController();
-    final summaryCtrl = TextEditingController();
-    final bagsCtrl = TextEditingController(text: '10');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1C2128),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Add to Packing Slip'),
-          content: SizedBox(
-            width: 500,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedCust,
-                    isExpanded: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Party / Customer Name'),
-                    items: widget.customers
-                        .map((c) =>
-                            DropdownMenuItem(value: c.name, child: Text(c.name)))
-                        .toList(),
-                    onChanged: (v) => setDialogState(() => selectedCust = v),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: placeCtrl,
-                    decoration: const InputDecoration(labelText: 'Place (സ്ഥലം)'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: summaryCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Item Summary (ഉദാ: Sadhya Vadi 5, Priyam 5)',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: bagsCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                        labelText: 'Total Nos of Bags (ചാക്ക്)'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF238636)),
-              onPressed: () async {
-                if (selectedCust != null && bagsCtrl.text.trim().isNotEmpty) {
-                  final party = selectedCust!;
-                  final place = placeCtrl.text.trim();
-                  final summary = summaryCtrl.text.trim();
-                  final bags = int.tryParse(bagsCtrl.text.trim()) ?? 0;
-
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Saving to Google Sheet Packing Slip...')),
-                  );
-
-                  setState(() {
-                    widget.loadingSlip.add(LoadingEntry(
-                      customerName: party,
-                      place: place,
-                      summary: summary.isEmpty ? 'Rice Bags' : summary,
-                      bags: bags,
-                    ));
-                  });
-
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": "ADD_PACKING_SLIP",
-                      "party": party,
-                      "place": place,
-                      "itemSummary": summary,
-                      "totalBags": bags,
-                    }),
-                  );
-                }
-              },
-              child: const Text('Save to Sheet',
-                  style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _copySlipToClipboard() {
-    final buffer = StringBuffer();
-    buffer.writeln("--- DAVIS & COMPANY PACKING SLIP ---");
-    int total = 0;
-    for (int i = 0; i < widget.loadingSlip.length; i++) {
-      final e = widget.loadingSlip[i];
-      total += e.bags;
-      buffer.writeln(
-          "${i + 1}. ${e.customerName} (${e.place}) : ${e.summary} - ${e.bags} Bags");
-    }
-    buffer.writeln("TOTAL BAGS: $total");
-
-    Clipboard.setData(ClipboardData(text: buffer.toString()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Packing slip copied to clipboard!')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    int totalBags =
-        widget.loadingSlip.fold(0, (sum, entry) => sum + entry.bags);
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('PACKING / LOADING SLIP',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('LINKED DIRECTLY TO GOOGLE SHEET',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
-              const Spacer(),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey.shade800,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text('Copy Slip'),
-                onPressed:
-                    widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF238636),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Entry',
-                    style: TextStyle(color: Colors.white)),
-                onPressed: _openAddPackingSlipDialog,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: widget.loadingSlip.isEmpty
-                ? const Center(
-                    child: Text(
-                        'No entries added yet. Tap "Add Entry" to create a slip.',
-                        style: TextStyle(color: Colors.grey)),
-                  )
-                : ListView.separated(
-                    itemCount: widget.loadingSlip.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, idx) {
-                      final entry = widget.loadingSlip[idx];
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF161B22),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white12),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: Colors.indigo.shade900,
-                              child: Text('${idx + 1}',
-                                  style: const TextStyle(color: Colors.white)),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(entry.customerName,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16)),
-                                      if (entry.place.isNotEmpty) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blueGrey
-                                                .withOpacity(0.3),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                          child: Text(entry.place,
-                                              style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.white70)),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(entry.summary,
-                                      style: const TextStyle(
-                                          color: Colors.grey, fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                            Text('${entry.bags} Bags',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: Colors.greenAccent)),
-                            IconButton(
-                              icon: const Icon(Icons.delete,
-                                  color: Colors.redAccent),
-                              onPressed: () {
-                                setState(() {
-                                  widget.loadingSlip.removeAt(idx);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('TOTAL DISPATCH LOAD:',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('$totalBags BAGS',
-                    style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.greenAccent)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 6. CALCULATOR VIEW ----------------
-
-class PackSizeCalculatorView extends StatefulWidget {
-  final List<DCItem> items;
-  const PackSizeCalculatorView({super.key, required this.items});
-
-  @override
-  State<PackSizeCalculatorView> createState() => _PackSizeCalculatorViewState();
-}
-
-class _PackSizeCalculatorViewState extends State<PackSizeCalculatorView> {
-  DCItem? _selectedItem;
-  final _qtyCtrl = TextEditingController(text: '1');
-  double _totalCalculated = 0.0;
-
-  void _calculate() {
-    if (_selectedItem == null) return;
-    final qty = double.tryParse(_qtyCtrl.text.trim()) ?? 0.0;
-    final rate = double.tryParse(_selectedItem!.rate) ?? 0.0;
-    setState(() {
-      _totalCalculated = qty * rate;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('PACK SIZE & RATE CALCULATOR',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const Text('QUICK ESTIMATE PER BAG / KG',
-              style: TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Column(
-              children: [
-                DropdownButtonFormField<DCItem>(
-                  value: _selectedItem,
-                  hint: const Text('Select an Item from Price List'),
-                  isExpanded: true,
-                  items: widget.items
-                      .map((i) => DropdownMenuItem(
-                            value: i,
-                            child:
-                                Text('${i.name} — ₹${i.rate} (${i.rateType})'),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      _selectedItem = v;
-                    });
-                    _calculate();
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _qtyCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: _selectedItem != null &&
-                                  _selectedItem!.rateType.contains('BAG')
-                              ? 'Number of Bags'
-                              : 'Quantity in KGs',
-                        ),
-                        onChanged: (v) => _calculate(),
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.black26,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                  child: Row(
+                    children: [
+                      Text('${c.slNo}', style: const TextStyle(color: Color(0xFF94A3B8))),
+                      const SizedBox(width: 16),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Estimated Amount:',
-                                style: TextStyle(
-                                    color: Colors.grey, fontSize: 13)),
-                            Text(
-                              '₹${_totalCalculated.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.greenAccent),
-                            ),
+                            Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 4),
+                            Text('B2B: ${c.b2b.isEmpty ? '-' : c.b2b}  •  📞 ${c.contact.isEmpty ? '-' : c.contact}',
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                            if (c.remarks.isNotEmpty)
+                              Text('Note: ${c.remarks}',
+                                  style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12)),
                           ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 18, color: Color(0xFF94A3B8)),
+                        onPressed: () => _openEditCustomerDialog(customer: c),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
