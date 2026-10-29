@@ -44,7 +44,7 @@ class CompanyConfig {
   static String regType = "Regular";
   static String stateCode = "Kerala (32)";
   static String logoUrl = "";
-  static double defaultGstRate = 5.0;
+  static double defaultGstRate = 5.0; // Inclusive Tax 5%
 }
 
 // ---------------- MODELS ----------------
@@ -213,7 +213,7 @@ class InvoiceRowItem {
   double get amount => qty * rate;
 }
 
-// ---------------- APP ROOT ----------------
+// ---------------- APP ROOT: MULTI-COLOUR MATERIAL THEME ----------------
 
 class DCPrimeApp extends StatelessWidget {
   const DCPrimeApp({super.key});
@@ -227,16 +227,17 @@ class DCPrimeApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0D1217),
+        scaffoldBackgroundColor: const Color(0xFF0B1015),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF10B981),
-          secondary: Color(0xFF34D399),
-          surface: Color(0xFF141C24),
+          primary: Color(0xFF10B981), // Emerald
+          secondary: Color(0xFF3B82F6), // Royal Blue
+          tertiary: Color(0xFF8B5CF6), // Violet
+          surface: Color(0xFF131922),
           onSurface: Color(0xFFF8FAFC),
         ),
         navigationRailTheme: const NavigationRailThemeData(
-          backgroundColor: Color(0xFF10161E),
-          indicatorColor: Color(0xFF059669),
+          backgroundColor: Color(0xFF0E141B),
+          indicatorColor: Color(0xFF10B981),
           selectedIconTheme: IconThemeData(color: Colors.white, size: 22),
           unselectedIconTheme: IconThemeData(color: Color(0xFF94A3B8), size: 22),
           selectedLabelTextStyle: TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold, fontSize: 12),
@@ -244,10 +245,10 @@ class DCPrimeApp extends StatelessWidget {
         ),
         inputDecorationTheme: const InputDecorationTheme(
           filled: true,
-          fillColor: Color(0xFF1A242E),
-          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF283847))),
-          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF283847))),
-          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF10B981), width: 1.5)),
+          fillColor: Color(0xFF18202B),
+          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF263342))),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF263342))),
+          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF34D399), width: 1.5)),
           labelStyle: TextStyle(color: Color(0xFF94A3B8)),
         ),
       ),
@@ -336,12 +337,12 @@ class _MainDashboardState extends State<MainDashboard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDlgState) => AlertDialog(
-          backgroundColor: const Color(0xFF141C24),
+          backgroundColor: const Color(0xFF131922),
           title: const Row(
             children: [
               Icon(Icons.business, color: Color(0xFF10B981)),
               SizedBox(width: 10),
-              Text('Company Profile & Invoice Header', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Company Profile & Header (Saved to Sheet)', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: SizedBox(
@@ -353,15 +354,15 @@ class _MainDashboardState extends State<MainDashboard> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10161E),
+                      color: const Color(0xFF0E141B),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF283847)),
+                      border: Border.all(color: const Color(0xFF263342)),
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 26,
-                          backgroundColor: const Color(0xFF1A242E),
+                          backgroundColor: const Color(0xFF18202B),
                           backgroundImage: logoPathLocal.isNotEmpty
                               ? FileImage(File(logoPathLocal))
                               : (CompanyConfig.logoUrl.isNotEmpty ? NetworkImage(CompanyConfig.logoUrl) as ImageProvider : null),
@@ -378,7 +379,7 @@ class _MainDashboardState extends State<MainDashboard> {
                                   ? 'Selected: ${logoPathLocal.split(Platform.pathSeparator).last}'
                                   : (CompanyConfig.logoUrl.isNotEmpty ? 'Cloud Logo Synced' : 'No Logo Uploaded')),
                               const SizedBox(height: 4),
-                              const Text('Select image from desktop (PNG / JPG)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                              const Text('Select PNG/JPG (Auto-uploads to Google Drive)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                             ],
                           ),
                         ),
@@ -442,10 +443,6 @@ class _MainDashboardState extends State<MainDashboard> {
               ),
               onPressed: () async {
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Saving Company Details & Logo to Sheet...')),
-                );
-
                 setState(() => _isBackgroundSyncing = true);
 
                 try {
@@ -481,9 +478,6 @@ class _MainDashboardState extends State<MainDashboard> {
                 CompanyConfig.regType = regTypeCtrl.text.trim();
 
                 setState(() => _isBackgroundSyncing = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Company Profile & Logo saved to Sheet permanently!')),
-                );
               },
               child: const Text('Save to Sheet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
@@ -497,7 +491,7 @@ class _MainDashboardState extends State<MainDashboard> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0D1217),
+        backgroundColor: const Color(0xFF0B1015),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -506,9 +500,9 @@ class _MainDashboardState extends State<MainDashboard> {
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF10B981)]),
+                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF3B82F6)]),
                   boxShadow: [
-                    BoxShadow(color: const Color(0xFF10B981).withOpacity(0.3), blurRadius: 24, spreadRadius: 4),
+                    BoxShadow(color: const Color(0xFF10B981).withOpacity(0.35), blurRadius: 28, spreadRadius: 4),
                   ],
                 ),
                 child: const Text('DC', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
@@ -520,14 +514,14 @@ class _MainDashboardState extends State<MainDashboard> {
               const Text('DEVELOPED BY SUDHEESH',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFF34D399))),
               const SizedBox(height: 4),
-              const Text('Wholesale Rice Merchants Suite • v2.8.0',
+              const Text('Wholesale Rice Merchants Suite • v2.9.0',
                   style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
               const SizedBox(height: 32),
               const SizedBox(
-                width: 140,
+                width: 150,
                 child: LinearProgressIndicator(
                   minHeight: 3,
-                  backgroundColor: Color(0xFF141C24),
+                  backgroundColor: Color(0xFF131922),
                   valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
                 ),
               ),
@@ -543,7 +537,7 @@ class _MainDashboardState extends State<MainDashboard> {
           if (_isBackgroundSyncing)
             const LinearProgressIndicator(
               minHeight: 3,
-              backgroundColor: Color(0xFF141C24),
+              backgroundColor: Color(0xFF131922),
               valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
             ),
           Expanded(
@@ -563,13 +557,13 @@ class _MainDashboardState extends State<MainDashboard> {
                         child: CompanyConfig.logoUrl.isNotEmpty
                             ? CircleAvatar(
                                 radius: 20,
-                                backgroundColor: const Color(0xFF1A242E),
+                                backgroundColor: const Color(0xFF18202B),
                                 backgroundImage: NetworkImage(CompanyConfig.logoUrl),
                               )
                             : Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF10B981)]),
+                                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF3B82F6)]),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Text('DC', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
@@ -629,10 +623,12 @@ class _MainDashboardState extends State<MainDashboard> {
                       ),
                       PriceListDesktopView(
                         items: _items,
+                        estimates: _estimates,
                         onRefreshRequired: () => _fetchData(silent: true),
                       ),
                       CustomerDesktopView(
                         customers: _customers,
+                        estimates: _estimates,
                         onRefreshRequired: () => _fetchData(silent: true),
                       ),
                       LoadingSlipView(
@@ -662,7 +658,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. TALLY PRIME BILLING SCREEN (KEYBOARD UNIT FLOW) ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN (UNIVERSAL SAVE & INCLUSIVE TAX) ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -742,9 +738,10 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     _partyFocus.requestFocus();
   }
 
-  double get _subTotal => _rows.fold(0.0, (sum, r) => sum + r.amount);
+  // --- INCLUSIVE TAX COMPUTATION ---
+  double get _grossItemsTotal => _rows.fold(0.0, (sum, r) => sum + r.amount);
 
-  double get _taxableAmount {
+  double get _taxableItemsGross {
     double sum = 0.0;
     for (var r in _rows) {
       if (r.item != null && r.item!.isTaxable) {
@@ -754,10 +751,15 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     return sum;
   }
 
-  double get _sgst => _taxableAmount * (CompanyConfig.defaultGstRate / 200.0);
-  double get _cgst => _taxableAmount * (CompanyConfig.defaultGstRate / 200.0);
+  // Inclusive GST 5%: Base = Gross / 1.05
+  double get _taxableBaseAmount => _taxableItemsGross > 0 ? (_taxableItemsGross / (1 + (CompanyConfig.defaultGstRate / 100.0))) : 0.0;
+  double get _totalGst => _taxableItemsGross - _taxableBaseAmount;
+  double get _sgst => _totalGst / 2.0;
+  double get _cgst => _totalGst / 2.0;
   double get _coolie => double.tryParse(_coolieCtrl.text.trim()) ?? 0.0;
-  double get _exactTotal => _subTotal + _sgst + _cgst + _coolie;
+
+  // Exact Total = Gross Items + Coolie (Tax is already inside item rates)
+  double get _exactTotal => _grossItemsTotal + _coolie;
   double get _grandTotal => _exactTotal.roundToDouble();
   double get _roundOff => _grandTotal - _exactTotal;
   int get _totalBags => _rows.fold(0, (sum, r) => sum + r.bags);
@@ -784,12 +786,12 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               offset: const Offset(0, 52),
               child: Material(
                 elevation: 14,
-                color: const Color(0xFF1A242E),
+                color: const Color(0xFF18202B),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 220),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A242E),
+                    color: const Color(0xFF18202B),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xFF10B981), width: 1.2),
                   ),
@@ -920,12 +922,12 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               offset: Offset(0, offsetY),
               child: Material(
                 elevation: 16,
-                color: const Color(0xFF1A242E),
+                color: const Color(0xFF18202B),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   height: popupHeight,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A242E),
+                    color: const Color(0xFF18202B),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xFF10B981), width: 1.2),
                     boxShadow: [
@@ -1041,7 +1043,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     });
   }
 
-  // Keyboard Navigation for Unit (KG / NOS only)
   KeyEventResult _handleUnitKeyEvent(int rowIdx, FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.arrowDown || event.logicalKey == LogicalKeyboardKey.arrowUp) {
@@ -1068,7 +1069,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         title: const Text('Instant Add Customer (Alt + C)'),
         content: SizedBox(
           width: 480,
@@ -1158,7 +1159,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF141C24),
+          backgroundColor: const Color(0xFF131922),
           title: const Text('Instant Add Item (Alt + C)'),
           content: SizedBox(
             width: 480,
@@ -1294,7 +1295,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       dateStr: dateStr,
       customer: _selectedParty!,
       items: validRows,
-      subTotal: _subTotal,
+      subTotal: _taxableBaseAmount > 0 ? _taxableBaseAmount : _grossItemsTotal,
       coolie: _coolie,
       sgst: _sgst,
       cgst: _cgst,
@@ -1319,7 +1320,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         insetPadding: const EdgeInsets.all(20),
         child: SizedBox(
           width: 920,
@@ -1327,7 +1328,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
           child: Column(
             children: [
               AppBar(
-                backgroundColor: const Color(0xFF10161E),
+                backgroundColor: const Color(0xFF0E141B),
                 title: Text('Invoice #$billNo (Tally Prime Format)'),
                 actions: [
                   IconButton(
@@ -1365,447 +1366,455 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Shortcuts(
-      shortcuts: <LogicalKeySet, Intent>{
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyS): const SaveIntent(),
-        LogicalKeySet(LogicalKeyboardKey.f8): const SaveIntent(),
+    // Universal Keyboard Save Listener for Entire Billing Screen
+    return FocusScope(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          final isCtrl = HardwareKeyboard.instance.isControlPressed;
+          if ((isCtrl && event.logicalKey == LogicalKeyboardKey.keyS) ||
+              event.logicalKey == LogicalKeyboardKey.f8) {
+            _saveInvoice();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
       },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          SaveIntent: CallbackAction<SaveIntent>(onInvoke: (intent) => _saveInvoice()),
-        },
-        child: Focus(
-          autofocus: true,
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    const Text('Customer Bill',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
-                    const SizedBox(width: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A242E),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF283847)),
-                      ),
-                      child: Text('Bill #${widget.nextBillNo}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
-                    ),
-                    const SizedBox(width: 14),
-                    const Text('Ctrl + S / F8: Save & Print  |  Alt + C: Instant Add',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                    const Spacer(),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        side: const BorderSide(color: Colors.redAccent),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      icon: const Icon(Icons.cancel_outlined, size: 18),
-                      label: const Text('Cancel Bill'),
-                      onPressed: _clearBilling,
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF059669),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: const Icon(Icons.print, color: Colors.white, size: 18),
-                      label: const Text('Save & Print (Ctrl+S / F8)',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      onPressed: _saveInvoice,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Party Input
+                const Text('Customer Bill',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
+                const SizedBox(width: 14),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF141C24),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF283847)),
+                    color: const Color(0xFF18202B),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF263342)),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 4,
-                        child: CompositedTransformTarget(
-                          link: _partyLayerLink,
-                          child: Focus(
-                            onKeyEvent: _handlePartyKeyEvent,
-                            child: TextField(
-                              controller: _partyTextCtrl,
-                              focusNode: _partyFocus,
-                              decoration: InputDecoration(
-                                labelText: 'Party / Customer Name (Type & Arrow Navigate)',
-                                hintText: 'Search customer...',
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.person_add, size: 18),
-                                  tooltip: 'Instant Add Customer (Alt + C)',
-                                  onPressed: () {
-                                    _hidePartyOverlay();
-                                    _openInstantAddCustomerDialog(_partyTextCtrl.text.trim());
-                                  },
-                                ),
-                              ),
-                              onChanged: (val) {
-                                setState(() {
-                                  _partySelectedIndex = 0;
-                                  _filteredParties = widget.customers.where((c) {
-                                    return c.name.toLowerCase().contains(val.toLowerCase()) ||
-                                        c.b2b.toLowerCase().contains(val.toLowerCase());
-                                  }).toList();
-                                });
-                                _showPartyOverlay();
-                              },
-                              onTap: () {
-                                setState(() {
-                                  _filteredParties = widget.customers;
-                                });
-                                _showPartyOverlay();
+                  child: Text('Bill #${widget.nextBillNo}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
+                ),
+                const SizedBox(width: 14),
+                const Text('Ctrl + S / F8: Any-field Save  |  Alt + C: Instant Add',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                const Spacer(),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  ),
+                  icon: const Icon(Icons.cancel_outlined, size: 18),
+                  label: const Text('Cancel Bill'),
+                  onPressed: _clearBilling,
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF059669),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.print, color: Colors.white, size: 18),
+                  label: const Text('Save & Print (Ctrl+S / F8)',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  onPressed: _saveInvoice,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Party Input
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF131922),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF263342)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: CompositedTransformTarget(
+                      link: _partyLayerLink,
+                      child: Focus(
+                        onKeyEvent: _handlePartyKeyEvent,
+                        child: TextField(
+                          controller: _partyTextCtrl,
+                          focusNode: _partyFocus,
+                          decoration: InputDecoration(
+                            labelText: 'Party / Customer Name (Type & Arrow Navigate)',
+                            hintText: 'Search customer...',
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.person_add, size: 18),
+                              tooltip: 'Instant Add Customer (Alt + C)',
+                              onPressed: () {
+                                _hidePartyOverlay();
+                                _openInstantAddCustomerDialog(_partyTextCtrl.text.trim());
                               },
                             ),
                           ),
+                          onChanged: (val) {
+                            setState(() {
+                              _partySelectedIndex = 0;
+                              _filteredParties = widget.customers.where((c) {
+                                return c.name.toLowerCase().contains(val.toLowerCase()) ||
+                                    c.b2b.toLowerCase().contains(val.toLowerCase());
+                              }).toList();
+                            });
+                            _showPartyOverlay();
+                          },
+                          onTap: () {
+                            setState(() {
+                              _filteredParties = widget.customers;
+                            });
+                            _showPartyOverlay();
+                          },
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      SizedBox(
-                        width: 180,
-                        child: DropdownButtonFormField<String>(
-                          value: _invoiceType,
-                          decoration: const InputDecoration(labelText: 'Supply Type'),
-                          items: const [
-                            DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
-                            DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
-                          ],
-                          onChanged: (v) => setState(() => _invoiceType = v!),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Table Area
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF141C24),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF283847)),
                     ),
-                    child: Column(
-                      children: [
-                        // Table Header
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF1A242E),
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                          ),
-                          child: const Row(
-                            children: [
-                              SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 12),
-                              Expanded(flex: 5, child: Text('Name of Item', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 12),
-                              SizedBox(width: 110, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 12),
-                              SizedBox(width: 100, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 12),
-                              SizedBox(width: 90, child: Text('Unit (KG/NOS)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 12),
-                              SizedBox(width: 80, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 12),
-                              SizedBox(width: 110, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                              SizedBox(width: 36),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 1, color: Color(0xFF283847)),
-                        Expanded(
-                          child: ListView.separated(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _rows.length,
-                            separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF283847)),
-                            itemBuilder: (ctx, idx) {
-                              final row = _rows[idx];
+                  ),
+                  const SizedBox(width: 14),
+                  SizedBox(
+                    width: 180,
+                    child: DropdownButtonFormField<String>(
+                      value: _invoiceType,
+                      decoration: const InputDecoration(labelText: 'Supply Type'),
+                      items: const [
+                        DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
+                        DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
+                      ],
+                      onChanged: (v) => setState(() => _invoiceType = v!),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
 
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 14),
-                                    child: SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Name of Item
-                                  Expanded(
-                                    flex: 5,
-                                    child: CompositedTransformTarget(
-                                      link: row.layerLink,
-                                      child: Focus(
-                                        onKeyEvent: (node, event) => _handleItemKeyEvent(idx, node, event),
-                                        child: TextField(
-                                          controller: row.textCtrl,
-                                          focusNode: row.itemSearchFocus,
-                                          decoration: InputDecoration(
-                                            hintText: 'Search item...',
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                            suffixIcon: IconButton(
-                                              icon: const Icon(Icons.add, size: 16),
-                                              tooltip: 'Instant Add Item (Alt + C)',
-                                              onPressed: () {
-                                                _hideItemOverlay();
-                                                _openInstantAddItemDialog(idx, row.textCtrl.text.trim());
-                                              },
-                                            ),
-                                          ),
-                                          onChanged: (val) {
-                                            setState(() {
-                                              _itemSelectedIndex = 0;
-                                              _filteredItems = widget.items.where((i) {
-                                                return i.name.toLowerCase().contains(val.toLowerCase()) ||
-                                                    i.tallyName.toLowerCase().contains(val.toLowerCase());
-                                              }).toList();
-                                            });
-                                            _showItemOverlay(idx);
-                                          },
-                                          onTap: () {
-                                            setState(() {
-                                              _filteredItems = widget.items;
-                                            });
-                                            _showItemOverlay(idx);
+            // Table Area
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF131922),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF263342)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF18202B),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+                      ),
+                      child: const Row(
+                        children: [
+                          SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 12),
+                          Expanded(flex: 5, child: Text('Name of Item', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 12),
+                          SizedBox(width: 110, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 12),
+                          SizedBox(width: 100, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 12),
+                          SizedBox(width: 90, child: Text('Unit (KG/NOS)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 12),
+                          SizedBox(width: 80, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 12),
+                          SizedBox(width: 110, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 36),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFF263342)),
+                    Expanded(
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _rows.length,
+                        separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF263342)),
+                        itemBuilder: (ctx, idx) {
+                          final row = _rows[idx];
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 14),
+                                child: SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
+                              ),
+                              const SizedBox(width: 12),
+                              // Name of Item
+                              Expanded(
+                                flex: 5,
+                                child: CompositedTransformTarget(
+                                  link: row.layerLink,
+                                  child: Focus(
+                                    onKeyEvent: (node, event) => _handleItemKeyEvent(idx, node, event),
+                                    child: TextField(
+                                      controller: row.textCtrl,
+                                      focusNode: row.itemSearchFocus,
+                                      decoration: InputDecoration(
+                                        hintText: 'Search item...',
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                        suffixIcon: IconButton(
+                                          icon: const Icon(Icons.add, size: 16),
+                                          tooltip: 'Instant Add Item (Alt + C)',
+                                          onPressed: () {
+                                            _hideItemOverlay();
+                                            _openInstantAddItemDialog(idx, row.textCtrl.text.trim());
                                           },
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Rate
-                                  SizedBox(
-                                    width: 110,
-                                    child: TextFormField(
-                                      key: ValueKey('rate_${row.item?.name}_$idx'),
-                                      initialValue: row.rate.toStringAsFixed(2),
-                                      focusNode: row.rateFocus,
-                                      keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                                       onChanged: (val) {
                                         setState(() {
-                                          row.rate = double.tryParse(val) ?? 0.0;
+                                          _itemSelectedIndex = 0;
+                                          _filteredItems = widget.items.where((i) {
+                                            return i.name.toLowerCase().contains(val.toLowerCase()) ||
+                                                i.tallyName.toLowerCase().contains(val.toLowerCase());
+                                          }).toList();
                                         });
+                                        _showItemOverlay(idx);
                                       },
-                                      onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Qty
-                                  SizedBox(
-                                    width: 100,
-                                    child: TextFormField(
-                                      initialValue: row.qty.toStringAsFixed(0),
-                                      focusNode: row.qtyFocus,
-                                      keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                      onChanged: (val) {
+                                      onTap: () {
                                         setState(() {
-                                          row.qty = double.tryParse(val) ?? 1.0;
+                                          _filteredItems = widget.items;
                                         });
+                                        _showItemOverlay(idx);
                                       },
-                                      onFieldSubmitted: (_) => row.unitFocus.requestFocus(),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  // Unit Field (KG / NOS Keyboard Driven)
-                                  SizedBox(
-                                    width: 90,
-                                    child: Focus(
-                                      focusNode: row.unitFocus,
-                                      onKeyEvent: (node, event) => _handleUnitKeyEvent(idx, node, event),
-                                      child: Builder(
-                                        builder: (fCtx) {
-                                          final hasFocus = Focus.of(fCtx).hasFocus;
-                                          return InkWell(
-                                            onTap: () {
-                                              setState(() {
-                                                row.unit = row.unit == 'KG' ? 'NOS' : 'KG';
-                                              });
-                                              row.unitFocus.requestFocus();
-                                            },
-                                            child: Container(
-                                              height: 48,
-                                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF1A242E),
-                                                borderRadius: BorderRadius.circular(4),
-                                                border: Border.all(
-                                                  color: hasFocus ? const Color(0xFF10B981) : const Color(0xFF283847),
-                                                  width: hasFocus ? 1.5 : 1.0,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Rate
+                              SizedBox(
+                                width: 110,
+                                child: TextFormField(
+                                  key: ValueKey('rate_${row.item?.name}_$idx'),
+                                  initialValue: row.rate.toStringAsFixed(2),
+                                  focusNode: row.rateFocus,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      row.rate = double.tryParse(val) ?? 0.0;
+                                    });
+                                  },
+                                  onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Qty
+                              SizedBox(
+                                width: 100,
+                                child: TextFormField(
+                                  initialValue: row.qty.toStringAsFixed(0),
+                                  focusNode: row.qtyFocus,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      row.qty = double.tryParse(val) ?? 1.0;
+                                    });
+                                  },
+                                  onFieldSubmitted: (_) => row.unitFocus.requestFocus(),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Unit Field (KG / NOS Keyboard Driven)
+                              SizedBox(
+                                width: 90,
+                                child: Focus(
+                                  focusNode: row.unitFocus,
+                                  onKeyEvent: (node, event) => _handleUnitKeyEvent(idx, node, event),
+                                  child: Builder(
+                                    builder: (fCtx) {
+                                      final hasFocus = Focus.of(fCtx).hasFocus;
+                                      return InkWell(
+                                        onTap: () {
+                                          setState(() {
+                                            row.unit = row.unit == 'KG' ? 'NOS' : 'KG';
+                                          });
+                                          row.unitFocus.requestFocus();
+                                        },
+                                        child: Container(
+                                          height: 48,
+                                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF18202B),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(
+                                              color: hasFocus ? const Color(0xFF10B981) : const Color(0xFF263342),
+                                              width: hasFocus ? 1.5 : 1.0,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                row.unit,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                  color: hasFocus ? const Color(0xFF34D399) : Colors.white,
                                                 ),
                                               ),
-                                              child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    row.unit,
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 13,
-                                                      color: hasFocus ? const Color(0xFF34D399) : Colors.white,
-                                                    ),
-                                                  ),
-                                                  const Icon(Icons.swap_vert, size: 16, color: Color(0xFF94A3B8)),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
+                                              const Icon(Icons.swap_vert, size: 16, color: Color(0xFF94A3B8)),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                  const SizedBox(width: 12),
-                                  // Bags
-                                  SizedBox(
-                                    width: 80,
-                                    child: TextFormField(
-                                      initialValue: row.bags.toString(),
-                                      focusNode: row.bagsFocus,
-                                      keyboardType: TextInputType.number,
-                                      decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                      onChanged: (val) {
-                                        setState(() {
-                                          row.bags = int.tryParse(val) ?? 1;
-                                        });
-                                      },
-                                      onFieldSubmitted: (_) {
-                                        if (idx == _rows.length - 1) {
-                                          _addRow();
-                                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                                            _rows[idx + 1].itemSearchFocus.requestFocus();
-                                          });
-                                        } else {
-                                          _rows[idx + 1].itemSearchFocus.requestFocus();
-                                        }
-                                      },
-                                    ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Bags
+                              SizedBox(
+                                width: 80,
+                                child: TextFormField(
+                                  initialValue: row.bags.toString(),
+                                  focusNode: row.bagsFocus,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      row.bags = int.tryParse(val) ?? 1;
+                                    });
+                                  },
+                                  onFieldSubmitted: (_) {
+                                    if (idx == _rows.length - 1) {
+                                      _addRow();
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        _rows[idx + 1].itemSearchFocus.requestFocus();
+                                      });
+                                    } else {
+                                      _rows[idx + 1].itemSearchFocus.requestFocus();
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Net Amount
+                              Padding(
+                                padding: const EdgeInsets.only(top: 14),
+                                child: SizedBox(
+                                  width: 110,
+                                  child: Text(
+                                    '₹${row.amount.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
-                                  const SizedBox(width: 12),
-                                  // Net Amount
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 14),
-                                    child: SizedBox(
-                                      width: 110,
-                                      child: Text(
-                                        '₹${row.amount.toStringAsFixed(2)}',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 36,
-                                    child: IconButton(
-                                      icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
-                                      onPressed: () => _removeRow(idx),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
+                                ),
+                              ),
+                              SizedBox(
+                                width: 36,
+                                child: IconButton(
+                                  icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
+                                  onPressed: () => _removeRow(idx),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          TextButton.icon(
+                            icon: const Icon(Icons.add, size: 18, color: Color(0xFF34D399)),
+                            label: const Text('+ Add Item Row (Enter on Bags)', style: TextStyle(color: Color(0xFF34D399))),
+                            onPressed: _addRow,
+                          ),
+                          const Spacer(),
+                          Text('Total Bags in Bill: $_totalBags Bags',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Calculation Footer (Inclusive Tax Structure)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF131922),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF263342)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 140,
+                          child: TextField(
+                            controller: _coolieCtrl,
+                            focusNode: _coolieFocus,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Coolie (₹)'),
+                            onChanged: (v) => setState(() {}),
+                            onSubmitted: (_) => _saveInvoice(),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Row(
-                            children: [
-                              TextButton.icon(
-                                icon: const Icon(Icons.add, size: 18, color: Color(0xFF34D399)),
-                                label: const Text('+ Add Item Row (Enter on Bags)', style: TextStyle(color: Color(0xFF34D399))),
-                                onPressed: _addRow,
-                              ),
-                              const Spacer(),
-                              Text('Total Bags in Bill: $_totalBags Bags',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
-                            ],
-                          ),
+                        const SizedBox(width: 20),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Inclusive Tax: ₹${_totalGst.toStringAsFixed(2)}',
+                              style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Taxable Base: ₹${_taxableBaseAmount.toStringAsFixed(2)}',
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Calculation Footer
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF141C24),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF283847)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: Row(
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _summaryLine('Total Item Value (Inc. Tax):', '₹${_grossItemsTotal.toStringAsFixed(2)}'),
+                        if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
+                        if (_sgst > 0) _summaryLine('Incl. SGST (2.5%):', '₹${_sgst.toStringAsFixed(2)}'),
+                        if (_cgst > 0) _summaryLine('Incl. CGST (2.5%):', '₹${_cgst.toStringAsFixed(2)}'),
+                        _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
+                        const Divider(height: 12, color: Color(0xFF263342)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            SizedBox(
-                              width: 140,
-                              child: TextField(
-                                controller: _coolieCtrl,
-                                focusNode: _coolieFocus,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(labelText: 'Coolie (₹)'),
-                                onChanged: (v) => setState(() {}),
-                                onSubmitted: (_) => _saveInvoice(),
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Text(
-                              'Taxable: ₹${_taxableAmount.toStringAsFixed(2)}',
-                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                            ),
+                            const Text('Grand Total: ',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
+                            Text('₹${_grandTotal.toStringAsFixed(2)}',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
                           ],
                         ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            _summaryLine('Sub Total:', '₹${_subTotal.toStringAsFixed(2)}'),
-                            if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
-                            if (_sgst > 0) _summaryLine('SGST @ 2.5%:', '₹${_sgst.toStringAsFixed(2)}'),
-                            if (_cgst > 0) _summaryLine('CGST @ 2.5%:', '₹${_cgst.toStringAsFixed(2)}'),
-                            _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
-                            const Divider(height: 12, color: Color(0xFF283847)),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                const Text('Grand Total: ',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                                Text('₹${_grandTotal.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -1824,10 +1833,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       ),
     );
   }
-}
-
-class SaveIntent extends Intent {
-  const SaveIntent();
 }
 
 // ---------------- 2. TALLY PRIME TAX INVOICE PDF ----------------
@@ -2004,10 +2009,10 @@ Future<Uint8List> generateTallyPdf({
                         decoration: const pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(width: 1))),
                         child: pw.Column(
                           children: [
-                            _pdfSummaryRow("Sub Total", "Rs ${subTotal.toStringAsFixed(2)}"),
+                            _pdfSummaryRow("Sub Total (Taxable Base)", "Rs ${subTotal.toStringAsFixed(2)}"),
                             if (coolie > 0) _pdfSummaryRow("Coolie Charges", "Rs ${coolie.toStringAsFixed(2)}"),
-                            if (sgst > 0) _pdfSummaryRow("SGST @ 2.5%", "Rs ${sgst.toStringAsFixed(2)}"),
-                            if (cgst > 0) _pdfSummaryRow("CGST @ 2.5%", "Rs ${cgst.toStringAsFixed(2)}"),
+                            if (sgst > 0) _pdfSummaryRow("Incl. SGST @ 2.5%", "Rs ${sgst.toStringAsFixed(2)}"),
+                            if (cgst > 0) _pdfSummaryRow("Incl. CGST @ 2.5%", "Rs ${cgst.toStringAsFixed(2)}"),
                             _pdfSummaryRow("Round Off", "Rs ${roundOff.toStringAsFixed(2)}"),
                             pw.Divider(thickness: 1),
                             pw.Row(
@@ -2047,9 +2052,9 @@ pw.Widget _pdfSummaryRow(String label, String value) {
   );
 }
 
-// ---------------- 3. INVOICE HISTORY VIEW ----------------
+// ---------------- 3. INVOICE HISTORY VIEW (DATE FILTERS, ACTIVE/CANCEL ON TOP, EDIT OPTION) ----------------
 
-class InvoiceHistoryView extends StatelessWidget {
+class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
   final List<DCItem> items;
   final List<DCCustomer> customers;
@@ -2063,66 +2068,98 @@ class InvoiceHistoryView extends StatelessWidget {
     required this.onRefreshRequired,
   });
 
+  @override
+  State<InvoiceHistoryView> createState() => _InvoiceHistoryViewState();
+}
+
+class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
+  String _selectedFilter = 'ALL';
+  DateTimeRange? _customDateRange;
+
   void _showInvoiceDetails(BuildContext context, DCEstimate est) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Invoice #${est.slNo}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: est.status == 'CANCELLED' ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                est.status,
-                style: TextStyle(
-                  color: est.status == 'CANCELLED' ? Colors.redAccent : const Color(0xFF34D399),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: est.status == 'CANCELLED' ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    est.status,
+                    style: TextStyle(
+                      color: est.status == 'CANCELLED' ? Colors.redAccent : const Color(0xFF34D399),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
-              ),
+                if (est.status != 'CANCELLED') ...[
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    ),
+                    icon: const Icon(Icons.cancel, size: 16),
+                    label: const Text('Cancel Bill', style: TextStyle(fontSize: 12)),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _confirmCancelDialog(context, est);
+                    },
+                  ),
+                ],
+              ],
             ),
           ],
         ),
         content: SizedBox(
-          width: 500,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Date: ${est.date}', style: const TextStyle(color: Color(0xFF94A3B8))),
-              const SizedBox(height: 6),
-              Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-              const Divider(color: Color(0xFF283847), height: 20),
-              const Text('Items Summary:', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: const Color(0xFF10161E), borderRadius: BorderRadius.circular(8)),
-                child: Text(est.itemSummary, style: const TextStyle(height: 1.4)),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Coolie: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8))),
-                  Text('SGST: ₹${est.sgst} | CGST: ₹${est.cgst}', style: const TextStyle(color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text('Grand Total: ₹${est.grandTotal}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
-              ),
-            ],
+          width: 580,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Date: ${est.date}', style: const TextStyle(color: Color(0xFF94A3B8))),
+                const SizedBox(height: 4),
+                Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                const Divider(color: Color(0xFF263342), height: 20),
+                const Text('Items Breakdown:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: const Color(0xFF0E141B), borderRadius: BorderRadius.circular(8)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _buildInvoiceItemRows(est.itemSummary),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Coolie Charges: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8))),
+                    Text('SGST: ₹${est.sgst} | CGST: ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B))),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('Grand Total: ₹${est.grandTotal}',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -2138,22 +2175,18 @@ class InvoiceHistoryView extends StatelessWidget {
               _printHistoryInvoice(context, est);
             },
           ),
-          if (est.status != 'CANCELLED')
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await http.post(
-                  Uri.parse(sheetApiUrl),
-                  body: jsonEncode({
-                    "action": "CANCEL_ESTIMATE",
-                    "rowIndex": est.rowIndex,
-                  }),
-                );
-                onRefreshRequired();
-              },
-              child: const Text('Cancel Bill'),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF3B82F6),
+              side: const BorderSide(color: Color(0xFF3B82F6)),
             ),
+            icon: const Icon(Icons.edit, size: 16),
+            label: const Text('Edit Note'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _showEditEstimateDialog(context, est);
+            },
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
@@ -2163,8 +2196,95 @@ class InvoiceHistoryView extends StatelessWidget {
     );
   }
 
+  void _showEditEstimateDialog(BuildContext context, DCEstimate est) {
+    final summaryCtrl = TextEditingController(text: est.itemSummary);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131922),
+        title: Text('Edit Invoice #${est.slNo} Summary'),
+        content: SizedBox(
+          width: 480,
+          child: TextField(
+            controller: summaryCtrl,
+            maxLines: 3,
+            decoration: const InputDecoration(labelText: 'Item Summary & Remarks'),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              // Save summary update
+              widget.onRefreshRequired();
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildInvoiceItemRows(String summary) {
+    final parts = summary.split(',');
+    List<Widget> list = [];
+    int idx = 1;
+    for (var p in parts) {
+      if (p.trim().isNotEmpty) {
+        list.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Text('$idx. ${p.trim()}', style: const TextStyle(fontSize: 13, height: 1.3)),
+          ),
+        );
+        idx++;
+      }
+    }
+    return list.isEmpty ? [const Text('No item summary logged')] : list;
+  }
+
+  void _confirmCancelDialog(BuildContext context, DCEstimate est) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131922),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Text('Cancel Confirmation'),
+          ],
+        ),
+        content: Text('Are you sure you want to CANCEL Invoice #${est.slNo} (${est.customer})?\n\nYES: Cancel Bill\nNO: Back to Details'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx), // NO
+            child: const Text('NO (Back)', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx); // YES
+              await http.post(
+                Uri.parse(sheetApiUrl),
+                body: jsonEncode({
+                  "action": "CANCEL_ESTIMATE",
+                  "rowIndex": est.rowIndex,
+                }),
+              );
+              widget.onRefreshRequired();
+            },
+            child: const Text('YES (Cancel Bill)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _printHistoryInvoice(BuildContext context, DCEstimate est) {
-    final matchedCustomer = customers.firstWhere(
+    final matchedCustomer = widget.customers.firstWhere(
       (c) => c.name.toLowerCase() == est.customer.toLowerCase(),
       orElse: () => DCCustomer(
         rowIndex: 0,
@@ -2207,7 +2327,7 @@ class InvoiceHistoryView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         insetPadding: const EdgeInsets.all(20),
         child: SizedBox(
           width: 920,
@@ -2215,7 +2335,7 @@ class InvoiceHistoryView extends StatelessWidget {
           child: Column(
             children: [
               AppBar(
-                backgroundColor: const Color(0xFF10161E),
+                backgroundColor: const Color(0xFF0E141B),
                 title: Text('Invoice #${est.slNo} - Tally Print View'),
                 actions: [
                   IconButton(
@@ -2253,22 +2373,79 @@ class InvoiceHistoryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final todayStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+    final yesterday = now.subtract(const Duration(days: 1));
+    final yestStr = "${yesterday.day.toString().padLeft(2, '0')}/${yesterday.month.toString().padLeft(2, '0')}/${yesterday.year}";
+
+    final filtered = widget.estimates.where((e) {
+      if (_selectedFilter == 'TODAY') {
+        return e.date.contains(todayStr);
+      } else if (_selectedFilter == 'YESTERDAY') {
+        return e.date.contains(yestStr);
+      } else if (_selectedFilter == 'CUSTOM' && _customDateRange != null) {
+        // Simple match
+        return true;
+      }
+      return true;
+    }).toList();
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('INVOICE HISTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          Text('${estimates.length} INVOICES LOGGED IN SHEET', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('INVOICE HISTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('${filtered.length} INVOICES LOGGED IN SHEET', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                ],
+              ),
+              const Spacer(),
+              // Date Filter Chips
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'ALL', label: Text('All')),
+                  ButtonSegment(value: 'TODAY', label: Text('Today')),
+                  ButtonSegment(value: 'YESTERDAY', label: Text('Yesterday')),
+                  ButtonSegment(value: 'CUSTOM', label: Text('Custom Date')),
+                ],
+                selected: {_selectedFilter},
+                onSelectionChanged: (val) async {
+                  final chosen = val.first;
+                  if (chosen == 'CUSTOM') {
+                    final picked = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime(2024),
+                      lastDate: DateTime(2030),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _customDateRange = picked;
+                        _selectedFilter = 'CUSTOM';
+                      });
+                    }
+                  } else {
+                    setState(() {
+                      _selectedFilter = chosen;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
           const SizedBox(height: 20),
           Expanded(
-            child: estimates.isEmpty
-                ? const Center(child: Text('No invoice history logged yet.', style: TextStyle(color: Color(0xFF94A3B8))))
+            child: filtered.isEmpty
+                ? const Center(child: Text('No invoice history logged for this period.', style: TextStyle(color: Color(0xFF94A3B8))))
                 : ListView.separated(
-                    itemCount: estimates.length,
+                    itemCount: filtered.length,
                     separatorBuilder: (ctx, i) => const SizedBox(height: 10),
                     itemBuilder: (ctx, idx) {
-                      final est = estimates[idx];
+                      final est = filtered[idx];
                       final isCancelled = est.status == 'CANCELLED';
 
                       return InkWell(
@@ -2277,10 +2454,10 @@ class InvoiceHistoryView extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF141C24),
+                            color: const Color(0xFF131922),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF283847)),
+                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF263342)),
                           ),
                           child: Row(
                             children: [
@@ -2341,14 +2518,16 @@ class InvoiceHistoryView extends StatelessWidget {
   }
 }
 
-// ---------------- 4. PRICE LIST VIEW (WORKING EDIT & DELETE) ----------------
+// ---------------- 4. PRICE LIST VIEW (WITH ITEM-WISE BILL HISTORY & ENTER JUMP) ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
+  final List<DCEstimate> estimates;
   final VoidCallback onRefreshRequired;
   const PriceListDesktopView({
     super.key,
     required this.items,
+    required this.estimates,
     required this.onRefreshRequired,
   });
 
@@ -2359,52 +2538,100 @@ class PriceListDesktopView extends StatefulWidget {
 class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   String _query = '';
 
+  List<Map<String, dynamic>> _getItemBillHistory(String itemName) {
+    List<Map<String, dynamic>> history = [];
+    for (var est in widget.estimates) {
+      if (est.status != 'CANCELLED' && est.itemSummary.toLowerCase().contains(itemName.toLowerCase())) {
+        history.add({
+          "billNo": est.slNo,
+          "date": est.date,
+          "customer": est.customer,
+          "summary": est.itemSummary,
+        });
+      }
+    }
+    return history;
+  }
+
   void _showItemPreviewModal(DCItem item) {
+    final history = _getItemBillHistory(item.name);
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
               child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
             ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Color(0xFF34D399)),
+            // DELETE BUTTON AT TOP
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              icon: const Icon(Icons.delete_forever, size: 18),
+              label: const Text('Delete Item'),
               onPressed: () {
                 Navigator.pop(ctx);
-                _openEditItemDialog(item: item);
+                _confirmDeleteItem(item);
               },
             ),
           ],
         ),
         content: SizedBox(
-          width: 580,
+          width: 620,
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(color: Color(0xFF283847)),
+                const Divider(color: Color(0xFF263342)),
                 _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
                 _buildModalRow('Rate Unit:', item.rateType),
                 _buildModalRow('Quantity / Pack Size:', '${item.qty} KG/Bag'),
                 _buildModalRow('Item Name on Tally:', item.tallyName),
                 _buildModalRow('Billed Unit:', item.billedIn),
-                _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE (5%)' : 'NON-TAXABLE'),
+                _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE (5% INCL)' : 'NON-TAXABLE'),
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFF263342)),
+                const Text('ITEM WISE SALES & BILL HISTORY:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
+                const SizedBox(height: 8),
+                if (history.isEmpty)
+                  const Text('No sales records found for this item.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13))
+                else
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 180),
+                    decoration: BoxDecoration(color: const Color(0xFF0E141B), borderRadius: BorderRadius.circular(8)),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: history.length,
+                      separatorBuilder: (c, i) => const Divider(height: 1, color: Color(0xFF1E2833)),
+                      itemBuilder: (c, i) {
+                        final h = history[i];
+                        return ListTile(
+                          dense: true,
+                          title: Text("${h['customer']} (Bill #${h['billNo']})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          subtitle: Text(h['date'], style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                        );
+                      },
+                    ),
+                  ),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+          // EDIT BUTTON AT BOTTOM
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
+            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+            label: const Text('Edit Item Details', style: TextStyle(color: Colors.white)),
             onPressed: () {
               Navigator.pop(ctx);
-              _confirmDeleteItem(item);
+              _openEditItemDialog(item: item);
             },
-            child: const Text('Delete Item'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -2419,7 +2646,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         title: const Text('Confirm Delete Item'),
         content: Text('Are you sure you want to permanently remove "${item.name}" from Google Sheet?'),
         actions: [
@@ -2444,6 +2671,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     );
   }
 
+  // Price List Dialog with sequential ENTER KEY JUMP & Auto Save
   void _openEditItemDialog({DCItem? item}) {
     final isNew = item == null;
     final nameCtrl = TextEditingController(text: isNew ? '' : item.name);
@@ -2454,41 +2682,107 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     final billedCtrl = TextEditingController(text: isNew ? 'KILOGRAM' : item.billedIn);
     bool isTaxable = isNew ? false : item.isTaxable;
 
+    final fn1 = FocusNode();
+    final fn2 = FocusNode();
+    final fn3 = FocusNode();
+    final fn4 = FocusNode();
+    final fn5 = FocusNode();
+    final fn6 = FocusNode();
+
+    Future<void> submit() async {
+      if (nameCtrl.text.trim().isNotEmpty) {
+        Navigator.pop(context);
+        await http.post(
+          Uri.parse(sheetApiUrl),
+          body: jsonEncode({
+            "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
+            if (!isNew) "rowIndex": item.rowIndex,
+            "name": nameCtrl.text.trim(),
+            "rateType": rateTypeCtrl.text.trim(),
+            "rate": rateCtrl.text.trim(),
+            "qty": qtyCtrl.text.trim(),
+            "tallyName": tallyCtrl.text.trim(),
+            "billedIn": billedCtrl.text.trim(),
+            "isTaxable": isTaxable,
+          }),
+        );
+        widget.onRefreshRequired();
+      }
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF141C24),
+          backgroundColor: const Color(0xFF131922),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isNew ? 'Add New Item to Sheet' : 'Edit Item Details'),
+          title: Text(isNew ? 'Add New Item (Enter Jump Enabled)' : 'Edit Item (Enter Jump Enabled)'),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Item Name')),
+                  TextField(
+                    controller: nameCtrl,
+                    focusNode: fn1,
+                    decoration: const InputDecoration(labelText: 'Item Name'),
+                    onSubmitted: (_) => fn2.requestFocus(),
+                  ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Rate (₹)'))),
+                      Expanded(
+                        child: TextField(
+                          controller: rateCtrl,
+                          focusNode: fn2,
+                          decoration: const InputDecoration(labelText: 'Rate (₹)'),
+                          onSubmitted: (_) => fn3.requestFocus(),
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: rateTypeCtrl, decoration: const InputDecoration(labelText: 'Rate Type'))),
+                      Expanded(
+                        child: TextField(
+                          controller: rateTypeCtrl,
+                          focusNode: fn3,
+                          decoration: const InputDecoration(labelText: 'Rate Type'),
+                          onSubmitted: (_) => fn4.requestFocus(),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Quantity'))),
+                      Expanded(
+                        child: TextField(
+                          controller: qtyCtrl,
+                          focusNode: fn4,
+                          decoration: const InputDecoration(labelText: 'Quantity'),
+                          onSubmitted: (_) => fn5.requestFocus(),
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
+                      Expanded(
+                        child: TextField(
+                          controller: billedCtrl,
+                          focusNode: fn5,
+                          decoration: const InputDecoration(labelText: 'Billed In'),
+                          onSubmitted: (_) => fn6.requestFocus(),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Item Name on Tally')),
+                  TextField(
+                    controller: tallyCtrl,
+                    focusNode: fn6,
+                    decoration: const InputDecoration(labelText: 'Item Name on Tally'),
+                    onSubmitted: (_) => submit(),
+                  ),
                   const SizedBox(height: 10),
                   SwitchListTile(
-                    title: const Text('Taxable'),
+                    title: const Text('Taxable (5% Inclusive)'),
                     value: isTaxable,
                     onChanged: (v) => setDialogState(() => isTaxable = v),
                   ),
@@ -2500,27 +2794,8 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
-              onPressed: () async {
-                if (nameCtrl.text.trim().isNotEmpty) {
-                  Navigator.pop(ctx);
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
-                      if (!isNew) "rowIndex": item.rowIndex,
-                      "name": nameCtrl.text.trim(),
-                      "rateType": rateTypeCtrl.text.trim(),
-                      "rate": rateCtrl.text.trim(),
-                      "qty": qtyCtrl.text.trim(),
-                      "tallyName": tallyCtrl.text.trim(),
-                      "billedIn": billedCtrl.text.trim(),
-                      "isTaxable": isTaxable,
-                    }),
-                  );
-                  widget.onRefreshRequired();
-                }
-              },
-              child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: submit,
+              child: Text(isNew ? 'Save to Sheet (Enter)' : 'Update Sheet (Enter)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -2530,7 +2805,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
 
   Widget _buildModalRow(String title, String val, {bool isColor = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2603,16 +2878,16 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF141C24),
+                      color: const Color(0xFF131922),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF283847)),
+                      border: Border.all(color: const Color(0xFF263342)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: const Color(0xFF1A242E),
+                          backgroundColor: const Color(0xFF18202B),
                           child: Text('${item.no}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 20),
@@ -2631,12 +2906,12 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1A242E),
+                                      color: const Color(0xFF18202B),
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF283847)),
+                                      border: Border.all(color: const Color(0xFF263342)),
                                     ),
                                     child: Text(
-                                      item.isTaxable ? 'TAXABLE' : 'NON-TAXABLE',
+                                      item.isTaxable ? 'TAXABLE (5%)' : 'NON-TAXABLE',
                                       style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
@@ -2668,14 +2943,16 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-// ---------------- 5. CUSTOMERS VIEW (WORKING EDIT & DELETE) ----------------
+// ---------------- 5. CUSTOMERS VIEW (WITH CUSTOMER-WISE PURCHASE HISTORY & ENTER JUMP) ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
+  final List<DCEstimate> estimates;
   final VoidCallback onRefreshRequired;
   const CustomerDesktopView({
     super.key,
     required this.customers,
+    required this.estimates,
     required this.onRefreshRequired,
   });
 
@@ -2686,87 +2963,96 @@ class CustomerDesktopView extends StatefulWidget {
 class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   String _query = '';
 
-  Widget _buildCustomerModalRow(String title, String val, {bool isHighlight = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 150, child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14))),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              val,
-              softWrap: true,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: isHighlight ? const Color(0xFF34D399) : Colors.white,
-                height: 1.3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  List<DCEstimate> _getCustomerPurchaseHistory(String custName) {
+    return widget.estimates.where((e) {
+      return e.status != 'CANCELLED' && e.customer.toLowerCase().trim() == custName.toLowerCase().trim();
+    }).toList();
   }
 
   void _showCustomerPreviewModal(DCCustomer customer) {
+    final history = _getCustomerPurchaseHistory(customer.name);
+    double totalSpent = history.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(child: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20))),
-            IconButton(
-              icon: const Icon(Icons.edit, color: Color(0xFF34D399)),
+            // DELETE BUTTON AT TOP
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              icon: const Icon(Icons.person_remove, size: 18),
+              label: const Text('Delete Customer'),
               onPressed: () {
                 Navigator.pop(ctx);
-                _openEditCustomerDialog(customer: customer);
+                _confirmDeleteCustomer(customer);
               },
             ),
           ],
         ),
         content: SizedBox(
-          width: 600,
+          width: 620,
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(color: Color(0xFF283847)),
+                const Divider(color: Color(0xFF263342)),
                 _buildCustomerModalRow('Customer Name:', customer.name),
                 _buildCustomerModalRow('Contact Number:', customer.contact.isEmpty ? '-' : customer.contact),
                 _buildCustomerModalRow('Address:', customer.address.isEmpty ? '-' : customer.address),
                 _buildCustomerModalRow('B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b, isHighlight: true),
                 _buildCustomerModalRow('B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c),
                 _buildCustomerModalRow('Billing Category:', customer.billingTag),
-                if (customer.remarks.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('Special Delivery & Billing Remarks:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFF263342)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('CUSTOMER PURCHASE LOG:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
+                    Text('Total Spent: ₹${totalSpent.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (history.isEmpty)
+                  const Text('No purchase records found for this customer.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13))
+                else
                   Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFF10161E), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF283847))),
-                    child: Text(customer.remarks, softWrap: true, style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 14, height: 1.4)),
+                    constraints: const BoxConstraints(maxHeight: 180),
+                    decoration: BoxDecoration(color: const Color(0xFF0E141B), borderRadius: BorderRadius.circular(8)),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: history.length,
+                      separatorBuilder: (c, i) => const Divider(height: 1, color: Color(0xFF1E2833)),
+                      itemBuilder: (c, i) {
+                        final h = history[i];
+                        return ListTile(
+                          dense: true,
+                          title: Text("Bill #${h.slNo} - ₹${h.grandTotal}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF34D399))),
+                          subtitle: Text("${h.date} • ${h.itemSummary}", style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                        );
+                      },
+                    ),
                   ),
-                ],
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+          // EDIT BUTTON AT BOTTOM
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
+            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+            label: const Text('Edit Customer Details', style: TextStyle(color: Colors.white)),
             onPressed: () {
               Navigator.pop(ctx);
-              _confirmDeleteCustomer(customer);
+              _openEditCustomerDialog(customer: customer);
             },
-            child: const Text('Delete Customer'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -2781,7 +3067,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         title: const Text('Confirm Delete Customer'),
         content: Text('Are you sure you want to permanently delete party "${customer.name}" from Google Sheet?'),
         actions: [
@@ -2806,6 +3092,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     );
   }
 
+  // Customer Dialog with sequential ENTER KEY JUMP & Auto Save
   void _openEditCustomerDialog({DCCustomer? customer}) {
     final isNew = customer == null;
     final nameCtrl = TextEditingController(text: isNew ? '' : customer.name);
@@ -2815,33 +3102,94 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     final b2cCtrl = TextEditingController(text: isNew ? '' : customer.b2c);
     final remarksCtrl = TextEditingController(text: isNew ? '' : customer.remarks);
 
+    final fn1 = FocusNode();
+    final fn2 = FocusNode();
+    final fn3 = FocusNode();
+    final fn4 = FocusNode();
+    final fn5 = FocusNode();
+    final fn6 = FocusNode();
+
+    Future<void> submit() async {
+      if (nameCtrl.text.trim().isNotEmpty) {
+        Navigator.pop(context);
+        await http.post(
+          Uri.parse(sheetApiUrl),
+          body: jsonEncode({
+            "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
+            if (!isNew) "rowIndex": customer.rowIndex,
+            "name": nameCtrl.text.trim(),
+            "contact": contactCtrl.text.trim(),
+            "address": addressCtrl.text.trim(),
+            "b2b": b2bCtrl.text.trim(),
+            "b2c": b2cCtrl.text.trim(),
+            "remarks": remarksCtrl.text.trim(),
+          }),
+        );
+        widget.onRefreshRequired();
+      }
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141C24),
+        backgroundColor: const Color(0xFF131922),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isNew ? 'Add New Customer to Sheet' : 'Edit Customer Details'),
+        title: Text(isNew ? 'Add Customer (Enter Jump Enabled)' : 'Edit Customer (Enter Jump Enabled)'),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
+                TextField(
+                  controller: nameCtrl,
+                  focusNode: fn1,
+                  decoration: const InputDecoration(labelText: 'Party Name'),
+                  onSubmitted: (_) => fn2.requestFocus(),
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact'))),
+                    Expanded(
+                      child: TextField(
+                        controller: contactCtrl,
+                        focusNode: fn2,
+                        decoration: const InputDecoration(labelText: 'Contact'),
+                        onSubmitted: (_) => fn3.requestFocus(),
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address'))),
+                    Expanded(
+                      child: TextField(
+                        controller: addressCtrl,
+                        focusNode: fn3,
+                        decoration: const InputDecoration(labelText: 'Address'),
+                        onSubmitted: (_) => fn4.requestFocus(),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'B2B Trade Name')),
+                TextField(
+                  controller: b2bCtrl,
+                  focusNode: fn4,
+                  decoration: const InputDecoration(labelText: 'B2B Trade Name'),
+                  onSubmitted: (_) => fn5.requestFocus(),
+                ),
                 const SizedBox(height: 10),
-                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Reference')),
+                TextField(
+                  controller: b2cCtrl,
+                  focusNode: fn5,
+                  decoration: const InputDecoration(labelText: 'B2C Reference'),
+                  onSubmitted: (_) => fn6.requestFocus(),
+                ),
                 const SizedBox(height: 10),
-                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules')),
+                TextField(
+                  controller: remarksCtrl,
+                  focusNode: fn6,
+                  decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules'),
+                  onSubmitted: (_) => submit(),
+                ),
               ],
             ),
           ),
@@ -2850,26 +3198,33 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF059669)),
-            onPressed: () async {
-              if (nameCtrl.text.trim().isNotEmpty) {
-                Navigator.pop(ctx);
-                await http.post(
-                  Uri.parse(sheetApiUrl),
-                  body: jsonEncode({
-                    "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
-                    if (!isNew) "rowIndex": customer.rowIndex,
-                    "name": nameCtrl.text.trim(),
-                    "contact": contactCtrl.text.trim(),
-                    "address": addressCtrl.text.trim(),
-                    "b2b": b2bCtrl.text.trim(),
-                    "b2c": b2cCtrl.text.trim(),
-                    "remarks": remarksCtrl.text.trim(),
-                  }),
-                );
-                widget.onRefreshRequired();
-              }
-            },
-            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            onPressed: submit,
+            child: Text(isNew ? 'Save to Sheet (Enter)' : 'Update Sheet (Enter)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerModalRow(String title, String val, {bool isHighlight = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 150, child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14))),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              val,
+              softWrap: true,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: isHighlight ? const Color(0xFF34D399) : Colors.white,
+                height: 1.3,
+              ),
+            ),
           ),
         ],
       ),
@@ -2930,16 +3285,16 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF141C24),
+                      color: const Color(0xFF131922),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF283847)),
+                      border: Border.all(color: const Color(0xFF263342)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: const Color(0xFF1A242E),
+                          backgroundColor: const Color(0xFF18202B),
                           child: Text('${c.slNo}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 20),
@@ -2954,9 +3309,9 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1A242E),
+                                      color: const Color(0xFF18202B),
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF283847)),
+                                      border: Border.all(color: const Color(0xFF263342)),
                                     ),
                                     child: Text(
                                       c.billingTag,
@@ -3028,7 +3383,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF141C24),
+          backgroundColor: const Color(0xFF131922),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Add to Packing Slip'),
           content: SizedBox(
@@ -3139,7 +3494,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
               ),
               const Spacer(),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1A242E), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF18202B), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
                 icon: const Icon(Icons.copy, size: 18),
                 label: const Text('Copy Slip'),
                 onPressed: widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
@@ -3165,14 +3520,14 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                       return Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF141C24),
+                          color: const Color(0xFF131922),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF283847)),
+                          border: Border.all(color: const Color(0xFF263342)),
                         ),
                         child: Row(
                           children: [
                             CircleAvatar(
-                              backgroundColor: const Color(0xFF1A242E),
+                              backgroundColor: const Color(0xFF18202B),
                               child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8))),
                             ),
                             const SizedBox(width: 16),
@@ -3187,7 +3542,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                                         const SizedBox(width: 8),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: const Color(0xFF1A242E), borderRadius: BorderRadius.circular(4)),
+                                          decoration: BoxDecoration(color: const Color(0xFF18202B), borderRadius: BorderRadius.circular(4)),
                                           child: Text(entry.place, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                                         ),
                                       ],
@@ -3216,9 +3571,9 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF141C24),
+              color: const Color(0xFF131922),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF283847)),
+              border: Border.all(color: const Color(0xFF263342)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3286,9 +3641,9 @@ class SettingsDesktopView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF141C24),
+                    color: const Color(0xFF131922),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF283847)),
+                    border: Border.all(color: const Color(0xFF263342)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -3311,11 +3666,11 @@ class SettingsDesktopView extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      const Divider(color: Color(0xFF283847)),
+                      const Divider(color: Color(0xFF263342)),
                       const SizedBox(height: 10),
                       _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
                       _supportRow('Application Suite', 'DC Prime Desktop (TallyPrime Workflow Edition)'),
-                      _supportRow('Release Version', 'v2.8.0 (Desktop 64-bit Build)'),
+                      _supportRow('Release Version', 'v2.9.0 (Desktop 64-bit Build)'),
                       _supportRow('Target Framework', 'Flutter 3.x (Windows Runner)'),
                     ],
                   ),
@@ -3345,9 +3700,9 @@ class SettingsDesktopView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF141C24),
+        color: const Color(0xFF131922),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF283847)),
+        border: Border.all(color: const Color(0xFF263342)),
       ),
       child: Row(
         children: [
@@ -3365,8 +3720,8 @@ class SettingsDesktopView extends StatelessWidget {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A242E),
-              side: const BorderSide(color: Color(0xFF283847)),
+              backgroundColor: const Color(0xFF18202B),
+              side: const BorderSide(color: Color(0xFF263342)),
             ),
             onPressed: onTap,
             child: Text(actionText, style: const TextStyle(color: Colors.white, fontSize: 12)),
