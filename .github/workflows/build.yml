@@ -1,8 +1,8 @@
-name: Build DC Prime Desktop
+name: Build Windows Application
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,8 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -18,8 +19,10 @@ jobs:
           channel: 'stable'
 
       - name: Create Desktop Scaffolding
-        run: |
-          flutter create --platforms=windows .
+        run: flutter create --platforms=windows .
+
+      - name: Apply Custom App Icon
+        run: copy app_logo.ico windows\runner\resources\app_icon.ico
 
       - name: Install dependencies
         run: flutter pub get
@@ -29,16 +32,21 @@ jobs:
 
       - name: Copy Required Visual C++ DLLs
         run: |
-          copy C:\Windows\System32\vcruntime140_1.dll build\windows\x64\runner\Release\
-          copy C:\Windows\System32\vcruntime140.dll build\windows\x64\runner\Release\
-          copy C:\Windows\System32\msvcp140.dll build\windows\x64\runner\Release\
+          $msvcDir = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Redist\MSVC"
+          $latestVersion = Get-ChildItem -Path$msvcDir | Sort-Object Name -Descending | Select-Object -First 1
+          $x64Dir = Join-Path$latestVersion.FullName "x64"
+          $crtDir = Get-ChildItem -Path$x64Dir -Filter "Microsoft.VC*.CRT" | Select-Object -First 1
+          
+          if ($crtDir) {
+            Copy-Item -Path "$($crtDir.FullName)\*.dll" -Destination "build\windows\x64\runner\Release\" -Force
+          }
 
       - name: Zip Artifact
         run: |
-          powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath DC_Prime_App.zip
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "SP_MultiBill_ERP_Windows.zip"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DC_Prime_Windows_App
-          path: DC_Prime_App.zip
+          name: SP-MultiBill-ERP-Release
+          path: SP_MultiBill_ERP_Windows.zip
