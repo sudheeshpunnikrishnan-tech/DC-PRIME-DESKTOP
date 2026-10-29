@@ -1,47 +1,23 @@
-name: Build Windows Application
+name: sp_multibill_erp
+description: "SP MultiBill ERP Desktop Application by SP Tech Solutions"
+publish_to: 'none'
+version: 1.0.0+1
 
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+environment:
+  sdk: '>=3.0.0 <4.0.0'
 
-jobs:
-  build:
-    runs-on: windows-latest
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  pdf: ^3.10.8
+  printing: ^5.13.0
+  file_picker: ^8.0.0
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-
-      - name: Create Desktop Scaffolding
-        run: flutter create --platforms=windows .
-
-      - name: Apply Custom App Icon
-        run: copy app_logo.ico windows\runner\resources\app_icon.ico
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Windows Executable
-        run: flutter build windows --release
-
-      - name: Copy Required Visual C++ DLLs
-        run: |
-          $targetDir = "build\windows\x64\runner\Release"
-          copy C:\Windows\System32\msvcp140.dll $targetDir\
-          copy C:\Windows\System32\vcruntime140.dll $targetDir\
-          copy C:\Windows\System32\vcruntime140_1.dll $targetDir\
-
-      - name: Zip Artifact
-        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath SPMultiBillERP_Windows_x64.zip
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SPMultiBillERP-Desktop-Release
-          path: SPMultiBillERP_Windows_x64.zip
+flutter:
+  uses-material-design: true
