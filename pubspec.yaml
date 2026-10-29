@@ -1,33 +1,47 @@
-name: dc_prime_desktop
-description: "Davis & Company DC Prime Desktop Suite - TallyPrime Edition"
-publish_to: "none"
+name: Build Windows Application
 
-version: 1.0.0+1
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
 
-environment:
-  sdk: ">=3.0.0 <4.0.0"
+jobs:
+  build:
+    runs-on: windows-latest
 
-dependencies:
-  flutter:
-    sdk: flutter
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-  # Networking & JSON
-  http: ^1.2.0
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
 
-  # PDF Generation & Printing
-  pdf: ^3.10.7
-  printing: ^5.11.1
+      - name: Create Desktop Scaffolding
+        run: flutter create --platforms=windows .
 
-  # Local File Picker for Logo / Assets
-  file_picker: ^8.0.0
+      - name: Apply Custom App Icon
+        run: copy app_logo.ico windows\runner\resources\app_icon.ico
 
-  # Material Design Icons
-  cupertino_icons: ^1.0.6
+      - name: Install dependencies
+        run: flutter pub get
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.0
+      - name: Build Windows Executable
+        run: flutter build windows --release
 
-flutter:
-  uses-material-design: true
+      - name: Copy Required Visual C++ DLLs
+        run: |
+          $targetDir = "build\windows\x64\runner\Release"
+          copy C:\Windows\System32\msvcp140.dll $targetDir\
+          copy C:\Windows\System32\vcruntime140.dll $targetDir\
+          copy C:\Windows\System32\vcruntime140_1.dll $targetDir\
+
+      - name: Zip Artifact
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath SPMultiBillERP_Windows_x64.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPMultiBillERP-Desktop-Release
+          path: SPMultiBillERP_Windows_x64.zip
