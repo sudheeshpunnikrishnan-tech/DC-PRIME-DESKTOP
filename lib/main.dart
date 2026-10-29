@@ -211,49 +211,224 @@ class InvoiceRowItem {
   double get amount => qty * rate;
 }
 
-// ---------------- APP ROOT ----------------
+// ---------------- TOP-LEVEL TALLY PRIME PDF GENERATOR ----------------
 
-class DCPrimeApp extends StatelessWidget {
-  const DCPrimeApp({super.key});
+Future<Uint8List> generateTallyPdf({
+  required PdfPageFormat format,
+  required String billNo,
+  required String dateStr,
+  required DCCustomer customer,
+  required List<InvoiceRowItem> items,
+  required double subTotal,
+  required double coolie,
+  required double sgst,
+  required double cgst,
+  required double roundOff,
+  required double grandTotal,
+}) async {
+  final doc = pw.Document();
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Davis & Company - DC Prime Desktop',
-      scrollBehavior: UltraSmoothScrollBehavior(),
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0B1015),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF10B981),
-          secondary: Color(0xFF3B82F6),
-          tertiary: Color(0xFF8B5CF6),
-          surface: Color(0xFF131922),
-          onSurface: Color(0xFFF8FAFC),
-        ),
-        navigationRailTheme: const NavigationRailThemeData(
-          backgroundColor: Color(0xFF0E141B),
-          indicatorColor: Color(0xFF10B981),
-          selectedIconTheme: IconThemeData(color: Colors.white, size: 22),
-          unselectedIconTheme: IconThemeData(color: Color(0xFF94A3B8), size: 22),
-          selectedLabelTextStyle: TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelTextStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-        ),
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: Color(0xFF18202B),
-          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF263342))),
-          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF263342))),
-          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF34D399), width: 1.5)),
-          labelStyle: TextStyle(color: Color(0xFF94A3B8)),
-        ),
-      ),
-      home: const MainDashboard(),
-    );
+  pw.ImageProvider? logoImage;
+  if (CompanyConfig.logoUrl.isNotEmpty) {
+    try {
+      final res = await http.get(Uri.parse(CompanyConfig.logoUrl));
+      if (res.statusCode == 200) {
+        logoImage = pw.MemoryImage(res.bodyBytes);
+      }
+    } catch (e) {}
   }
+
+  doc.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(24),
+      build: (pw.Context context) {
+        return pw.Container(
+          decoration: pw.BoxDecoration(border: pw.Border.all(width: 1)),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                alignment: pw.Alignment.center,
+                decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
+                child: pw.Row(
+                  children: [
+                    if (logoImage != null)
+                      pw.Container(
+                        width: 50,
+                        height: 50,
+                        margin: const pw.EdgeInsets.only(right: 12),
+                        child: pw.Image(logoImage),
+                      ),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: logoImage != null ? pw.CrossAxisAlignment.start : pw.CrossAxisAlignment.center,
+                        children: [
+                          pw.Text("TAX INVOICE", style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                          pw.SizedBox(height: 2),
+                          pw.Text(CompanyConfig.name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                          pw.Text("${CompanyConfig.tradeSubtitle}, ${CompanyConfig.address}", style: const pw.TextStyle(fontSize: 9)),
+                          pw.Text("GSTIN/UIN: ${CompanyConfig.gstin}  |  State: ${CompanyConfig.stateCode}  |  Ph: ${CompanyConfig.phone}", style: const pw.TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.Container(
+                decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
+                child: pw.Row(
+                  children: [
+                    pw.Expanded(
+                      flex: 6,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1))),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text("Buyer / Consignee:", style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                            pw.Text(customer.name, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                            if (customer.b2b.isNotEmpty) pw.Text("Trade Name: ${customer.b2b}", style: const pw.TextStyle(fontSize: 9)),
+                            if (customer.address.isNotEmpty) pw.Text("Address: ${customer.address}", style: const pw.TextStyle(fontSize: 9)),
+                            if (customer.contact.isNotEmpty) pw.Text("Phone: ${customer.contact}", style: const pw.TextStyle(fontSize: 9)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 4,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text("Invoice No: $billNo", style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                            pw.SizedBox(height: 4),
+                            pw.Text("Dated: $dateStr", style: const pw.TextStyle(fontSize: 9)),
+                            pw.SizedBox(height: 4),
+                            pw.Text("Place of Supply: ${CompanyConfig.stateCode}", style: const pw.TextStyle(fontSize: 9)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.Container(
+                color: PdfColors.grey200,
+                decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 1))),
+                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: pw.Row(
+                  children: [
+                    pw.SizedBox(width: 25, child: pw.Text("Sl", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.Expanded(flex: 5, child: pw.Text("Description of Goods", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 50, child: pw.Text("Rate", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 40, child: pw.Text("Qty", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 35, child: pw.Text("Unit", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 35, child: pw.Text("Bags", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                    pw.SizedBox(width: 70, child: pw.Text("Amount", textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold))),
+                  ],
+                ),
+              ),
+              pw.Expanded(
+                child: pw.ListView.builder(
+                  padding: pw.EdgeInsets.zero,
+                  itemCount: items.length,
+                  itemBuilder: (ctx, idx) {
+                    final itm = items[idx];
+                    return pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 0.5, color: PdfColors.grey400))),
+                      child: pw.Row(
+                        children: [
+                          pw.SizedBox(width: 25, child: pw.Text("${idx + 1}", style: const pw.TextStyle(fontSize: 9))),
+                          pw.Expanded(flex: 5, child: pw.Text(itm.item?.name ?? '', style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 50, child: pw.Text(itm.rate.toStringAsFixed(2), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 40, child: pw.Text("${itm.qty.toInt()}", textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 35, child: pw.Text(itm.unit, textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 35, child: pw.Text("${itm.bags}", textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                          pw.SizedBox(width: 70, child: pw.Text(itm.amount.toStringAsFixed(2), textAlign: pw.TextAlign.right, style: const pw.TextStyle(fontSize: 9))),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              pw.Container(
+                decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(width: 1))),
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Expanded(
+                      flex: 5,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text("Bank: SBI Aluva Branch", style: const pw.TextStyle(fontSize: 8)),
+                            pw.Text("A/c No: 12345678901 | IFS Code: SBIN0001234", style: const pw.TextStyle(fontSize: 8)),
+                            pw.SizedBox(height: 25),
+                            pw.Text("for ${CompanyConfig.name}", style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                            pw.SizedBox(height: 15),
+                            pw.Text("Authorised Signatory", style: const pw.TextStyle(fontSize: 8)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    pw.Expanded(
+                      flex: 5,
+                      child: pw.Container(
+                        padding: const pw.EdgeInsets.all(8),
+                        decoration: const pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(width: 1))),
+                        child: pw.Column(
+                          children: [
+                            _pdfSummaryRow("Sub Total (Taxable Base)", "Rs ${subTotal.toStringAsFixed(2)}"),
+                            if (coolie > 0) _pdfSummaryRow("Coolie Charges", "Rs ${coolie.toStringAsFixed(2)}"),
+                            if (sgst > 0) _pdfSummaryRow("Incl. SGST @ 2.5%", "Rs ${sgst.toStringAsFixed(2)}"),
+                            if (cgst > 0) _pdfSummaryRow("Incl. CGST @ 2.5%", "Rs ${cgst.toStringAsFixed(2)}"),
+                            _pdfSummaryRow("Round Off", "Rs ${roundOff.toStringAsFixed(2)}"),
+                            pw.Divider(thickness: 1),
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                              children: [
+                                pw.Text("Total Amount:", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                                pw.Text("Rs ${grandTotal.toStringAsFixed(2)}", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+
+  return doc.save();
 }
+
+pw.Widget _pdfSummaryRow(String label, String value) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
+    child: pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
+        pw.Text(value, style: const pw.TextStyle(fontSize: 9)),
+      ],
+    ),
+  );
+}
+
+// ---------------- APP ROOT ----------------
 
 class MainDashboard extends StatefulWidget {
   const MainDashboard({super.key});
@@ -271,7 +446,6 @@ class _MainDashboardState extends State<MainDashboard> {
   bool _isLoading = true;
   bool _isBackgroundSyncing = false;
 
-  // Invoice edit state to load into Billing tab
   DCEstimate? _invoiceToEdit;
 
   @override
@@ -491,7 +665,7 @@ class _MainDashboardState extends State<MainDashboard> {
   void _onLoadInvoiceToEdit(DCEstimate est) {
     setState(() {
       _invoiceToEdit = est;
-      _navIndex = 0; // Jump to Billing Tab
+      _navIndex = 0;
     });
   }
 
@@ -669,7 +843,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. TALLY PRIME BILLING SCREEN (EDIT INVOICE COMPLIANT) ----------------
+// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -750,7 +924,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     _partyTextCtrl.text = est.customer;
     _coolieCtrl.text = est.coolie;
 
-    // Parse summary back to rows: NAME (QTY UNIT x RATE) [BAGSB]
     final parts = est.itemSummary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -823,7 +996,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     _partyFocus.requestFocus();
   }
 
-  // --- INCLUSIVE TAX COMPUTATION ---
   double get _grossItemsTotal => _rows.fold(0.0, (sum, r) => sum + r.amount);
 
   double get _taxableItemsGross {
@@ -1923,537 +2095,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   }
 }
 
-// ---------------- 4. INVOICE HISTORY VIEW (COMPLETE TABLE VIEW, NEWEST FIRST, DATE PARSED) ----------------
-
-class InvoiceHistoryView extends StatefulWidget {
-  final List<DCEstimate> estimates;
-  final List<DCItem> items;
-  final List<DCCustomer> customers;
-  final Function(DCEstimate) onEditInvoice;
-  final VoidCallback onRefreshRequired;
-
-  const InvoiceHistoryView({
-    super.key,
-    required this.estimates,
-    required this.items,
-    required this.customers,
-    required this.onEditInvoice,
-    required this.onRefreshRequired,
-  });
-
-  @override
-  State<InvoiceHistoryView> createState() => _InvoiceHistoryViewState();
-}
-
-class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
-  String _selectedFilter = 'ALL';
-  DateTimeRange? _customDateRange;
-
-  // Robust Date Parser for sheet date strings (supports "29/10/2026" or "Thu Oct 29 2026...")
-  DateTime? _parseSheetDate(String dateStr) {
-    if (dateStr.isEmpty) return null;
-    try {
-      if (dateStr.contains('/')) {
-        final p = dateStr.split('/');
-        if (p.length >= 3) {
-          return DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-        }
-      }
-      return DateTime.tryParse(dateStr);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // Parses raw summary into structured list for Table Display
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
-    final parts = summary.split(',');
-    for (var part in parts) {
-      if (part.trim().isNotEmpty) {
-        final raw = part.trim();
-        String name = raw;
-        String qty = '1';
-        String unit = 'KG';
-        String rate = '0.00';
-        String bags = '1';
-        double amount = 0.0;
-
-        try {
-          if (raw.contains('(') && raw.contains(')')) {
-            name = raw.substring(0, raw.indexOf('(')).trim();
-            final inside = raw.substring(raw.indexOf('(') + 1, raw.indexOf(')'));
-            final xParts = inside.split('x');
-            if (xParts.length == 2) {
-              final qParts = xParts[0].trim().split(' ');
-              qty = qParts[0];
-              if (qParts.length > 1) unit = qParts[1];
-              rate = xParts[1].trim();
-            }
-          }
-          if (raw.contains('[') && raw.contains(']')) {
-            bags = raw.substring(raw.indexOf('[') + 1, raw.indexOf(']')).replaceAll('B', '').trim();
-          }
-          amount = (double.tryParse(qty) ?? 1.0) * (double.tryParse(rate) ?? 0.0);
-        } catch (e) {}
-
-        rows.add({
-          "name": name,
-          "qty": qty,
-          "unit": unit,
-          "rate": rate,
-          "bags": bags,
-          "amount": amount.toStringAsFixed(2),
-        });
-      }
-    }
-    return rows;
-  }
-
-  void _showInvoiceDetails(BuildContext context, DCEstimate est) {
-    final parsedRows = _parseSummaryTable(est.itemSummary);
-    final isCancelled = est.status == 'CANCELLED';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Invoice #${est.slNo}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isCancelled ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    est.status,
-                    style: TextStyle(
-                      color: isCancelled ? Colors.redAccent : const Color(0xFF34D399),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                if (!isCancelled) ...[
-                  const SizedBox(width: 10),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                    icon: const Icon(Icons.cancel, size: 16),
-                    label: const Text('Cancel Bill'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _confirmCancelDialog(context, est);
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 760,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                    Text('Date: ${est.date.split("GMT")[0]}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                // Complete Invoice Items Table View
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0E141B),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF263342)),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF18202B),
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                        ),
-                        child: const Row(
-                          children: [
-                            SizedBox(width: 35, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            Expanded(flex: 5, child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 80, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 90, child: Text('Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 1, color: Color(0xFF263342)),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(12),
-                        itemCount: parsedRows.length,
-                        separatorBuilder: (c, i) => const Divider(height: 10, color: Color(0xFF1E2833)),
-                        itemBuilder: (c, i) {
-                          final r = parsedRows[i];
-                          return Row(
-                            children: [
-                              SizedBox(width: 35, child: Text('${i + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
-                              Expanded(flex: 5, child: Text(r['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-                              SizedBox(width: 80, child: Text('₹${r['rate']}', style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 60, child: Text(r['qty'], style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 60, child: Text(r['unit'], style: const TextStyle(fontSize: 13, color: Color(0xFF34D399)))),
-                              SizedBox(width: 60, child: Text(r['bags'], style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 90, child: Text('₹${r['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF38BDF8)))),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Coolie Charges: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                    Text('SGST (2.5%): ₹${est.sgst}  |  CGST (2.5%): ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13)),
-                    Text('Round Off: ₹${est.roundOff}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('Grand Total: ₹${est.grandTotal}',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF34D399))),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF059669),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-            icon: const Icon(Icons.print, size: 16, color: Colors.white),
-            label: const Text('Print / View PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _printHistoryInvoice(context, est);
-            },
-          ),
-          if (!isCancelled)
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF3B82F6),
-                side: const BorderSide(color: Color(0xFF3B82F6)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              icon: const Icon(Icons.edit_document, size: 16),
-              label: const Text('Edit Invoice'),
-              onPressed: () {
-                Navigator.pop(ctx);
-                widget.onEditInvoice(est);
-              },
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmCancelDialog(BuildContext context, DCEstimate est) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-            SizedBox(width: 10),
-            Text('Cancel Confirmation'),
-          ],
-        ),
-        content: Text('Are you sure you want to CANCEL Invoice #${est.slNo} (${est.customer})?\n\nYES: Cancel Bill\nNO: Back to Details'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('NO (Back)', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await http.post(
-                Uri.parse(sheetApiUrl),
-                body: jsonEncode({
-                  "action": "CANCEL_ESTIMATE",
-                  "rowIndex": est.rowIndex,
-                }),
-              );
-              widget.onRefreshRequired();
-            },
-            child: const Text('YES (Cancel Bill)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _printHistoryInvoice(BuildContext context, DCEstimate est) {
-    final matchedCustomer = widget.customers.firstWhere(
-      (c) => c.name.toLowerCase() == est.customer.toLowerCase(),
-      orElse: () => DCCustomer(rowIndex: 0, slNo: 0, name: est.customer, contact: '', address: '', b2c: '', b2b: '', remarks: ''),
-    );
-
-    final List<InvoiceRowItem> parsedItems = [];
-    final itemsParts = est.itemSummary.split(',');
-    for (var part in itemsParts) {
-      if (part.trim().isNotEmpty) {
-        parsedItems.add(
-          InvoiceRowItem(
-            item: DCItem(
-              rowIndex: 0,
-              no: 1,
-              name: part.trim(),
-              rateType: 'KG',
-              rate: '0',
-              qty: 1,
-              tallyName: '',
-              billedIn: '',
-              isTaxable: false,
-            ),
-            rate: double.tryParse(est.grandTotal) ?? 0,
-            qty: 1,
-            unit: 'KG',
-            bags: 1,
-          ),
-        );
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF131922),
-        insetPadding: const EdgeInsets.all(20),
-        child: SizedBox(
-          width: 920,
-          height: 720,
-          child: Column(
-            children: [
-              AppBar(
-                backgroundColor: const Color(0xFF0E141B),
-                title: Text('Invoice #${est.slNo} - Tally Print View'),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: PdfPreview(
-                  build: (format) => generateTallyPdf(
-                    format: format,
-                    billNo: est.slNo.toString(),
-                    dateStr: est.date.split("GMT")[0].trim(),
-                    customer: matchedCustomer,
-                    items: parsedItems,
-                    subTotal: double.tryParse(est.grandTotal) ?? 0,
-                    coolie: double.tryParse(est.coolie) ?? 0,
-                    sgst: double.tryParse(est.sgst) ?? 0,
-                    cgst: double.tryParse(est.cgst) ?? 0,
-                    roundOff: double.tryParse(est.roundOff) ?? 0,
-                    grandTotal: double.tryParse(est.grandTotal) ?? 0,
-                  ),
-                  allowPrinting: true,
-                  allowSharing: true,
-                  canChangePageFormat: false,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-
-    // Sort newest to oldest: Innu thottu porakottu
-    final sortedEstimates = List<DCEstimate>.from(widget.estimates.reversed);
-
-    final filtered = sortedEstimates.where((e) {
-      final eDate = _parseSheetDate(e.date);
-      if (eDate == null) {
-        // String fallback match
-        final nowStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
-        if (_selectedFilter == 'TODAY') return e.date.contains(nowStr);
-        return true;
-      }
-
-      final checkDay = DateTime(eDate.year, eDate.month, eDate.day);
-
-      if (_selectedFilter == 'TODAY') {
-        return checkDay.isAtSameMomentAs(today);
-      } else if (_selectedFilter == 'YESTERDAY') {
-        return checkDay.isAtSameMomentAs(yesterday);
-      } else if (_selectedFilter == 'CUSTOM' && _customDateRange != null) {
-        return (checkDay.isAfter(_customDateRange!.start.subtract(const Duration(days: 1))) &&
-            checkDay.isBefore(_customDateRange!.end.add(const Duration(days: 1))));
-      }
-      return true;
-    }).toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('INVOICE HISTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('${filtered.length} INVOICES (NEWEST FIRST)', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const Spacer(),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'ALL', label: Text('All')),
-                  ButtonSegment(value: 'TODAY', label: Text('Today')),
-                  ButtonSegment(value: 'YESTERDAY', label: Text('Yesterday')),
-                  ButtonSegment(value: 'CUSTOM', label: Text('Custom Date')),
-                ],
-                selected: {_selectedFilter},
-                onSelectionChanged: (val) async {
-                  final chosen = val.first;
-                  if (chosen == 'CUSTOM') {
-                    final picked = await showDateRangePicker(
-                      context: context,
-                      firstDate: DateTime(2024),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _customDateRange = picked;
-                        _selectedFilter = 'CUSTOM';
-                      });
-                    }
-                  } else {
-                    setState(() {
-                      _selectedFilter = chosen;
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: filtered.isEmpty
-                ? const Center(child: Text('No invoice history logged for this period.', style: TextStyle(color: Color(0xFF94A3B8))))
-                : ListView.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, idx) {
-                      final est = filtered[idx];
-                      final isCancelled = est.status == 'CANCELLED';
-
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () => _showInvoiceDetails(context, est),
-                        child: Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF131922),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF263342)),
-                          ),
-                          child: Row(
-                            children: [
-                              Text('#${est.slNo}',
-                                  style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(est.customer,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                              decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                            )),
-                                        const SizedBox(width: 10),
-                                        Text('(${est.date.split("GMT")[0].trim()})',
-                                            style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                                        if (isCancelled) ...[
-                                          const SizedBox(width: 10),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red.withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: const Text('CANCELLED',
-                                                style: TextStyle(
-                                                    color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(est.itemSummary,
-                                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                              Text('₹${est.grandTotal}',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: isCancelled ? Colors.grey : const Color(0xFF34D399))),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 5. PRICE LIST VIEW (WITH TOP REPORT ICON & PROFESSIONAL MODAL) ----------------
+// ---------------- 5. PRICE LIST VIEW (WITH TOP REPORT ICON) ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -2502,7 +2144,6 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
             ),
             Row(
               children: [
-                // Top Report Icon
                 IconButton(
                   icon: const Icon(Icons.analytics_outlined, color: Color(0xFF3B82F6)),
                   tooltip: 'Item Sales & Distribution Report',
@@ -2946,7 +2587,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
             Expanded(child: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20))),
             Row(
               children: [
-                // Top Customer Sales Report Icon
                 IconButton(
                   icon: const Icon(Icons.analytics_outlined, color: Color(0xFF3B82F6)),
                   tooltip: 'Customer Ledger & Purchase Report',
@@ -3330,7 +2970,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)),
                                     ),
                                   ),
-                                  // Prominent Remark Badge
                                   if (c.remarks.isNotEmpty) ...[
                                     const SizedBox(width: 10),
                                     Container(
