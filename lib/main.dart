@@ -47,6 +47,107 @@ class CompanyConfig {
   static double defaultGstRate = 5.0;
 }
 
+// ---------------- DATE & TIME HELPERS ----------------
+
+DateTime? parseUniversalDate(String dateStr) {
+  if (dateStr.trim().isEmpty) return null;
+  final s = dateStr.trim();
+  try {
+    // 1. Format: DD/MM/YYYY or DD/MM/YYYY HH:mm
+    if (s.contains('/')) {
+      final parts = s.split(' ');
+      final dateParts = parts[0].split('/');
+      if (dateParts.length >= 3) {
+        int day = int.parse(dateParts[0]);
+        int month = int.parse(dateParts[1]);
+        int year = int.parse(dateParts[2]);
+        if (parts.length > 1 && parts[1].contains(':')) {
+          final timeParts = parts[1].split(':');
+          int hour = int.parse(timeParts[0]);
+          int min = int.parse(timeParts[1]);
+          if (parts.length > 2 && parts[2].toUpperCase() == 'PM' && hour < 12) hour += 12;
+          if (parts.length > 2 && parts[2].toUpperCase() == 'AM' && hour == 12) hour = 0;
+          return DateTime(year, month, day, hour, min);
+        }
+        return DateTime(year, month, day);
+      }
+    }
+
+    // 2. Format: "Thu Oct 29 2026 00:00:00 GMT..."
+    final months = {
+      'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+      'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+    };
+    final tokens = s.split(RegExp(r'[\s,]+'));
+    if (tokens.length >= 4) {
+      String? mToken;
+      int? dToken;
+      int? yToken;
+      String? timeToken;
+
+      for (var t in tokens) {
+        final low = t.toLowerCase();
+        if (months.containsKey(low)) {
+          mToken = low;
+        } else if (int.tryParse(t) != null) {
+          int val = int.parse(t);
+          if (val > 1900 && val < 2100) {
+            yToken = val;
+          } else if (val >= 1 && val <= 31 && dToken == null) {
+            dToken = val;
+          }
+        } else if (t.contains(':') && t.split(':').length >= 2) {
+          timeToken = t;
+        }
+      }
+
+      if (mToken != null && dToken != null && yToken != null) {
+        int h = 0;
+        int m = 0;
+        if (timeToken != null) {
+          final tp = timeToken.split(':');
+          h = int.tryParse(tp[0]) ?? 0;
+          m = int.tryParse(tp[1]) ?? 0;
+        }
+        return DateTime(yToken, months[mToken]!, dToken, h, m);
+      }
+    }
+
+    return DateTime.tryParse(s);
+  } catch (_) {
+    return null;
+  }
+}
+
+String formatDisplayDateTime(String dateStr) {
+  final dt = parseUniversalDate(dateStr);
+  if (dt == null) return dateStr.split("GMT")[0].trim();
+  final d = dt.day.toString().padLeft(2, '0');
+  final m = dt.month.toString().padLeft(2, '0');
+  final y = dt.year;
+  int hour = dt.hour;
+  final ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  if (hour == 0) hour = 12;
+  final hStr = hour.toString().padLeft(2, '0');
+  final minStr = dt.minute.toString().padLeft(2, '0');
+  return "$d/$m/$y $hStr:$minStr $ampm";
+}
+
+String getCurrentFormattedDateTime() {
+  final now = DateTime.now();
+  final d = now.day.toString().padLeft(2, '0');
+  final m = now.month.toString().padLeft(2, '0');
+  final y = now.year;
+  int hour = now.hour;
+  final ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  if (hour == 0) hour = 12;
+  final hStr = hour.toString().padLeft(2, '0');
+  final minStr = now.minute.toString().padLeft(2, '0');
+  return "$d/$m/$y $hStr:$minStr $ampm";
+}
+
 // ---------------- MODELS ----------------
 
 class DCItem {
@@ -717,7 +818,6 @@ class _MainDashboardState extends State<MainDashboard> {
     });
   }
 
-  // Visual Futuristic Shield Emblem Widget for Boot & Branding
   Widget _buildShieldLogoWidget({double size = 100}) {
     return Container(
       width: size,
@@ -781,7 +881,6 @@ class _MainDashboardState extends State<MainDashboard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // High-tech Shield & Badge Boot Logo
               _buildShieldLogoWidget(size: 130),
               const SizedBox(height: 28),
               const Text('SP MULTIBILL ERP',
@@ -921,6 +1020,8 @@ class _MainDashboardState extends State<MainDashboard> {
                         estimates: _estimates,
                         items: _items,
                         customers: _customers,
+                        onEditInvoice: _onLoadInvoiceToEdit,
+                        onRefreshRequired: () => _fetchData(silent: true),
                       ),
                       SettingsDesktopView(
                         onReloadSheet: () => _fetchData(silent: true),
@@ -1410,8 +1511,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     }
 
     final isUpdating = widget.invoiceToEdit != null;
-    final now = DateTime.now();
-    final dateStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+    final exactFormattedTime = getCurrentFormattedDateTime();
     final summary = validRows.map((r) => "${r.item!.name} (${r.qty} ${r.unit} x ${r.rate}) [${r.bags}B]").join(", ");
 
     widget.onSetSyncing(true);
@@ -1424,7 +1524,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
         "action": isUpdating ? "UPDATE_ESTIMATE" : "ADD_ESTIMATE",
         if (isUpdating) "rowIndex": widget.invoiceToEdit!.rowIndex,
         "slNo": billNoToUse,
-        "date": isUpdating ? widget.invoiceToEdit!.date : dateStr,
+        "date": isUpdating ? widget.invoiceToEdit!.date : exactFormattedTime,
         "customer": _selectedParty!.name,
         "itemSummary": summary,
         "coolie": _coolie.toStringAsFixed(2),
@@ -1438,7 +1538,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     widget.onSaved();
     _showTallyPrintPreview(
       billNo: billNoToUse.toString(),
-      dateStr: isUpdating ? widget.invoiceToEdit!.date : dateStr,
+      dateStr: isUpdating ? formatDisplayDateTime(widget.invoiceToEdit!.date) : exactFormattedTime,
       customer: _selectedParty!,
       items: validRows,
       subTotal: _taxableBaseAmount > 0 ? _taxableBaseAmount : _grossItemsTotal,
@@ -1957,7 +2057,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   }
 }
 
-// ---------------- 2. PRICE LIST VIEW (WISE REPORT REMOVED) ----------------
+// ---------------- 2. PRICE LIST VIEW ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -2283,7 +2383,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-// ---------------- 3. CUSTOMERS VIEW (B2B & B2C REFINED STYLING) ----------------
+// ---------------- 3. CUSTOMERS VIEW ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -2510,8 +2610,8 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
 
   Widget _buildCustomerModalRow(String title, String val, {bool isB2B = false, bool isB2C = false}) {
     Color valColor = Colors.white;
-    if (isB2B) valColor = const Color(0xFF38BDF8); // Electric cyan-blue for prominent B2B
-    if (isB2C) valColor = const Color(0xFF94A3B8); // Muted slate-grey for subtle B2C
+    if (isB2B) valColor = const Color(0xFF38BDF8);
+    if (isB2C) valColor = const Color(0xFF94A3B8);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -2619,7 +2719,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              // B2B and B2C with SAME text size & font, but differentiated prominence colors
                               Row(
                                 children: [
                                   if (c.b2b.isNotEmpty) ...[
@@ -2628,7 +2727,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                       style: const TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF38BDF8), // High prominence cyan
+                                        color: Color(0xFF38BDF8),
                                       ),
                                     ),
                                     const SizedBox(width: 14),
@@ -2639,7 +2738,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                       style: const TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w400,
-                                        color: Color(0xFF94A3B8), // Subdued muted grey
+                                        color: Color(0xFF94A3B8),
                                       ),
                                     ),
                                 ],
@@ -2669,7 +2768,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   }
 }
 
-// ---------------- 4. INVOICE HISTORY VIEW ----------------
+// ---------------- 4. INVOICE HISTORY VIEW (DATE & TIME PARSED) ----------------
 
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -2694,21 +2793,6 @@ class InvoiceHistoryView extends StatefulWidget {
 class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
-
-  DateTime? _parseSheetDate(String dateStr) {
-    if (dateStr.isEmpty) return null;
-    try {
-      if (dateStr.contains('/')) {
-        final p = dateStr.split('/');
-        if (p.length >= 3) {
-          return DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-        }
-      }
-      return DateTime.tryParse(dateStr);
-    } catch (_) {
-      return null;
-    }
-  }
 
   List<Map<String, dynamic>> _parseSummaryTable(String summary) {
     List<Map<String, dynamic>> rows = [];
@@ -2811,7 +2895,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                    Text('Date: ${est.date.split("GMT")[0]}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                    Text('Date & Time: ${formatDisplayDateTime(est.date)}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -2993,7 +3077,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
             children: [
               AppBar(
                 backgroundColor: const Color(0xFF0E141B),
-                title: Text('Invoice #${est.slNo} - Tally Print View'),
+                title: Text('Invoice #${est.slNo} - Print View'),
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -3006,7 +3090,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                   build: (format) => generateTallyPdf(
                     format: format,
                     billNo: est.slNo.toString(),
-                    dateStr: est.date.split("GMT")[0].trim(),
+                    dateStr: formatDisplayDateTime(est.date),
                     customer: matchedCustomer,
                     items: parsedItems,
                     subTotal: double.tryParse(est.grandTotal) ?? 0,
@@ -3037,10 +3121,9 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     final sortedEstimates = List<DCEstimate>.from(widget.estimates.reversed);
 
     final filtered = sortedEstimates.where((e) {
-      final eDate = _parseSheetDate(e.date);
+      final eDate = parseUniversalDate(e.date);
       if (eDate == null) {
-        final nowStr = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
-        if (_selectedFilter == 'TODAY') return e.date.contains(nowStr);
+        if (_selectedFilter == 'TODAY') return false;
         return true;
       }
 
@@ -3136,15 +3219,16 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                   children: [
                                     Row(
                                       children: [
-                                        Text(est.customer,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                              decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                            )),
-                                        const SizedBox(width: 10),
-                                        Text('(${est.date.split("GMT")[0].trim()})',
-                                            style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                                        // Customer Name Only (Without Date in Bracket)
+                                        Text(
+                                          est.customer,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.white,
+                                            decoration: isCancelled ? TextDecoration.lineThrough : null,
+                                          ),
+                                        ),
                                         if (isCancelled) ...[
                                           const SizedBox(width: 10),
                                           Container(
@@ -3158,6 +3242,12 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                                     color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
                                           ),
                                         ],
+                                        const Spacer(),
+                                        // Exact Date and Time on the right
+                                        Text(
+                                          formatDisplayDateTime(est.date),
+                                          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                                        ),
                                       ],
                                     ),
                                     const SizedBox(height: 4),
@@ -3166,6 +3256,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 16),
                               Text('₹${est.grandTotal}',
                                   style: TextStyle(
                                       fontWeight: FontWeight.bold,
@@ -3419,18 +3510,22 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- 6. PROFESSIONAL ENTERPRISE REPORTS VIEW ----------------
+// ---------------- 6. ENTERPRISE REPORTS VIEW (DRILL-DOWN & PDF EXPORT) ----------------
 
 class EnterpriseReportsView extends StatefulWidget {
   final List<DCEstimate> estimates;
   final List<DCItem> items;
   final List<DCCustomer> customers;
+  final Function(DCEstimate) onEditInvoice;
+  final VoidCallback onRefreshRequired;
 
   const EnterpriseReportsView({
     super.key,
     required this.estimates,
     required this.items,
     required this.customers,
+    required this.onEditInvoice,
+    required this.onRefreshRequired,
   });
 
   @override
@@ -3439,6 +3534,8 @@ class EnterpriseReportsView extends StatefulWidget {
 
 class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String _reportFilter = 'ALL';
+  DateTimeRange? _reportDateRange;
 
   @override
   void initState() {
@@ -3446,13 +3543,482 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     _tabController = TabController(length: 2, vsync: this);
   }
 
+  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
+    List<Map<String, dynamic>> rows = [];
+    final parts = summary.split(',');
+    for (var part in parts) {
+      if (part.trim().isNotEmpty) {
+        final raw = part.trim();
+        String name = raw;
+        String qty = '1';
+        String unit = 'KG';
+        String rate = '0.00';
+        String bags = '1';
+        double amount = 0.0;
+
+        try {
+          if (raw.contains('(') && raw.contains(')')) {
+            name = raw.substring(0, raw.indexOf('(')).trim();
+            final inside = raw.substring(raw.indexOf('(') + 1, raw.indexOf(')'));
+            final xParts = inside.split('x');
+            if (xParts.length == 2) {
+              final qParts = xParts[0].trim().split(' ');
+              qty = qParts[0];
+              if (qParts.length > 1) unit = qParts[1];
+              rate = xParts[1].trim();
+            }
+          }
+          if (raw.contains('[') && raw.contains(']')) {
+            bags = raw.substring(raw.indexOf('[') + 1, raw.indexOf(']')).replaceAll('B', '').trim();
+          }
+          amount = (double.tryParse(qty) ?? 1.0) * (double.tryParse(rate) ?? 0.0);
+        } catch (_) {}
+
+        rows.add({
+          "name": name,
+          "qty": qty,
+          "unit": unit,
+          "rate": rate,
+          "bags": bags,
+          "amount": amount.toStringAsFixed(2),
+        });
+      }
+    }
+    return rows;
+  }
+
+  void _showInvoiceDetails(BuildContext context, DCEstimate est) {
+    final parsedRows = _parseSummaryTable(est.itemSummary);
+    final isCancelled = est.status == 'CANCELLED';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131922),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Invoice #${est.slNo}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isCancelled ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                est.status,
+                style: TextStyle(
+                  color: isCancelled ? Colors.redAccent : const Color(0xFF6FB1FC),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 760,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                    Text('Date & Time: ${formatDisplayDateTime(est.date)}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0E141B),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF263342)),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF18202B),
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+                        ),
+                        child: const Row(
+                          children: [
+                            SizedBox(width: 35, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
+                            Expanded(flex: 5, child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
+                            SizedBox(width: 80, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
+                            SizedBox(width: 60, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
+                            SizedBox(width: 60, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
+                            SizedBox(width: 60, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
+                            SizedBox(width: 90, child: Text('Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1, color: Color(0xFF263342)),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(12),
+                        itemCount: parsedRows.length,
+                        separatorBuilder: (c, i) => const Divider(height: 10, color: Color(0xFF1E2833)),
+                        itemBuilder: (c, i) {
+                          final r = parsedRows[i];
+                          return Row(
+                            children: [
+                              SizedBox(width: 35, child: Text('${i + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
+                              Expanded(flex: 5, child: Text(r['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+                              SizedBox(width: 80, child: Text('₹${r['rate']}', style: const TextStyle(fontSize: 13))),
+                              SizedBox(width: 60, child: Text(r['qty'], style: const TextStyle(fontSize: 13))),
+                              SizedBox(width: 60, child: Text(r['unit'], style: const TextStyle(fontSize: 13, color: Color(0xFF6FB1FC)))),
+                              SizedBox(width: 60, child: Text(r['bags'], style: const TextStyle(fontSize: 13))),
+                              SizedBox(width: 90, child: Text('₹${r['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF38BDF8)))),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Coolie Charges: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                    Text('SGST (2.5%): ₹${est.sgst}  |  CGST (2.5%): ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13)),
+                    Text('Round Off: ₹${est.roundOff}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('Grand Total: ₹${est.grandTotal}',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC))),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
+            icon: const Icon(Icons.print, size: 16, color: Colors.white),
+            label: const Text('Print / View PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _printReportInvoice(context, est);
+            },
+          ),
+          if (!isCancelled)
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF1E88E5),
+                side: const BorderSide(color: Color(0xFF1E88E5)),
+              ),
+              icon: const Icon(Icons.edit_document, size: 16),
+              label: const Text('Edit Invoice'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                widget.onEditInvoice(est);
+              },
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _printReportInvoice(BuildContext context, DCEstimate est) {
+    final matchedCustomer = widget.customers.firstWhere(
+      (c) => c.name.toLowerCase() == est.customer.toLowerCase(),
+      orElse: () => DCCustomer(rowIndex: 0, slNo: 0, name: est.customer, contact: '', address: '', b2c: '', b2b: '', remarks: ''),
+    );
+
+    final List<InvoiceRowItem> parsedItems = [];
+    final itemsParts = est.itemSummary.split(',');
+    for (var part in itemsParts) {
+      if (part.trim().isNotEmpty) {
+        parsedItems.add(
+          InvoiceRowItem(
+            item: DCItem(
+              rowIndex: 0,
+              no: 1,
+              name: part.trim(),
+              rateType: 'KG',
+              rate: '0',
+              qty: 1,
+              tallyName: '',
+              billedIn: '',
+              isTaxable: false,
+            ),
+            rate: double.tryParse(est.grandTotal) ?? 0,
+            qty: 1,
+            unit: 'KG',
+            bags: 1,
+          ),
+        );
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF131922),
+        insetPadding: const EdgeInsets.all(20),
+        child: SizedBox(
+          width: 920,
+          height: 720,
+          child: Column(
+            children: [
+              AppBar(
+                backgroundColor: const Color(0xFF0E141B),
+                title: Text('Invoice #${est.slNo} - Print View'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: PdfPreview(
+                  build: (format) => generateTallyPdf(
+                    format: format,
+                    billNo: est.slNo.toString(),
+                    dateStr: formatDisplayDateTime(est.date),
+                    customer: matchedCustomer,
+                    items: parsedItems,
+                    subTotal: double.tryParse(est.grandTotal) ?? 0,
+                    coolie: double.tryParse(est.coolie) ?? 0,
+                    sgst: double.tryParse(est.sgst) ?? 0,
+                    cgst: double.tryParse(est.cgst) ?? 0,
+                    roundOff: double.tryParse(est.roundOff) ?? 0,
+                    grandTotal: double.tryParse(est.grandTotal) ?? 0,
+                  ),
+                  allowPrinting: true,
+                  allowSharing: true,
+                  canChangePageFormat: false,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Drilldown pop-up for Item-wise or Customer-wise clicks
+  void _openDrilldownHistoryModal(String title, List<DCEstimate> bills) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131922),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.receipt_long, color: Color(0xFF38BDF8)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+          ],
+        ),
+        content: SizedBox(
+          width: 680,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Total Invoices: ${bills.length} (Click invoice to view complete details)',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+              const SizedBox(height: 12),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 380),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0E141B),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF263342)),
+                ),
+                child: bills.isEmpty
+                    ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('No billed records found.')))
+                    : ListView.separated(
+                        itemCount: bills.length,
+                        separatorBuilder: (c, i) => const Divider(height: 1, color: Color(0xFF1E2833)),
+                        itemBuilder: (c, i) {
+                          final b = bills[i];
+                          return ListTile(
+                            hoverColor: const Color(0xFF1E88E5).withOpacity(0.15),
+                            title: Row(
+                              children: [
+                                Text('#${b.slNo} • ${b.customer}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                const Spacer(),
+                                Text('₹${b.grandTotal}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC), fontSize: 15)),
+                              ],
+                            ),
+                            subtitle: Text("${formatDisplayDateTime(b.date)} | ${b.itemSummary}", style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _showInvoiceDetails(context, b);
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8)))),
+        ],
+      ),
+    );
+  }
+
+  // Export Enterprise Report to A4 PDF
+  Future<void> _exportReportPdf(List<DCEstimate> activeEstimates, double totalRevenue, double totalCoolie) async {
+    final pdf = pw.Document();
+
+    // Grouping for PDF
+    Map<String, int> itemCounts = {};
+    for (var est in activeEstimates) {
+      for (var item in widget.items) {
+        if (est.itemSummary.toLowerCase().contains(item.name.toLowerCase())) {
+          itemCounts[item.name] = (itemCounts[item.name] ?? 0) + 1;
+        }
+      }
+    }
+    final sortedItems = itemCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    Map<String, double> custRevenue = {};
+    for (var est in activeEstimates) {
+      custRevenue[est.customer] = (custRevenue[est.customer] ?? 0.0) + (double.tryParse(est.grandTotal) ?? 0.0);
+    }
+    final sortedCust = custRevenue.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(24),
+        build: (pw.Context ctx) => [
+          pw.Header(
+            level: 0,
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(CompanyConfig.name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                    pw.Text("BUSINESS PERFORMANCE & SALES REPORT", style: const pw.TextStyle(fontSize: 11)),
+                    pw.Text("Generated on: ${getCurrentFormattedDateTime()}", style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text("Filter: $_reportFilter", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                    pw.Text("Total Billed Value: Rs ${totalRevenue.toStringAsFixed(2)}", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text("TOP CUSTOMER REVENUE LEDGER", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          pw.TableHelper.fromTextArray(
+            headers: ['Sl', 'Customer / Party Name', 'Invoiced Value (Rs)'],
+            data: List<List<dynamic>>.generate(sortedCust.length, (idx) {
+              final c = sortedCust[idx];
+              return [idx + 1, c.key, c.value.toStringAsFixed(2)];
+            }),
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          ),
+          pw.SizedBox(height: 16),
+          pw.Text("ITEM DISTRIBUTION SUMMARY", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          pw.TableHelper.fromTextArray(
+            headers: ['Sl', 'Item Description', 'Billed Frequency'],
+            data: List<List<dynamic>>.generate(sortedItems.length, (idx) {
+              final itm = sortedItems[idx];
+              return [idx + 1, itm.key, "${itm.value} Invoices"];
+            }),
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          ),
+        ],
+      ),
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF131922),
+        insetPadding: const EdgeInsets.all(20),
+        child: SizedBox(
+          width: 920,
+          height: 720,
+          child: Column(
+            children: [
+              AppBar(
+                backgroundColor: const Color(0xFF0E141B),
+                title: const Text('Enterprise Report PDF Export'),
+                actions: [
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              Expanded(
+                child: PdfPreview(
+                  build: (format) => pdf.save(),
+                  allowPrinting: true,
+                  allowSharing: true,
+                  canChangePageFormat: false,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final activeEstimates = widget.estimates.where((e) => e.status != 'CANCELLED').toList();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final activeEstimates = widget.estimates.where((e) {
+      if (e.status == 'CANCELLED') return false;
+      final eDate = parseUniversalDate(e.date);
+      if (eDate == null) {
+        if (_reportFilter == 'TODAY') return false;
+        return true;
+      }
+
+      final checkDay = DateTime(eDate.year, eDate.month, eDate.day);
+      if (_reportFilter == 'TODAY') {
+        return checkDay.isAtSameMomentAs(today);
+      } else if (_reportFilter == 'YESTERDAY') {
+        return checkDay.isAtSameMomentAs(yesterday);
+      } else if (_reportFilter == 'CUSTOM' && _reportDateRange != null) {
+        return (checkDay.isAfter(_reportDateRange!.start.subtract(const Duration(days: 1))) &&
+            checkDay.isBefore(_reportDateRange!.end.add(const Duration(days: 1))));
+      }
+      return true;
+    }).toList();
+
     final double totalRevenue = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
     final double totalCoolie = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.coolie) ?? 0.0));
 
-    // Calculate Item-wise distribution
+    // Item-wise calculation
     Map<String, int> itemOrderCount = {};
     for (var est in activeEstimates) {
       for (var item in widget.items) {
@@ -3463,7 +4029,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     }
     final sortedItemSales = itemOrderCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
-    // Calculate Customer-wise billing aggregation
+    // Customer-wise calculation
     Map<String, double> customerTotalSpend = {};
     Map<String, int> customerBillCount = {};
     for (var est in activeEstimates) {
@@ -3483,28 +4049,68 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('ENTERPRISE BUSINESS REPORTS', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                  Text('${activeEstimates.length} ACTIVE BILLED TRANSACTIONS ANALYSED', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                  Text('${activeEstimates.length} INVOICES ANALYSED • CLICK ROWS TO VIEW INVOICES', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                 ],
+              ),
+              const Spacer(),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'ALL', label: Text('All')),
+                  ButtonSegment(value: 'TODAY', label: Text('Today')),
+                  ButtonSegment(value: 'YESTERDAY', label: Text('Yesterday')),
+                  ButtonSegment(value: 'CUSTOM', label: Text('Custom Date')),
+                ],
+                selected: {_reportFilter},
+                onSelectionChanged: (val) async {
+                  final chosen = val.first;
+                  if (chosen == 'CUSTOM') {
+                    final picked = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime(2024),
+                      lastDate: DateTime(2030),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _reportDateRange = picked;
+                        _reportFilter = 'CUSTOM';
+                      });
+                    }
+                  } else {
+                    setState(() {
+                      _reportFilter = chosen;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0052D4),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 18),
+                label: const Text('Export PDF Report', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => _exportReportPdf(activeEstimates, totalRevenue, totalCoolie),
               ),
             ],
           ),
           const SizedBox(height: 20),
 
-          // Overview Metric KPI Cards
+          // KPI Cards
           Row(
             children: [
               _buildKpiCard('Gross Invoiced Value', '₹${totalRevenue.toStringAsFixed(2)}', Icons.payments_outlined, const Color(0xFF0284C7)),
               const SizedBox(width: 14),
-              _buildKpiCard('Total Invoices Generated', '${activeEstimates.length}', Icons.receipt_long_outlined, const Color(0xFF10B981)),
+              _buildKpiCard('Total Invoices', '${activeEstimates.length}', Icons.receipt_long_outlined, const Color(0xFF10B981)),
               const SizedBox(width: 14),
-              _buildKpiCard('Cumulative Coolie Charges', '₹${totalCoolie.toStringAsFixed(2)}', Icons.local_shipping_outlined, const Color(0xFFF59E0B)),
+              _buildKpiCard('Cumulative Coolie', '₹${totalCoolie.toStringAsFixed(2)}', Icons.local_shipping_outlined, const Color(0xFFF59E0B)),
               const SizedBox(width: 14),
-              _buildKpiCard('Registered Customer Count', '${widget.customers.length}', Icons.groups_outlined, const Color(0xFF8B5CF6)),
+              _buildKpiCard('Active Parties', '${sortedCustSales.length}', Icons.groups_outlined, const Color(0xFF8B5CF6)),
             ],
           ),
           const SizedBox(height: 20),
 
-          // Tab Selector for Breakdown
+          // Tabs
           Container(
             height: 44,
             decoration: BoxDecoration(
@@ -3522,8 +4128,8 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
               labelColor: Colors.white,
               unselectedLabelColor: const Color(0xFF94A3B8),
               tabs: const [
-                Tab(text: 'Item-wise Sales Breakdown'),
-                Tab(text: 'Customer Revenue Ledger'),
+                Tab(text: 'Item-wise Sales Breakdown (Click to View Bills)'),
+                Tab(text: 'Customer Revenue Ledger (Click to View Bills)'),
               ],
             ),
           ),
@@ -3533,7 +4139,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
             child: TabBarView(
               controller: _tabController,
               children: [
-                // 1. Item Sales Distribution Table
+                // 1. Item Sales Distribution
                 Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFF131922),
@@ -3541,39 +4147,51 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
                     border: Border.all(color: const Color(0xFF263342)),
                   ),
                   child: sortedItemSales.isEmpty
-                      ? const Center(child: Text('No item sales logged yet.'))
+                      ? const Center(child: Text('No item sales logged for this period.', style: TextStyle(color: Color(0xFF94A3B8))))
                       : ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: sortedItemSales.length,
                           separatorBuilder: (c, i) => const Divider(height: 14, color: Color(0xFF1E2833)),
                           itemBuilder: (ctx, idx) {
                             final entry = sortedItemSales[idx];
-                            return Row(
-                              children: [
-                                SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold))),
-                                Expanded(
-                                  flex: 4,
-                                  child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            return InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                final matchedBills = activeEstimates.where((e) {
+                                  return e.itemSummary.toLowerCase().contains(entry.key.toLowerCase());
+                                }).toList();
+                                _openDrilldownHistoryModal('Item Invoices: ${entry.key}', matchedBills);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                child: Row(
+                                  children: [
+                                    SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold))),
+                                    Expanded(
+                                      flex: 4,
+                                      child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF18202B),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFF263342)),
+                                      ),
+                                      child: Text(
+                                        'Billed in ${entry.value} Invoices >',
+                                        style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF18202B),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: const Color(0xFF263342)),
-                                  ),
-                                  child: Text(
-                                    'Billed in ${entry.value} Invoices',
-                                    style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                ),
-                              ],
+                              ),
                             );
                           },
                         ),
                 ),
 
-                // 2. Customer Revenue Ledger Table
+                // 2. Customer Revenue Ledger
                 Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFF131922),
@@ -3581,7 +4199,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
                     border: Border.all(color: const Color(0xFF263342)),
                   ),
                   child: sortedCustSales.isEmpty
-                      ? const Center(child: Text('No customer invoices logged yet.'))
+                      ? const Center(child: Text('No customer invoices logged for this period.', style: TextStyle(color: Color(0xFF94A3B8))))
                       : ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: sortedCustSales.length,
@@ -3589,20 +4207,34 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
                           itemBuilder: (ctx, idx) {
                             final entry = sortedCustSales[idx];
                             final bills = customerBillCount[entry.key] ?? 0;
-                            return Row(
-                              children: [
-                                SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold))),
-                                Expanded(
-                                  flex: 4,
-                                  child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            return InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                final matchedBills = activeEstimates.where((e) {
+                                  return e.customer.toLowerCase().trim() == entry.key.toLowerCase().trim();
+                                }).toList();
+                                _openDrilldownHistoryModal('Customer Invoices: ${entry.key}', matchedBills);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                child: Row(
+                                  children: [
+                                    SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold))),
+                                    Expanded(
+                                      flex: 4,
+                                      child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    ),
+                                    Text('$bills Invoices', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                    const SizedBox(width: 30),
+                                    Text(
+                                      '₹${entry.value.toStringAsFixed(2)}',
+                                      style: const TextStyle(color: Color(0xFF6FB1FC), fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF64748B)),
+                                  ],
                                 ),
-                                Text('$bills Invoices', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                const SizedBox(width: 30),
-                                Text(
-                                  '₹${entry.value.toStringAsFixed(2)}',
-                                  style: const TextStyle(color: Color(0xFF6FB1FC), fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                              ],
+                              ),
                             );
                           },
                         ),
@@ -3730,7 +4362,7 @@ class SettingsDesktopView extends StatelessWidget {
                       const SizedBox(height: 10),
                       _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
                       _supportRow('Application Suite', 'SP MultiBill ERP (Desktop 64-bit Engine)'),
-                      _supportRow('Release Version', 'v3.6.0 (Windows Native Build)'),
+                      _supportRow('Release Version', 'v3.7.0 (Windows Native Build)'),
                       _supportRow('Target Framework', 'Flutter 3.x (Runner x64)'),
                     ],
                   ),
