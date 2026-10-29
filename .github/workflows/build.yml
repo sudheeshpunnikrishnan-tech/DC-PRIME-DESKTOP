@@ -19,7 +19,7 @@ jobs:
           channel: 'stable'
 
       - name: Create Desktop Scaffolding
-        run: flutter create --platforms=windows .
+        run: flutter create --platforms=windows --project-name=sp_multibill_erp .
 
       - name: Apply Custom App Icon
         run: copy app_logo.ico windows\runner\resources\app_icon.ico
