@@ -16,6 +16,8 @@ void main() {
 String sheetApiUrl =
     "https://script.google.com/macros/s/AKfycbzFDW5eeT4abGSRNLHlKs43JJ81YiKt0UrNEbbK2_cQIylsU_zGylqE8IMBqtpmXsjOEg/exec";
 
+// ---------------- 90+ FPS SMOOTH SCROLL BEHAVIOR ----------------
+
 class UltraSmoothScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
@@ -211,7 +213,7 @@ class InvoiceRowItem {
   double get amount => qty * rate;
 }
 
-// ---------------- TOP LEVEL TALLY PRIME PDF GENERATOR ----------------
+// ---------------- TOP-LEVEL TALLY PRIME PDF GENERATOR ----------------
 
 Future<Uint8List> generateTallyPdf({
   required PdfPageFormat format,
@@ -428,7 +430,466 @@ pw.Widget _pdfSummaryRow(String label, String value) {
   );
 }
 
-// ---------------- BILLING SCREEN WIDGET ----------------
+// ---------------- APP ROOT (DCPrimeApp) ----------------
+
+class DCPrimeApp extends StatelessWidget {
+  const DCPrimeApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Davis & Company - DC Prime Desktop',
+      scrollBehavior: UltraSmoothScrollBehavior(),
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0B1015),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF10B981),
+          secondary: Color(0xFF3B82F6),
+          tertiary: Color(0xFF8B5CF6),
+          surface: Color(0xFF131922),
+          onSurface: Color(0xFFF8FAFC),
+        ),
+        navigationRailTheme: const NavigationRailThemeData(
+          backgroundColor: Color(0xFF0E141B),
+          indicatorColor: Color(0xFF10B981),
+          selectedIconTheme: IconThemeData(color: Colors.white, size: 22),
+          unselectedIconTheme: IconThemeData(color: Color(0xFF94A3B8), size: 22),
+          selectedLabelTextStyle: TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold, fontSize: 12),
+          unselectedLabelTextStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          filled: true,
+          fillColor: Color(0xFF18202B),
+          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF263342))),
+          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF263342))),
+          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF34D399), width: 1.5)),
+          labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+        ),
+      ),
+      home: const MainDashboard(),
+    );
+  }
+}
+
+// ---------------- MAIN DASHBOARD ----------------
+
+class MainDashboard extends StatefulWidget {
+  const MainDashboard({super.key});
+
+  @override
+  State<MainDashboard> createState() => _MainDashboardState();
+}
+
+class _MainDashboardState extends State<MainDashboard> {
+  int _navIndex = 0;
+  List<DCItem> _items = [];
+  List<DCCustomer> _customers = [];
+  List<DCEstimate> _estimates = [];
+  final List<LoadingEntry> _loadingSlip = [];
+  bool _isLoading = true;
+  bool _isBackgroundSyncing = false;
+
+  DCEstimate? _invoiceToEdit;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData({bool silent = false}) async {
+    if (!silent) {
+      setState(() => _isLoading = true);
+    } else {
+      setState(() => _isBackgroundSyncing = true);
+    }
+
+    try {
+      final res = await http.get(Uri.parse(sheetApiUrl));
+      if (res.statusCode == 200 || res.statusCode == 302) {
+        final data = jsonDecode(res.body);
+        final List itemList = data['items'] ?? [];
+        final List custList = data['customers'] ?? [];
+        final List estList = data['estimates'] ?? [];
+
+        if (data['company'] != null) {
+          final comp = data['company'];
+          CompanyConfig.logoUrl = comp['logoUrl'] ?? CompanyConfig.logoUrl;
+          CompanyConfig.name = comp['name'] ?? CompanyConfig.name;
+          CompanyConfig.tradeSubtitle = comp['tradeSubtitle'] ?? CompanyConfig.tradeSubtitle;
+          CompanyConfig.address = comp['address'] ?? CompanyConfig.address;
+          CompanyConfig.phone = comp['phone'] ?? CompanyConfig.phone;
+          CompanyConfig.email = comp['email'] ?? CompanyConfig.email;
+          CompanyConfig.gstin = comp['gstin'] ?? CompanyConfig.gstin;
+          CompanyConfig.regType = comp['regType'] ?? CompanyConfig.regType;
+        }
+
+        setState(() {
+          _items = itemList.map((i) => DCItem.fromJson(i)).toList();
+          _customers = custList.map((c) => DCCustomer.fromJson(c)).toList();
+          _estimates = estList.map((e) => DCEstimate.fromJson(e)).toList();
+          _isLoading = false;
+          _isBackgroundSyncing = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _isBackgroundSyncing = false;
+      });
+    }
+  }
+
+  void _openCompanyProfileDialog() {
+    final nameCtrl = TextEditingController(text: CompanyConfig.name);
+    final subCtrl = TextEditingController(text: CompanyConfig.tradeSubtitle);
+    final addrCtrl = TextEditingController(text: CompanyConfig.address);
+    final phoneCtrl = TextEditingController(text: CompanyConfig.phone);
+    final emailCtrl = TextEditingController(text: CompanyConfig.email);
+    final gstinCtrl = TextEditingController(text: CompanyConfig.gstin);
+    final regTypeCtrl = TextEditingController(text: CompanyConfig.regType);
+    String logoBase64 = "";
+    String logoPathLocal = "";
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          backgroundColor: const Color(0xFF131922),
+          title: const Row(
+            children: [
+              Icon(Icons.business, color: Color(0xFF10B981)),
+              SizedBox(width: 10),
+              Text('Company Profile & Header (Saved to Sheet)', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SizedBox(
+            width: 540,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0E141B),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF263342)),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 26,
+                          backgroundColor: const Color(0xFF18202B),
+                          backgroundImage: logoPathLocal.isNotEmpty
+                              ? FileImage(File(logoPathLocal))
+                              : (CompanyConfig.logoUrl.isNotEmpty ? NetworkImage(CompanyConfig.logoUrl) as ImageProvider : null),
+                          child: (logoPathLocal.isEmpty && CompanyConfig.logoUrl.isEmpty)
+                              ? const Icon(Icons.image, color: Color(0xFF94A3B8))
+                              : null,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(logoPathLocal.isNotEmpty
+                                  ? 'Selected: ${logoPathLocal.split(Platform.pathSeparator).last}'
+                                  : (CompanyConfig.logoUrl.isNotEmpty ? 'Cloud Logo Synced' : 'No Logo Uploaded')),
+                              const SizedBox(height: 4),
+                              const Text('Select PNG/JPG (Auto-uploads to Google Drive)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF10B981)),
+                            foregroundColor: const Color(0xFF34D399),
+                          ),
+                          icon: const Icon(Icons.file_upload, size: 16),
+                          label: const Text('Browse'),
+                          onPressed: () async {
+                            final res = await FilePicker.platform.pickFiles(type: FileType.image);
+                            if (res != null && res.files.single.path != null) {
+                              final filePath = res.files.single.path!;
+                              final bytes = await File(filePath).readAsBytes();
+                              setDlgState(() {
+                                logoPathLocal = filePath;
+                                logoBase64 = base64Encode(bytes);
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Company / Firm Name')),
+                  const SizedBox(height: 10),
+                  TextField(controller: subCtrl, decoration: const InputDecoration(labelText: 'Trade Subtitle / Slogan')),
+                  const SizedBox(height: 10),
+                  TextField(controller: addrCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Full Address')),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Contact Phone'))),
+                      const SizedBox(width: 10),
+                      Expanded(child: TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address'))),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: gstinCtrl, decoration: const InputDecoration(labelText: 'GSTIN / UIN Number'))),
+                      const SizedBox(width: 10),
+                      Expanded(child: TextField(controller: regTypeCtrl, decoration: const InputDecoration(labelText: 'Reg. Type'))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF059669),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                setState(() => _isBackgroundSyncing = true);
+
+                try {
+                  final resp = await http.post(
+                    Uri.parse(sheetApiUrl),
+                    body: jsonEncode({
+                      "action": "SAVE_COMPANY_DETAILS",
+                      "name": nameCtrl.text.trim(),
+                      "tradeSubtitle": subCtrl.text.trim(),
+                      "address": addrCtrl.text.trim(),
+                      "phone": phoneCtrl.text.trim(),
+                      "email": emailCtrl.text.trim(),
+                      "gstin": gstinCtrl.text.trim(),
+                      "regType": regTypeCtrl.text.trim(),
+                      "imageBase64": logoBase64,
+                      "logoUrl": CompanyConfig.logoUrl,
+                    }),
+                  );
+                  if (resp.statusCode == 200 || resp.statusCode == 302) {
+                    final resData = jsonDecode(resp.body);
+                    if (resData['logoUrl'] != null && resData['logoUrl'].toString().isNotEmpty) {
+                      CompanyConfig.logoUrl = resData['logoUrl'];
+                    }
+                  }
+                } catch (e) {}
+
+                CompanyConfig.name = nameCtrl.text.trim();
+                CompanyConfig.tradeSubtitle = subCtrl.text.trim();
+                CompanyConfig.address = addrCtrl.text.trim();
+                CompanyConfig.phone = phoneCtrl.text.trim();
+                CompanyConfig.email = emailCtrl.text.trim();
+                CompanyConfig.gstin = gstinCtrl.text.trim();
+                CompanyConfig.regType = regTypeCtrl.text.trim();
+
+                setState(() => _isBackgroundSyncing = false);
+              },
+              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onLoadInvoiceToEdit(DCEstimate est) {
+    setState(() {
+      _invoiceToEdit = est;
+      _navIndex = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0B1015),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF3B82F6)]),
+                  boxShadow: [
+                    BoxShadow(color: const Color(0xFF10B981).withOpacity(0.35), blurRadius: 28, spreadRadius: 4),
+                  ],
+                ),
+                child: const Text('DC', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+              const SizedBox(height: 24),
+              const Text('DC PRIME DESKTOP',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Color(0xFFF8FAFC))),
+              const SizedBox(height: 6),
+              const Text('DEVELOPED BY SUDHEESH',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFF34D399))),
+              const SizedBox(height: 4),
+              const Text('Wholesale Rice Merchants Suite • v3.0.0',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+              const SizedBox(height: 32),
+              const SizedBox(
+                width: 150,
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  backgroundColor: Color(0xFF131922),
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: Column(
+        children: [
+          if (_isBackgroundSyncing)
+            const LinearProgressIndicator(
+              minHeight: 3,
+              backgroundColor: Color(0xFF131922),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+            ),
+          Expanded(
+            child: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _navIndex,
+                  onDestinationSelected: (val) => setState(() => _navIndex = val),
+                  labelType: NavigationRailLabelType.all,
+                  leading: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: Tooltip(
+                      message: 'Click to edit Company Header & Logo',
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: _openCompanyProfileDialog,
+                        child: CompanyConfig.logoUrl.isNotEmpty
+                            ? CircleAvatar(
+                                radius: 20,
+                                backgroundColor: const Color(0xFF18202B),
+                                backgroundImage: NetworkImage(CompanyConfig.logoUrl),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF3B82F6)]),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text('DC', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
+                              ),
+                      ),
+                    ),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
+                    tooltip: 'Sync from Google Sheet',
+                    onPressed: () => _fetchData(silent: true),
+                  ),
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long),
+                      label: Text('Billing'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.inventory_2_outlined),
+                      selectedIcon: Icon(Icons.inventory_2),
+                      label: Text('Price List'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.people_outline),
+                      selectedIcon: Icon(Icons.people),
+                      label: Text('Customers'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.local_shipping_outlined),
+                      selectedIcon: Icon(Icons.local_shipping),
+                      label: Text('Packing Slip'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.history_outlined),
+                      selectedIcon: Icon(Icons.history),
+                      label: Text('Invoices'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.settings_outlined),
+                      selectedIcon: Icon(Icons.settings),
+                      label: Text('Settings'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF1E2833)),
+                Expanded(
+                  child: IndexedStack(
+                    index: _navIndex,
+                    children: [
+                      TallyBillingScreen(
+                        items: _items,
+                        customers: _customers,
+                        nextBillNo: _estimates.length + 1,
+                        invoiceToEdit: _invoiceToEdit,
+                        onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
+                        onSaved: () => _fetchData(silent: true),
+                        onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+                      ),
+                      PriceListDesktopView(
+                        items: _items,
+                        estimates: _estimates,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      CustomerDesktopView(
+                        customers: _customers,
+                        estimates: _estimates,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      LoadingSlipView(
+                        loadingSlip: _loadingSlip,
+                        items: _items,
+                        customers: _customers,
+                      ),
+                      InvoiceHistoryView(
+                        estimates: _estimates,
+                        items: _items,
+                        customers: _customers,
+                        onEditInvoice: _onLoadInvoiceToEdit,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      SettingsDesktopView(
+                        onReloadSheet: () => _fetchData(silent: true),
+                        onOpenProfile: _openCompanyProfileDialog,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------- 1. TALLY PRIME BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -472,6 +933,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   final ScrollController _partyScrollCtrl = ScrollController();
 
   OverlayEntry? _itemOverlay;
+  int? _activeItemRowIndex;
   int _itemSelectedIndex = 0;
   List<DCItem> _filteredItems = [];
   final ScrollController _itemScrollCtrl = ScrollController();
@@ -1679,7 +2141,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   }
 }
 
-// ---------------- PRICE LIST VIEW ----------------
+// ---------------- 2. PRICE LIST VIEW ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -2133,7 +2595,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-// ---------------- CUSTOMERS VIEW ----------------
+// ---------------- 3. CUSTOMERS VIEW ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -2628,7 +3090,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   }
 }
 
-// ---------------- INVOICE HISTORY VIEW ----------------
+// ---------------- 4. INVOICE HISTORY VIEW ----------------
 
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -3153,7 +3615,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   }
 }
 
-// ---------------- PACKING SLIP VIEW ----------------
+// ---------------- 5. PACKING SLIP VIEW ----------------
 
 class LoadingSlipView extends StatefulWidget {
   final List<LoadingEntry> loadingSlip;
@@ -3388,7 +3850,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- SETTINGS VIEW ----------------
+// ---------------- 6. SETTINGS VIEW ----------------
 
 class SettingsDesktopView extends StatelessWidget {
   final VoidCallback onReloadSheet;
