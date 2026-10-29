@@ -44,7 +44,7 @@ class CompanyConfig {
   static String regType = "Regular";
   static String stateCode = "Kerala (32)";
   static String logoUrl = "";
-  static double defaultGstRate = 5.0; // 5% Inclusive Tax
+  static double defaultGstRate = 5.0;
 }
 
 // ---------------- MODELS ----------------
@@ -237,7 +237,7 @@ Future<Uint8List> generateTallyPdf({
       if (res.statusCode == 200) {
         logoImage = pw.MemoryImage(res.bodyBytes);
       }
-    } catch (e) {}
+    } catch (_) {}
   }
 
   doc.addPage(
@@ -432,7 +432,7 @@ pw.Widget _pdfSummaryRow(String label, String value) {
   );
 }
 
-// ---------------- APP ROOT (SPMultiBillApp) ----------------
+// ---------------- APP ROOT ----------------
 
 class SPMultiBillApp extends StatelessWidget {
   const SPMultiBillApp({super.key});
@@ -537,7 +537,7 @@ class _MainDashboardState extends State<MainDashboard> {
           _isBackgroundSyncing = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       setState(() {
         _isLoading = false;
         _isBackgroundSyncing = false;
@@ -565,7 +565,7 @@ class _MainDashboardState extends State<MainDashboard> {
             children: [
               Icon(Icons.business, color: Color(0xFF3B82F6)),
               SizedBox(width: 10),
-              Text('Company Profile & Header (Saved to Sheet)', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Company Profile & Header', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: SizedBox(
@@ -602,7 +602,7 @@ class _MainDashboardState extends State<MainDashboard> {
                                   ? 'Selected: ${logoPathLocal.split(Platform.pathSeparator).last}'
                                   : (CompanyConfig.logoUrl.isNotEmpty ? 'Cloud Logo Synced' : 'No Logo Uploaded')),
                               const SizedBox(height: 4),
-                              const Text('Select PNG/JPG (Auto-uploads to Google Drive)', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                              const Text('Select PNG/JPG to upload', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                             ],
                           ),
                         ),
@@ -690,7 +690,7 @@ class _MainDashboardState extends State<MainDashboard> {
                       CompanyConfig.logoUrl = resData['logoUrl'];
                     }
                   }
-                } catch (e) {}
+                } catch (_) {}
 
                 CompanyConfig.name = nameCtrl.text.trim();
                 CompanyConfig.tradeSubtitle = subCtrl.text.trim();
@@ -717,6 +717,61 @@ class _MainDashboardState extends State<MainDashboard> {
     });
   }
 
+  // Visual Futuristic Shield Emblem Widget for Boot & Branding
+  Widget _buildShieldLogoWidget({double size = 100}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1A26),
+        borderRadius: BorderRadius.circular(size * 0.22),
+        border: Border.all(color: const Color(0xFF38BDF8), width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0284C7).withOpacity(0.45),
+            blurRadius: 28,
+            spreadRadius: 4,
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(Icons.shield_rounded, size: size * 0.76, color: const Color(0xFF132D4B)),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'SP',
+                style: TextStyle(
+                  fontSize: size * 0.36,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                  foreground: Paint()
+                    ..shader = const LinearGradient(
+                      colors: [Colors.white, Color(0xFF67E8F9), Color(0xFF0284C7)],
+                    ).createShader(Rect.fromLTWH(0, 0, size, size * 0.4)),
+                  shadows: const [
+                    Shadow(color: Colors.black, blurRadius: 8, offset: Offset(0, 2)),
+                  ],
+                ),
+              ),
+              Text(
+                'MultiBill ERP',
+                style: TextStyle(
+                  fontSize: size * 0.10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                  color: const Color(0xFFE0F2FE),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -726,33 +781,24 @@ class _MainDashboardState extends State<MainDashboard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(colors: [Color(0xFF0052D4), Color(0xFF4364F7), Color(0xFF6FB1FC)]),
-                  boxShadow: [
-                    BoxShadow(color: const Color(0xFF1E88E5).withOpacity(0.35), blurRadius: 28, spreadRadius: 4),
-                  ],
-                ),
-                child: const Text('SP', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-              const SizedBox(height: 24),
+              // High-tech Shield & Badge Boot Logo
+              _buildShieldLogoWidget(size: 130),
+              const SizedBox(height: 28),
               const Text('SP MULTIBILL ERP',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Color(0xFFF8FAFC))),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Color(0xFFF8FAFC))),
               const SizedBox(height: 6),
               const Text('POWERED BY SP TECH SOLUTIONS',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFF3B82F6))),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 2.0, color: Color(0xFF38BDF8))),
               const SizedBox(height: 4),
-              const Text('Wholesale, Retail & Distribution ERP Suite • v3.5.0',
+              const Text('Wholesale, Retail & Distribution Suite • v3.6.0',
                   style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
               const SizedBox(
-                width: 150,
+                width: 170,
                 child: LinearProgressIndicator(
                   minHeight: 3,
                   backgroundColor: Color(0xFF131922),
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E88E5)),
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0284C7)),
                 ),
               ),
             ],
@@ -778,7 +824,7 @@ class _MainDashboardState extends State<MainDashboard> {
                   onDestinationSelected: (val) => setState(() => _navIndex = val),
                   labelType: NavigationRailLabelType.all,
                   leading: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     child: Tooltip(
                       message: 'Click to edit Company Header & Logo',
                       child: InkWell(
@@ -786,18 +832,11 @@ class _MainDashboardState extends State<MainDashboard> {
                         onTap: _openCompanyProfileDialog,
                         child: CompanyConfig.logoUrl.isNotEmpty
                             ? CircleAvatar(
-                                radius: 20,
+                                radius: 22,
                                 backgroundColor: const Color(0xFF18202B),
                                 backgroundImage: NetworkImage(CompanyConfig.logoUrl),
                               )
-                            : Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [Color(0xFF0052D4), Color(0xFF4364F7)]),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Text('SP', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white)),
-                              ),
+                            : _buildShieldLogoWidget(size: 44),
                       ),
                     ),
                   ),
@@ -833,6 +872,11 @@ class _MainDashboardState extends State<MainDashboard> {
                       label: Text('Invoices'),
                     ),
                     NavigationRailDestination(
+                      icon: Icon(Icons.insert_chart_outlined),
+                      selectedIcon: Icon(Icons.insert_chart),
+                      label: Text('Reports'),
+                    ),
+                    NavigationRailDestination(
                       icon: Icon(Icons.settings_outlined),
                       selectedIcon: Icon(Icons.settings),
                       label: Text('Settings'),
@@ -855,12 +899,10 @@ class _MainDashboardState extends State<MainDashboard> {
                       ),
                       PriceListDesktopView(
                         items: _items,
-                        estimates: _estimates,
                         onRefreshRequired: () => _fetchData(silent: true),
                       ),
                       CustomerDesktopView(
                         customers: _customers,
-                        estimates: _estimates,
                         onRefreshRequired: () => _fetchData(silent: true),
                       ),
                       LoadingSlipView(
@@ -874,6 +916,11 @@ class _MainDashboardState extends State<MainDashboard> {
                         customers: _customers,
                         onEditInvoice: _onLoadInvoiceToEdit,
                         onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      EnterpriseReportsView(
+                        estimates: _estimates,
+                        items: _items,
+                        customers: _customers,
                       ),
                       SettingsDesktopView(
                         onReloadSheet: () => _fetchData(silent: true),
@@ -891,7 +938,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. SP MULTIBILL BILLING SCREEN ----------------
+// ---------------- 1. BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -935,7 +982,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   final ScrollController _partyScrollCtrl = ScrollController();
 
   OverlayEntry? _itemOverlay;
-  int? _activeItemRowIndex;
   int _itemSelectedIndex = 0;
   List<DCItem> _filteredItems = [];
   final ScrollController _itemScrollCtrl = ScrollController();
@@ -998,7 +1044,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
             final bStr = raw.substring(raw.indexOf('[') + 1, raw.indexOf(']')).replaceAll('B', '').trim();
             bags = int.tryParse(bStr) ?? 1;
           }
-        } catch (e) {}
+        } catch (_) {}
 
         final matchedItem = widget.items.firstWhere(
           (i) => i.name.toLowerCase() == itemName.toLowerCase(),
@@ -1146,13 +1192,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   KeyEventResult _handlePartyKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
-      final isAlt = HardwareKeyboard.instance.isAltPressed;
-      if (isAlt && event.logicalKey == LogicalKeyboardKey.keyC) {
-        _hidePartyOverlay();
-        _openInstantAddCustomerDialog(_partyTextCtrl.text.trim());
-        return KeyEventResult.handled;
-      }
-
       if (_partyOverlay != null && _filteredParties.isNotEmpty) {
         if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
           setState(() {
@@ -1233,9 +1272,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     color: const Color(0xFF18202B),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xFF1E88E5), width: 1.2),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 10, offset: const Offset(0, 4)),
-                    ],
                   ),
                   child: ListView.builder(
                     controller: _itemScrollCtrl,
@@ -1298,13 +1334,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   KeyEventResult _handleItemKeyEvent(int rowIdx, FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent) {
-      final isAlt = HardwareKeyboard.instance.isAltPressed;
-      if (isAlt && event.logicalKey == LogicalKeyboardKey.keyC) {
-        _hideItemOverlay();
-        _openInstantAddItemDialog(rowIdx, _rows[rowIdx].textCtrl.text.trim());
-        return KeyEventResult.handled;
-      }
-
       if (_itemOverlay != null && _filteredItems.isNotEmpty) {
         if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
           setState(() {
@@ -1359,196 +1388,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       }
     }
     return KeyEventResult.ignored;
-  }
-
-  void _openInstantAddCustomerDialog(String presetName) {
-    final nameCtrl = TextEditingController(text: presetName);
-    final contactCtrl = TextEditingController();
-    final addressCtrl = TextEditingController();
-    final b2bCtrl = TextEditingController();
-    final b2cCtrl = TextEditingController();
-    final remarksCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        title: const Text('Instant Add Customer (Alt + C)'),
-        content: SizedBox(
-          width: 480,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact'))),
-                    const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address'))),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'B2B Trade Name')),
-                const SizedBox(height: 10),
-                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Reference')),
-                const SizedBox(height: 10),
-                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules')),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-            onPressed: () async {
-              if (nameCtrl.text.trim().isNotEmpty) {
-                Navigator.pop(ctx);
-                final newCust = DCCustomer(
-                  rowIndex: widget.customers.length + 2,
-                  slNo: widget.customers.length + 1,
-                  name: nameCtrl.text.trim(),
-                  contact: contactCtrl.text.trim(),
-                  address: addressCtrl.text.trim(),
-                  b2c: b2cCtrl.text.trim(),
-                  b2b: b2bCtrl.text.trim(),
-                  remarks: remarksCtrl.text.trim(),
-                );
-                setState(() {
-                  widget.customers.insert(0, newCust);
-                  _selectedParty = newCust;
-                  _partyTextCtrl.text = newCust.name;
-                });
-                widget.onSetSyncing(true);
-                await http.post(
-                  Uri.parse(sheetApiUrl),
-                  body: jsonEncode({
-                    "action": "ADD_CUSTOMER",
-                    "name": newCust.name,
-                    "contact": newCust.contact,
-                    "address": newCust.address,
-                    "b2c": newCust.b2c,
-                    "b2b": newCust.b2b,
-                    "remarks": newCust.remarks,
-                  }),
-                );
-                widget.onSaved();
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_rows.isNotEmpty) {
-                    _rows[0].itemSearchFocus.requestFocus();
-                  }
-                });
-              }
-            },
-            child: const Text('Save & Select', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openInstantAddItemDialog(int rowIndex, String presetName) {
-    final nameCtrl = TextEditingController(text: presetName);
-    final rateCtrl = TextEditingController();
-    final rateTypeCtrl = TextEditingController(text: 'RATE PER KG');
-    final qtyCtrl = TextEditingController(text: '50');
-    final tallyCtrl = TextEditingController();
-    final billedCtrl = TextEditingController(text: 'KILOGRAM');
-    bool isTaxable = false;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF131922),
-          title: const Text('Instant Add Item (Alt + C)'),
-          content: SizedBox(
-            width: 480,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Item Name')),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(child: TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Rate (₹)'))),
-                      const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: rateTypeCtrl, decoration: const InputDecoration(labelText: 'Rate Type'))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty'))),
-                      const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Item Name on Tally')),
-                  const SizedBox(height: 10),
-                  SwitchListTile(
-                    title: const Text('Taxable'),
-                    value: isTaxable,
-                    onChanged: (v) => setDialogState(() => isTaxable = v),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-              onPressed: () async {
-                if (nameCtrl.text.trim().isNotEmpty) {
-                  Navigator.pop(ctx);
-                  final newItem = DCItem(
-                    rowIndex: widget.items.length + 2,
-                    no: widget.items.length + 1,
-                    name: nameCtrl.text.trim(),
-                    rateType: rateTypeCtrl.text.trim(),
-                    rate: rateCtrl.text.trim(),
-                    qty: qtyCtrl.text.trim(),
-                    tallyName: tallyCtrl.text.trim(),
-                    billedIn: billedCtrl.text.trim(),
-                    isTaxable: isTaxable,
-                  );
-                  setState(() {
-                    widget.items.insert(0, newItem);
-                    _rows[rowIndex].item = newItem;
-                    _rows[rowIndex].textCtrl.text = newItem.name;
-                    _rows[rowIndex].rate = double.tryParse(newItem.rate) ?? 0.0;
-                  });
-                  widget.onSetSyncing(true);
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": "ADD_ITEM",
-                      "name": newItem.name,
-                      "rateType": newItem.rateType,
-                      "rate": newItem.rate,
-                      "qty": newItem.qty,
-                      "tallyName": newItem.tallyName,
-                      "billedIn": newItem.billedIn,
-                      "isTaxable": newItem.isTaxable,
-                    }),
-                  );
-                  widget.onSaved();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _rows[rowIndex].rateFocus.requestFocus();
-                  });
-                }
-              },
-              child: const Text('Save & Select', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _saveInvoice() async {
@@ -1707,9 +1546,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                   child: Text(isEditing ? 'Editing Bill #${widget.invoiceToEdit!.slNo}' : 'Bill #${widget.nextBillNo}',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isEditing ? Colors.orangeAccent : const Color(0xFF6FB1FC))),
                 ),
-                const SizedBox(width: 14),
-                const Text('Ctrl + S / F8: Any-field Save  |  Alt + C: Instant Add',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                 const Spacer(),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
@@ -1756,17 +1592,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         child: TextField(
                           controller: _partyTextCtrl,
                           focusNode: _partyFocus,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Party / Customer Name (Type & Arrow Navigate)',
                             hintText: 'Search customer...',
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.person_add, size: 18),
-                              tooltip: 'Instant Add Customer (Alt + C)',
-                              onPressed: () {
-                                _hidePartyOverlay();
-                                _openInstantAddCustomerDialog(_partyTextCtrl.text.trim());
-                              },
-                            ),
                           ),
                           onChanged: (val) {
                             setState(() {
@@ -1832,7 +1660,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                           SizedBox(width: 12),
                           SizedBox(width: 100, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                           SizedBox(width: 12),
-                          SizedBox(width: 90, child: Text('Unit (KG/NOS)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 90, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                           SizedBox(width: 12),
                           SizedBox(width: 80, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
                           SizedBox(width: 12),
@@ -1858,7 +1686,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 child: SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
                               ),
                               const SizedBox(width: 12),
-                              // Name of Item
                               Expanded(
                                 flex: 5,
                                 child: CompositedTransformTarget(
@@ -1868,17 +1695,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                     child: TextField(
                                       controller: row.textCtrl,
                                       focusNode: row.itemSearchFocus,
-                                      decoration: InputDecoration(
+                                      decoration: const InputDecoration(
                                         hintText: 'Search item...',
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                        suffixIcon: IconButton(
-                                          icon: const Icon(Icons.add, size: 16),
-                                          tooltip: 'Instant Add Item (Alt + C)',
-                                          onPressed: () {
-                                            _hideItemOverlay();
-                                            _openInstantAddItemDialog(idx, row.textCtrl.text.trim());
-                                          },
-                                        ),
+                                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                       ),
                                       onChanged: (val) {
                                         setState(() {
@@ -1901,7 +1720,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // Rate
                               SizedBox(
                                 width: 110,
                                 child: TextFormField(
@@ -1919,7 +1737,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // Qty
                               SizedBox(
                                 width: 100,
                                 child: TextFormField(
@@ -1936,7 +1753,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // Unit Field
                               SizedBox(
                                 width: 90,
                                 child: Focus(
@@ -1984,7 +1800,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // Bags
                               SizedBox(
                                 width: 80,
                                 child: TextFormField(
@@ -2010,7 +1825,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // Net Amount
                               Padding(
                                 padding: const EdgeInsets.only(top: 14),
                                 child: SizedBox(
@@ -2039,7 +1853,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         children: [
                           TextButton.icon(
                             icon: const Icon(Icons.add, size: 18, color: Color(0xFF1E88E5)),
-                            label: const Text('+ Add Item Row (Enter on Bags)', style: TextStyle(color: Color(0xFF6FB1FC))),
+                            label: const Text('+ Add Item Row', style: TextStyle(color: Color(0xFF6FB1FC))),
                             onPressed: _addRow,
                           ),
                           const Spacer(),
@@ -2075,7 +1889,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                             focusNode: _coolieFocus,
                             keyboardType: TextInputType.number,
                             decoration: const InputDecoration(labelText: 'Coolie (₹)'),
-                            onChanged: (v) => setState(() {}),
+                            onChanged: (_) => setState(() {}),
                             onSubmitted: (_) => _saveInvoice(),
                           ),
                         ),
@@ -2143,16 +1957,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   }
 }
 
-// ---------------- 2. PRICE LIST VIEW ----------------
+// ---------------- 2. PRICE LIST VIEW (WISE REPORT REMOVED) ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
-  final List<DCEstimate> estimates;
   final VoidCallback onRefreshRequired;
   const PriceListDesktopView({
     super.key,
     required this.items,
-    required this.estimates,
     required this.onRefreshRequired,
   });
 
@@ -2163,21 +1975,6 @@ class PriceListDesktopView extends StatefulWidget {
 class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   String _query = '';
 
-  List<Map<String, dynamic>> _getItemBillHistory(String itemName) {
-    List<Map<String, dynamic>> history = [];
-    for (var est in widget.estimates) {
-      if (est.status != 'CANCELLED' && est.itemSummary.toLowerCase().contains(itemName.toLowerCase())) {
-        history.add({
-          "billNo": est.slNo,
-          "date": est.date,
-          "customer": est.customer,
-          "summary": est.itemSummary,
-        });
-      }
-    }
-    return history;
-  }
-
   void _showItemPreviewModal(DCItem item) {
     showDialog(
       context: context,
@@ -2187,32 +1984,20 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
-            ),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.analytics_outlined, color: Color(0xFF1E88E5)),
-                  tooltip: 'Item Sales & Distribution Report',
-                  onPressed: () => _openItemSalesReportModal(item),
-                ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                  icon: const Icon(Icons.delete_forever, size: 18),
-                  label: const Text('Delete Item'),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _confirmDeleteItem(item);
-                  },
-                ),
-              ],
+            Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19))),
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              icon: const Icon(Icons.delete_forever, size: 18),
+              label: const Text('Delete Item'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _confirmDeleteItem(item);
+              },
             ),
           ],
         ),
         content: SizedBox(
-          width: 580,
+          width: 540,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2240,58 +2025,6 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _openItemSalesReportModal(DCItem item) {
-    final history = _getItemBillHistory(item.name);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.assessment, color: Color(0xFF1E88E5)),
-            const SizedBox(width: 10),
-            Text('Sales Report • ${item.name}'),
-          ],
-        ),
-        content: SizedBox(
-          width: 600,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Total Invoices Billed: ${history.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E88E5))),
-              const SizedBox(height: 12),
-              if (history.isEmpty)
-                const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('No billed records found for this item.')))
-              else
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 260),
-                  decoration: BoxDecoration(color: const Color(0xFF0E141B), borderRadius: BorderRadius.circular(8)),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: history.length,
-                    separatorBuilder: (c, i) => const Divider(height: 1, color: Color(0xFF1E2833)),
-                    itemBuilder: (c, i) {
-                      final h = history[i];
-                      return ListTile(
-                        dense: true,
-                        title: Text("${h['customer']} • Bill #${h['billNo']}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text("${h['date'].split('GMT')[0]} | ${h['summary']}", style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
     );
@@ -2336,104 +2069,38 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     final billedCtrl = TextEditingController(text: isNew ? 'KILOGRAM' : item.billedIn);
     bool isTaxable = isNew ? false : item.isTaxable;
 
-    final fn1 = FocusNode();
-    final fn2 = FocusNode();
-    final fn3 = FocusNode();
-    final fn4 = FocusNode();
-    final fn5 = FocusNode();
-    final fn6 = FocusNode();
-
-    Future<void> submit() async {
-      if (nameCtrl.text.trim().isNotEmpty) {
-        Navigator.pop(context);
-        await http.post(
-          Uri.parse(sheetApiUrl),
-          body: jsonEncode({
-            "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
-            if (!isNew) "rowIndex": item.rowIndex,
-            "name": nameCtrl.text.trim(),
-            "rateType": rateTypeCtrl.text.trim(),
-            "rate": rateCtrl.text.trim(),
-            "qty": qtyCtrl.text.trim(),
-            "tallyName": tallyCtrl.text.trim(),
-            "billedIn": billedCtrl.text.trim(),
-            "isTaxable": isTaxable,
-          }),
-        );
-        widget.onRefreshRequired();
-      }
-    }
-
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF131922),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isNew ? 'Add New Item (Enter Jump Enabled)' : 'Edit Item (Enter Jump Enabled)'),
+          title: Text(isNew ? 'Add New Item' : 'Edit Item'),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    controller: nameCtrl,
-                    focusNode: fn1,
-                    decoration: const InputDecoration(labelText: 'Item Name'),
-                    onSubmitted: (_) => fn2.requestFocus(),
-                  ),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Item Name')),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: rateCtrl,
-                          focusNode: fn2,
-                          decoration: const InputDecoration(labelText: 'Rate (₹)'),
-                          onSubmitted: (_) => fn3.requestFocus(),
-                        ),
-                      ),
+                      Expanded(child: TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Rate (₹)'))),
                       const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: rateTypeCtrl,
-                          focusNode: fn3,
-                          decoration: const InputDecoration(labelText: 'Rate Type'),
-                          onSubmitted: (_) => fn4.requestFocus(),
-                        ),
-                      ),
+                      Expanded(child: TextField(controller: rateTypeCtrl, decoration: const InputDecoration(labelText: 'Rate Type'))),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: qtyCtrl,
-                          focusNode: fn4,
-                          decoration: const InputDecoration(labelText: 'Quantity'),
-                          onSubmitted: (_) => fn5.requestFocus(),
-                        ),
-                      ),
+                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Quantity'))),
                       const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: billedCtrl,
-                          focusNode: fn5,
-                          decoration: const InputDecoration(labelText: 'Billed In'),
-                          onSubmitted: (_) => fn6.requestFocus(),
-                        ),
-                      ),
+                      Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  TextField(
-                    controller: tallyCtrl,
-                    focusNode: fn6,
-                    decoration: const InputDecoration(labelText: 'Item Name on Tally'),
-                    onSubmitted: (_) => submit(),
-                  ),
+                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Item Name on Tally')),
                   const SizedBox(height: 10),
                   SwitchListTile(
                     title: const Text('Taxable (5% Inclusive)'),
@@ -2448,8 +2115,27 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-              onPressed: submit,
-              child: Text(isNew ? 'Save to Sheet (Enter)' : 'Update Sheet (Enter)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () async {
+                if (nameCtrl.text.trim().isNotEmpty) {
+                  Navigator.pop(ctx);
+                  await http.post(
+                    Uri.parse(sheetApiUrl),
+                    body: jsonEncode({
+                      "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
+                      if (!isNew) "rowIndex": item.rowIndex,
+                      "name": nameCtrl.text.trim(),
+                      "rateType": rateTypeCtrl.text.trim(),
+                      "rate": rateCtrl.text.trim(),
+                      "qty": qtyCtrl.text.trim(),
+                      "tallyName": tallyCtrl.text.trim(),
+                      "billedIn": billedCtrl.text.trim(),
+                      "isTaxable": isTaxable,
+                    }),
+                  );
+                  widget.onRefreshRequired();
+                }
+              },
+              child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -2597,16 +2283,14 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   }
 }
 
-// ---------------- 3. CUSTOMERS VIEW ----------------
+// ---------------- 3. CUSTOMERS VIEW (B2B & B2C REFINED STYLING) ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
-  final List<DCEstimate> estimates;
   final VoidCallback onRefreshRequired;
   const CustomerDesktopView({
     super.key,
     required this.customers,
-    required this.estimates,
     required this.onRefreshRequired,
   });
 
@@ -2616,12 +2300,6 @@ class CustomerDesktopView extends StatefulWidget {
 
 class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   String _query = '';
-
-  List<DCEstimate> _getCustomerPurchaseHistory(String custName) {
-    return widget.estimates.where((e) {
-      return e.status != 'CANCELLED' && e.customer.toLowerCase().trim() == custName.toLowerCase().trim();
-    }).toList();
-  }
 
   Widget _buildTagChip(String tag) {
     Color bg;
@@ -2670,29 +2348,19 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(child: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20))),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.analytics_outlined, color: Color(0xFF1E88E5)),
-                  tooltip: 'Customer Ledger & Purchase Report',
-                  onPressed: () => _openCustomerLedgerReportModal(customer),
-                ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                  icon: const Icon(Icons.person_remove, size: 18),
-                  label: const Text('Delete Customer'),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _confirmDeleteCustomer(customer);
-                  },
-                ),
-              ],
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              icon: const Icon(Icons.person_remove, size: 18),
+              label: const Text('Delete Customer'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _confirmDeleteCustomer(customer);
+              },
             ),
           ],
         ),
         content: SizedBox(
-          width: 600,
+          width: 580,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2701,8 +2369,8 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
               _buildCustomerModalRow('Customer Name:', customer.name),
               _buildCustomerModalRow('Contact Number:', customer.contact.isEmpty ? '-' : customer.contact),
               _buildCustomerModalRow('Address:', customer.address.isEmpty ? '-' : customer.address),
-              _buildCustomerModalRow('B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b, isHighlight: true),
-              _buildCustomerModalRow('B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c),
+              _buildCustomerModalRow('B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b, isB2B: true),
+              _buildCustomerModalRow('B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c, isB2C: true),
               _buildCustomerModalRow('Billing Category:', customer.billingTag),
               if (customer.remarks.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -2736,66 +2404,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _openCustomerLedgerReportModal(DCCustomer customer) {
-    final history = _getCustomerPurchaseHistory(customer.name);
-    double totalSpent = history.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.assessment, color: Color(0xFF1E88E5)),
-            const SizedBox(width: 10),
-            Text('Purchase Ledger • ${customer.name}'),
-          ],
-        ),
-        content: SizedBox(
-          width: 600,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Total Invoices: ${history.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E88E5))),
-                  Text('Cumulative Value: ₹${totalSpent.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF59E0B))),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (history.isEmpty)
-                const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('No purchase records found for this customer.')))
-              else
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 280),
-                  decoration: BoxDecoration(color: const Color(0xFF0E141B), borderRadius: BorderRadius.circular(8)),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: history.length,
-                    separatorBuilder: (c, i) => const Divider(height: 1, color: Color(0xFF1E2833)),
-                    itemBuilder: (c, i) {
-                      final h = history[i];
-                      return ListTile(
-                        dense: true,
-                        title: Text("Bill #${h.slNo} • ₹${h.grandTotal}", style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC))),
-                        subtitle: Text("${h.date.split('GMT')[0]} | ${h.itemSummary}", style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
     );
@@ -2839,94 +2447,33 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     final b2cCtrl = TextEditingController(text: isNew ? '' : customer.b2c);
     final remarksCtrl = TextEditingController(text: isNew ? '' : customer.remarks);
 
-    final fn1 = FocusNode();
-    final fn2 = FocusNode();
-    final fn3 = FocusNode();
-    final fn4 = FocusNode();
-    final fn5 = FocusNode();
-    final fn6 = FocusNode();
-
-    Future<void> submit() async {
-      if (nameCtrl.text.trim().isNotEmpty) {
-        Navigator.pop(context);
-        await http.post(
-          Uri.parse(sheetApiUrl),
-          body: jsonEncode({
-            "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
-            if (!isNew) "rowIndex": customer.rowIndex,
-            "name": nameCtrl.text.trim(),
-            "contact": contactCtrl.text.trim(),
-            "address": addressCtrl.text.trim(),
-            "b2b": b2bCtrl.text.trim(),
-            "b2c": b2cCtrl.text.trim(),
-            "remarks": remarksCtrl.text.trim(),
-          }),
-        );
-        widget.onRefreshRequired();
-      }
-    }
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF131922),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isNew ? 'Add Customer (Enter Jump Enabled)' : 'Edit Customer (Enter Jump Enabled)'),
+        title: Text(isNew ? 'Add Customer' : 'Edit Customer'),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: nameCtrl,
-                  focusNode: fn1,
-                  decoration: const InputDecoration(labelText: 'Party Name'),
-                  onSubmitted: (_) => fn2.requestFocus(),
-                ),
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: contactCtrl,
-                        focusNode: fn2,
-                        decoration: const InputDecoration(labelText: 'Contact'),
-                        onSubmitted: (_) => fn3.requestFocus(),
-                      ),
-                    ),
+                    Expanded(child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact'))),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: addressCtrl,
-                        focusNode: fn3,
-                        decoration: const InputDecoration(labelText: 'Address'),
-                        onSubmitted: (_) => fn4.requestFocus(),
-                      ),
-                    ),
+                    Expanded(child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address'))),
                   ],
                 ),
                 const SizedBox(height: 10),
-                TextField(
-                  controller: b2bCtrl,
-                  focusNode: fn4,
-                  decoration: const InputDecoration(labelText: 'B2B Trade Name'),
-                  onSubmitted: (_) => fn5.requestFocus(),
-                ),
+                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'B2B Trade Name (Important)')),
                 const SizedBox(height: 10),
-                TextField(
-                  controller: b2cCtrl,
-                  focusNode: fn5,
-                  decoration: const InputDecoration(labelText: 'B2C Reference'),
-                  onSubmitted: (_) => fn6.requestFocus(),
-                ),
+                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Reference')),
                 const SizedBox(height: 10),
-                TextField(
-                  controller: remarksCtrl,
-                  focusNode: fn6,
-                  decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules'),
-                  onSubmitted: (_) => submit(),
-                ),
+                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules')),
               ],
             ),
           ),
@@ -2935,30 +2482,52 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-            onPressed: submit,
-            child: Text(isNew ? 'Save to Sheet (Enter)' : 'Update Sheet (Enter)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            onPressed: () async {
+              if (nameCtrl.text.trim().isNotEmpty) {
+                Navigator.pop(ctx);
+                await http.post(
+                  Uri.parse(sheetApiUrl),
+                  body: jsonEncode({
+                    "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
+                    if (!isNew) "rowIndex": customer.rowIndex,
+                    "name": nameCtrl.text.trim(),
+                    "contact": contactCtrl.text.trim(),
+                    "address": addressCtrl.text.trim(),
+                    "b2b": b2bCtrl.text.trim(),
+                    "b2c": b2cCtrl.text.trim(),
+                    "remarks": remarksCtrl.text.trim(),
+                  }),
+                );
+                widget.onRefreshRequired();
+              }
+            },
+            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCustomerModalRow(String title, String val, {bool isHighlight = false}) {
+  Widget _buildCustomerModalRow(String title, String val, {bool isB2B = false, bool isB2C = false}) {
+    Color valColor = Colors.white;
+    if (isB2B) valColor = const Color(0xFF38BDF8); // Electric cyan-blue for prominent B2B
+    if (isB2C) valColor = const Color(0xFF94A3B8); // Muted slate-grey for subtle B2C
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 150, child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14))),
+          SizedBox(width: 150, child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               val,
               softWrap: true,
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: isHighlight ? const Color(0xFF6FB1FC) : Colors.white,
+                fontWeight: isB2B ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 13,
+                color: valColor,
                 height: 1.3,
               ),
             ),
@@ -3050,27 +2619,35 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              if (c.b2b.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text('B2B: ${c.b2b}', style: const TextStyle(fontSize: 13, color: Color(0xFF60A5FA), fontWeight: FontWeight.w500)),
-                                ),
-                              if (c.b2c.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    'B2C: ${c.b2c}',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF38BDF8),
-                                      letterSpacing: 0.2,
+                              // B2B and B2C with SAME text size & font, but differentiated prominence colors
+                              Row(
+                                children: [
+                                  if (c.b2b.isNotEmpty) ...[
+                                    Text(
+                                      'B2B: ${c.b2b}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF38BDF8), // High prominence cyan
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                    const SizedBox(width: 14),
+                                  ],
+                                  if (c.b2c.isNotEmpty)
+                                    Text(
+                                      'B2C: ${c.b2c}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w400,
+                                        color: Color(0xFF94A3B8), // Subdued muted grey
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
                               if (c.contact.isNotEmpty || c.address.isNotEmpty)
                                 Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"}  |  📍 ${c.address.isNotEmpty ? c.address : "-"}',
-                                    style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                             ],
                           ),
                         ),
@@ -3128,7 +2705,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         }
       }
       return DateTime.tryParse(dateStr);
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
@@ -3162,7 +2739,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
             bags = raw.substring(raw.indexOf('[') + 1, raw.indexOf(']')).replaceAll('B', '').trim();
           }
           amount = (double.tryParse(qty) ?? 1.0) * (double.tryParse(rate) ?? 0.0);
-        } catch (e) {}
+        } catch (_) {}
 
         rows.add({
           "name": name,
@@ -3310,10 +2887,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
         ),
         actions: [
           ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0052D4),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
             icon: const Icon(Icons.print, size: 16, color: Colors.white),
             label: const Text('Print / View PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             onPressed: () {
@@ -3326,7 +2900,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF1E88E5),
                 side: const BorderSide(color: Color(0xFF1E88E5)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
               icon: const Icon(Icons.edit_document, size: 16),
               label: const Text('Edit Invoice'),
@@ -3349,18 +2922,12 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF131922),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-            SizedBox(width: 10),
-            Text('Cancel Confirmation'),
-          ],
-        ),
-        content: Text('Are you sure you want to CANCEL Invoice #${est.slNo} (${est.customer})?\n\nYES: Cancel Bill\nNO: Back to Details'),
+        title: const Text('Cancel Confirmation'),
+        content: Text('Are you sure you want to CANCEL Invoice #${est.slNo}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('NO (Back)', style: TextStyle(color: Color(0xFF94A3B8))),
+            child: const Text('NO (Back)'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -3375,7 +2942,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
               );
               widget.onRefreshRequired();
             },
-            child: const Text('YES (Cancel Bill)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('YES (Cancel Bill)', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -3663,17 +3230,17 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                     onChanged: (v) => setDialogState(() => selectedCust = v),
                   ),
                   const SizedBox(height: 12),
-                  TextField(controller: placeCtrl, decoration: const InputDecoration(labelText: 'Place (സ്ഥലം)')),
+                  TextField(controller: placeCtrl, decoration: const InputDecoration(labelText: 'Place')),
                   const SizedBox(height: 12),
                   TextField(
                     controller: summaryCtrl,
-                    decoration: const InputDecoration(labelText: 'Item Summary (ഉദാ: Sadhya Vadi 5, Priyam 5)'),
+                    decoration: const InputDecoration(labelText: 'Item Summary'),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: bagsCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Total Nos of Bags (ചാക്ക്)'),
+                    decoration: const InputDecoration(labelText: 'Total Nos of Bags'),
                   ),
                 ],
               ),
@@ -3757,14 +3324,14 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
               ),
               const Spacer(),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF18202B), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF18202B)),
                 icon: const Icon(Icons.copy, size: 18),
                 label: const Text('Copy Slip'),
                 onPressed: widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
               ),
               const SizedBox(width: 10),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
                 icon: const Icon(Icons.add, color: Colors.white, size: 18),
                 label: const Text('Add Entry', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 onPressed: _openAddPackingSlipDialog,
@@ -3852,7 +3419,237 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- 6. SETTINGS VIEW ----------------
+// ---------------- 6. PROFESSIONAL ENTERPRISE REPORTS VIEW ----------------
+
+class EnterpriseReportsView extends StatefulWidget {
+  final List<DCEstimate> estimates;
+  final List<DCItem> items;
+  final List<DCCustomer> customers;
+
+  const EnterpriseReportsView({
+    super.key,
+    required this.estimates,
+    required this.items,
+    required this.customers,
+  });
+
+  @override
+  State<EnterpriseReportsView> createState() => _EnterpriseReportsViewState();
+}
+
+class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeEstimates = widget.estimates.where((e) => e.status != 'CANCELLED').toList();
+    final double totalRevenue = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
+    final double totalCoolie = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.coolie) ?? 0.0));
+
+    // Calculate Item-wise distribution
+    Map<String, int> itemOrderCount = {};
+    for (var est in activeEstimates) {
+      for (var item in widget.items) {
+        if (est.itemSummary.toLowerCase().contains(item.name.toLowerCase())) {
+          itemOrderCount[item.name] = (itemOrderCount[item.name] ?? 0) + 1;
+        }
+      }
+    }
+    final sortedItemSales = itemOrderCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    // Calculate Customer-wise billing aggregation
+    Map<String, double> customerTotalSpend = {};
+    Map<String, int> customerBillCount = {};
+    for (var est in activeEstimates) {
+      customerTotalSpend[est.customer] = (customerTotalSpend[est.customer] ?? 0.0) + (double.tryParse(est.grandTotal) ?? 0.0);
+      customerBillCount[est.customer] = (customerBillCount[est.customer] ?? 0) + 1;
+    }
+    final sortedCustSales = customerTotalSpend.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('ENTERPRISE BUSINESS REPORTS', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                  Text('${activeEstimates.length} ACTIVE BILLED TRANSACTIONS ANALYSED', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Overview Metric KPI Cards
+          Row(
+            children: [
+              _buildKpiCard('Gross Invoiced Value', '₹${totalRevenue.toStringAsFixed(2)}', Icons.payments_outlined, const Color(0xFF0284C7)),
+              const SizedBox(width: 14),
+              _buildKpiCard('Total Invoices Generated', '${activeEstimates.length}', Icons.receipt_long_outlined, const Color(0xFF10B981)),
+              const SizedBox(width: 14),
+              _buildKpiCard('Cumulative Coolie Charges', '₹${totalCoolie.toStringAsFixed(2)}', Icons.local_shipping_outlined, const Color(0xFFF59E0B)),
+              const SizedBox(width: 14),
+              _buildKpiCard('Registered Customer Count', '${widget.customers.length}', Icons.groups_outlined, const Color(0xFF8B5CF6)),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Tab Selector for Breakdown
+          Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFF131922),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF263342)),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                color: const Color(0xFF1E88E5),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              labelColor: Colors.white,
+              unselectedLabelColor: const Color(0xFF94A3B8),
+              tabs: const [
+                Tab(text: 'Item-wise Sales Breakdown'),
+                Tab(text: 'Customer Revenue Ledger'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // 1. Item Sales Distribution Table
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131922),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF263342)),
+                  ),
+                  child: sortedItemSales.isEmpty
+                      ? const Center(child: Text('No item sales logged yet.'))
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: sortedItemSales.length,
+                          separatorBuilder: (c, i) => const Divider(height: 14, color: Color(0xFF1E2833)),
+                          itemBuilder: (ctx, idx) {
+                            final entry = sortedItemSales[idx];
+                            return Row(
+                              children: [
+                                SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold))),
+                                Expanded(
+                                  flex: 4,
+                                  child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF18202B),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFF263342)),
+                                  ),
+                                  child: Text(
+                                    'Billed in ${entry.value} Invoices',
+                                    style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+
+                // 2. Customer Revenue Ledger Table
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131922),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF263342)),
+                  ),
+                  child: sortedCustSales.isEmpty
+                      ? const Center(child: Text('No customer invoices logged yet.'))
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: sortedCustSales.length,
+                          separatorBuilder: (c, i) => const Divider(height: 14, color: Color(0xFF1E2833)),
+                          itemBuilder: (ctx, idx) {
+                            final entry = sortedCustSales[idx];
+                            final bills = customerBillCount[entry.key] ?? 0;
+                            return Row(
+                              children: [
+                                SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold))),
+                                Expanded(
+                                  flex: 4,
+                                  child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                ),
+                                Text('$bills Invoices', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                                const SizedBox(width: 30),
+                                Text(
+                                  '₹${entry.value.toStringAsFixed(2)}',
+                                  style: const TextStyle(color: Color(0xFF6FB1FC), fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiCard(String title, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF131922),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF263342)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: color.withOpacity(0.15),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                  const SizedBox(height: 4),
+                  Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- 7. SETTINGS VIEW ----------------
 
 class SettingsDesktopView extends StatelessWidget {
   final VoidCallback onReloadSheet;
@@ -3933,7 +3730,7 @@ class SettingsDesktopView extends StatelessWidget {
                       const SizedBox(height: 10),
                       _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
                       _supportRow('Application Suite', 'SP MultiBill ERP (Desktop 64-bit Engine)'),
-                      _supportRow('Release Version', 'v3.5.0 (Windows Native Build)'),
+                      _supportRow('Release Version', 'v3.6.0 (Windows Native Build)'),
                       _supportRow('Target Framework', 'Flutter 3.x (Runner x64)'),
                     ],
                   ),
