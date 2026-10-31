@@ -537,6 +537,23 @@ pw.Widget _pdfSummaryRow(String label, String value) {
 
 final ValueNotifier<ThemeMode> spAppThemeMode = ValueNotifier<ThemeMode>(ThemeMode.light);
 
+String _spMonthName(int month) => const [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+][month - 1];
+
+String _spWeekdayName(int weekday) => const [
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+  'Friday', 'Saturday', 'Sunday',
+][weekday - 1];
+
+String _spDate(DateTime date) =>
+    '${date.day.toString().padLeft(2, '0')} ${_spMonthName(date.month)} ${date.year}';
+
+String _spFullDate(DateTime date) =>
+    '${_spWeekdayName(date.weekday)}, ${_spDate(date)}';
+
+
 class SPMultiBillApp extends StatelessWidget {
   const SPMultiBillApp({super.key});
 
@@ -1051,10 +1068,10 @@ class _MainDashboardState extends State<MainDashboard> {
                           const Divider(),
                           const SizedBox(height: 12),
                           const Text('Current Date', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text(DateFormat('EEEE, dd MMM yyyy').format(DateTime.now())),
+                          Text(_spFullDate(DateTime.now())),
                           const SizedBox(height: 16),
                           const Text('Current Period', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text('${DateFormat('dd MMM yyyy').format(DateTime(DateTime.now().month >= 4 ? DateTime.now().year : DateTime.now().year - 1, 4, 1))} – ${DateFormat('dd MMM yyyy').format(DateTime(DateTime.now().month >= 4 ? DateTime.now().year + 1 : DateTime.now().year, 3, 31))}'),
+                          Text('${_spDate(DateTime(DateTime.now().month >= 4 ? DateTime.now().year : DateTime.now().year - 1, 4, 1))} – ${_spDate(DateTime(DateTime.now().month >= 4 ? DateTime.now().year + 1 : DateTime.now().year, 3, 31))}'),
                           const SizedBox(height: 18),
                           OutlinedButton.icon(
                             onPressed: _openCompanyProfileDialog,
