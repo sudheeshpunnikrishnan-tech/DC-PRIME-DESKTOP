@@ -53,6 +53,7 @@ DateTime? parseUniversalDate(String dateStr) {
   if (dateStr.trim().isEmpty) return null;
   final s = dateStr.trim();
   try {
+    // 1. Format: DD/MM/YYYY or DD/MM/YYYY HH:mm
     if (s.contains('/')) {
       final parts = s.split(' ');
       final dateParts = parts[0].split('/');
@@ -72,6 +73,7 @@ DateTime? parseUniversalDate(String dateStr) {
       }
     }
 
+    // 2. Format: "Thu Oct 29 2026 00:00:00 GMT..."
     final months = {
       'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
       'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
@@ -533,44 +535,65 @@ pw.Widget _pdfSummaryRow(String label, String value) {
 
 // ---------------- APP ROOT ----------------
 
+final ValueNotifier<ThemeMode> spAppThemeMode = ValueNotifier<ThemeMode>(ThemeMode.light);
+
 class SPMultiBillApp extends StatelessWidget {
   const SPMultiBillApp({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'SP MultiBill ERP • SP Tech Solutions',
-      scrollBehavior: UltraSmoothScrollBehavior(),
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0B1015),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF3B82F6),
-          secondary: Color(0xFF10B981),
-          tertiary: Color(0xFF8B5CF6),
-          surface: Color(0xFF131922),
-          onSurface: Color(0xFFF8FAFC),
+  ThemeData _theme(Brightness brightness) {
+    final dark = brightness == Brightness.dark;
+    final scheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF1769E0),
+      brightness: brightness,
+      surface: dark ? const Color(0xFF111827) : const Color(0xFFF8FAFF),
+    );
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: dark ? const Color(0xFF0B1220) : const Color(0xFFF3F7FD),
+      appBarTheme: AppBarTheme(
+        backgroundColor: dark ? const Color(0xFF111827) : const Color(0xFFF8FAFF),
+        foregroundColor: scheme.onSurface,
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: dark ? const Color(0xFF172235) : Colors.white,
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: dark ? const Color(0xFF1B293D) : const Color(0xFFF1F5FB),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: scheme.outlineVariant),
         ),
-        navigationRailTheme: const NavigationRailThemeData(
-          backgroundColor: Color(0xFF0E141B),
-          indicatorColor: Color(0xFF1E88E5),
-          selectedIconTheme: IconThemeData(color: Colors.white, size: 22),
-          unselectedIconTheme: IconThemeData(color: Color(0xFF94A3B8), size: 22),
-          selectedLabelTextStyle: TextStyle(color: Color(0xFF6FB1FC), fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelTextStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: scheme.outlineVariant),
         ),
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: Color(0xFF18202B),
-          border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF263342))),
-          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF263342))),
-          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF3B82F6), width: 1.5)),
-          labelStyle: TextStyle(color: Color(0xFF94A3B8)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: scheme.primary, width: 1.5),
         ),
       ),
-      home: const MainDashboard(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: spAppThemeMode,
+      builder: (context, mode, _) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'SP MULTIBILL ERP',
+        scrollBehavior: UltraSmoothScrollBehavior(),
+        theme: _theme(Brightness.light),
+        darkTheme: _theme(Brightness.dark),
+        themeMode: mode,
+        home: const MainDashboard(),
+      ),
     );
   }
 }
@@ -585,7 +608,7 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
-  int _navIndex = 0; // 0 = Gateway of MultiBill (Home)
+  int _navIndex = -1;
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
@@ -812,7 +835,7 @@ class _MainDashboardState extends State<MainDashboard> {
   void _onLoadInvoiceToEdit(DCEstimate est) {
     setState(() {
       _invoiceToEdit = est;
-      _navIndex = 1; // Switch to billing tab
+      _navIndex = 0;
     });
   }
 
@@ -870,6 +893,273 @@ class _MainDashboardState extends State<MainDashboard> {
     );
   }
 
+
+  Widget _buildSelectedScreen() {
+    final screens = <Widget>[
+      TallyBillingScreen(
+        items: _items,
+        customers: _customers,
+        nextBillNo: _estimates.length + 1,
+        invoiceToEdit: _invoiceToEdit,
+        onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
+        onSaved: () => _fetchData(silent: true),
+        onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+      ),
+      PriceListDesktopView(
+        items: _items,
+        onRefreshRequired: () => _fetchData(silent: true),
+      ),
+      CustomerDesktopView(
+        customers: _customers,
+        onRefreshRequired: () => _fetchData(silent: true),
+      ),
+      LoadingSlipView(loadingSlip: _loadingSlip, items: _items, customers: _customers),
+      InvoiceHistoryView(
+        estimates: _estimates,
+        items: _items,
+        customers: _customers,
+        onEditInvoice: _onLoadInvoiceToEdit,
+        onRefreshRequired: () => _fetchData(silent: true),
+      ),
+      EnterpriseReportsView(
+        estimates: _estimates,
+        items: _items,
+        customers: _customers,
+        onEditInvoice: _onLoadInvoiceToEdit,
+        onRefreshRequired: () => _fetchData(silent: true),
+      ),
+      SettingsDesktopView(
+        onReloadSheet: () => _fetchData(silent: true),
+        onOpenProfile: _openCompanyProfileDialog,
+      ),
+    ];
+    return Column(
+      children: [
+        _gatewayTopBar(context, showBack: true),
+        Expanded(child: screens[_navIndex]),
+      ],
+    );
+  }
+
+  Widget _gatewayTopBar(BuildContext context, {bool showBack = false}) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            if (showBack)
+              IconButton(
+                tooltip: 'Back to Gateway',
+                onPressed: () => setState(() => _navIndex = -1),
+                icon: const Icon(Icons.arrow_back_rounded),
+              )
+            else
+              _buildShieldLogoWidget(size: 38),
+            const SizedBox(width: 12),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('SP MULTIBILL ERP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                Text('Billing • Inventory • Reports', style: TextStyle(fontSize: 11)),
+              ],
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              child: SizedBox(
+                height: 42,
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search menu (Ctrl + F) ...',
+                    prefixIcon: Icon(Icons.search_rounded),
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  onSubmitted: (value) {
+                    final q = value.toLowerCase();
+                    final i = ['billing', 'price', 'customer', 'packing', 'invoice', 'report', 'setting']
+                        .indexWhere((s) => s.startsWith(q) || q.startsWith(s));
+                    if (i >= 0) setState(() => _navIndex = i);
+                  },
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Toggle light/dark theme',
+              onPressed: () => spAppThemeMode.value =
+                  spAppThemeMode.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+              icon: Icon(spAppThemeMode.value == ThemeMode.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined),
+            ),
+            IconButton(
+              tooltip: 'Sync data',
+              onPressed: () => _fetchData(silent: true),
+              icon: const Icon(Icons.sync_rounded),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGateway(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final entries = <({String section, String title, String subtitle, IconData icon, int index, Color tint})>[
+      (section: 'MASTERS', title: 'Customers', subtitle: 'Create, view & edit', icon: Icons.people_alt_rounded, index: 2, tint: const Color(0xFF2878E8)),
+      (section: 'MASTERS', title: 'Items / Price List', subtitle: 'Manage items and rates', icon: Icons.inventory_2_rounded, index: 1, tint: const Color(0xFF159B68)),
+      (section: 'MASTERS', title: 'Company Setup', subtitle: 'Company details & logo', icon: Icons.business_rounded, index: 6, tint: const Color(0xFF8652D8)),
+      (section: 'TRANSACTIONS', title: 'Billing', subtitle: 'Create sales bill', icon: Icons.receipt_long_rounded, index: 0, tint: const Color(0xFFD94B78)),
+      (section: 'TRANSACTIONS', title: 'Packing Slip', subtitle: 'Create and manage slips', icon: Icons.local_shipping_rounded, index: 3, tint: const Color(0xFFDA8A26)),
+      (section: 'TRANSACTIONS', title: 'Invoices', subtitle: 'View and print invoices', icon: Icons.description_rounded, index: 4, tint: const Color(0xFF159B68)),
+      (section: 'UTILITIES', title: 'Data Sync', subtitle: 'Refresh connected data', icon: Icons.storage_rounded, index: -2, tint: const Color(0xFF2878E8)),
+      (section: 'UTILITIES', title: 'Backup & Restore', subtitle: 'Manage your data', icon: Icons.cloud_upload_rounded, index: -3, tint: const Color(0xFF8652D8)),
+      (section: 'UTILITIES', title: 'Settings', subtitle: 'App preferences and theme', icon: Icons.settings_rounded, index: 6, tint: const Color(0xFF0D9EB0)),
+      (section: 'REPORTS', title: 'Sales Reports', subtitle: 'Bill summary and trends', icon: Icons.bar_chart_rounded, index: 5, tint: const Color(0xFFD94B78)),
+      (section: 'REPORTS', title: 'Stock Reports', subtitle: 'Current stock and movement', icon: Icons.analytics_rounded, index: 5, tint: const Color(0xFFDA8A26)),
+      (section: 'REPORTS', title: 'Misc Reports', subtitle: 'More reports', icon: Icons.pie_chart_rounded, index: 5, tint: const Color(0xFF159B68)),
+    ];
+
+    return Column(
+      children: [
+        _gatewayTopBar(context),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              child: Row(
+                children: [
+                  Container(
+                    width: 270,
+                    padding: const EdgeInsets.all(22),
+                    color: scheme.surfaceContainerLow,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(child: _buildShieldLogoWidget(size: 76)),
+                          const SizedBox(height: 14),
+                          const Center(child: Text('SP MULTIBILL ERP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17))),
+                          const SizedBox(height: 24),
+                          Text(CompanyConfig.name.isEmpty ? 'Company Profile' : CompanyConfig.name,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                          const SizedBox(height: 6),
+                          const Text('Billing • Inventory • Reports'),
+                          const SizedBox(height: 20),
+                          const Divider(),
+                          const SizedBox(height: 12),
+                          const Text('Current Date', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text(DateFormat('EEEE, dd MMM yyyy').format(DateTime.now())),
+                          const SizedBox(height: 16),
+                          const Text('Current Period', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text('${DateFormat('dd MMM yyyy').format(DateTime(DateTime.now().month >= 4 ? DateTime.now().year : DateTime.now().year - 1, 4, 1))} – ${DateFormat('dd MMM yyyy').format(DateTime(DateTime.now().month >= 4 ? DateTime.now().year + 1 : DateTime.now().year, 3, 31))}'),
+                          const SizedBox(height: 18),
+                          OutlinedButton.icon(
+                            onPressed: _openCompanyProfileDialog,
+                            icon: const Icon(Icons.edit_outlined),
+                            label: const Text('Company Setup'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text('Gateway of SP MULTIBILL ERP', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                              const Spacer(),
+                              Text('Select an option to continue', style: TextStyle(color: scheme.onSurfaceVariant)),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          const Divider(),
+                          Expanded(
+                            child: ListView(
+                              children: [
+                                for (final section in ['MASTERS', 'TRANSACTIONS', 'UTILITIES', 'REPORTS']) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8, bottom: 8),
+                                    child: Text(section, style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w800, letterSpacing: 0.7)),
+                                  ),
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final count = constraints.maxWidth > 950 ? 3 : constraints.maxWidth > 600 ? 2 : 1;
+                                      final sectionEntries = entries.where((e) => e.section == section).toList();
+                                      return GridView.count(
+                                        crossAxisCount: count,
+                                        shrinkWrap: true,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        crossAxisSpacing: 12,
+                                        mainAxisSpacing: 12,
+                                        childAspectRatio: count == 3 ? 2.9 : 3.2,
+                                        children: [
+                                          for (final entry in sectionEntries)
+                                            InkWell(
+                                              borderRadius: BorderRadius.circular(16),
+                                              onTap: () {
+                                                if (entry.index == -2) {
+                                                  _fetchData(silent: true);
+                                                } else if (entry.index == -3) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup & Restore is available in Settings.')));
+                                                  setState(() => _navIndex = 6);
+                                                } else {
+                                                  setState(() => _navIndex = entry.index);
+                                                }
+                                              },
+                                              child: Card(
+                                                margin: EdgeInsets.zero,
+                                                color: entry.tint.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.09),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(entry.icon, size: 28, color: entry.tint),
+                                                      const SizedBox(width: 14),
+                                                      Expanded(
+                                                        child: Column(
+                                                          mainAxisAlignment: MainAxisAlignment.center,
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text(entry.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                                            const SizedBox(height: 4),
+                                                            Text(entry.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      Icon(Icons.chevron_right_rounded, color: entry.tint),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -887,7 +1177,7 @@ class _MainDashboardState extends State<MainDashboard> {
               const Text('POWERED BY SP TECH SOLUTIONS',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 2.0, color: Color(0xFF38BDF8))),
               const SizedBox(height: 4),
-              const Text('Wholesale, Retail & Distribution Suite • v3.8.0',
+              const Text('Wholesale, Retail & Distribution Suite • v3.6.0',
                   style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
               const SizedBox(height: 36),
               const SizedBox(
@@ -904,587 +1194,22 @@ class _MainDashboardState extends State<MainDashboard> {
       );
     }
 
-    return FocusScope(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.escape && _navIndex != 0) {
-            setState(() => _navIndex = 0);
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Scaffold(
-        body: Column(
-          children: [
-            if (_isBackgroundSyncing)
-              const LinearProgressIndicator(
-                minHeight: 3,
-                backgroundColor: Color(0xFF131922),
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E88E5)),
-              ),
-            Expanded(
-              child: Row(
-                children: [
-                  NavigationRail(
-                    selectedIndex: _navIndex,
-                    onDestinationSelected: (val) => setState(() => _navIndex = val),
-                    labelType: NavigationRailLabelType.all,
-                    leading: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      child: Tooltip(
-                        message: 'Click to edit Company Header & Logo',
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(10),
-                          onTap: _openCompanyProfileDialog,
-                          child: CompanyConfig.logoUrl.isNotEmpty
-                              ? CircleAvatar(
-                                  radius: 22,
-                                  backgroundColor: const Color(0xFF18202B),
-                                  backgroundImage: NetworkImage(CompanyConfig.logoUrl),
-                                )
-                              : _buildShieldLogoWidget(size: 44),
-                        ),
-                      ),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
-                      tooltip: 'Sync from Google Sheet',
-                      onPressed: () => _fetchData(silent: true),
-                    ),
-                    destinations: const [
-                      NavigationRailDestination(
-                        icon: Icon(Icons.home_outlined),
-                        selectedIcon: Icon(Icons.home),
-                        label: Text('Gateway'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.receipt_long_outlined),
-                        selectedIcon: Icon(Icons.receipt_long),
-                        label: Text('Billing'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.inventory_2_outlined),
-                        selectedIcon: Icon(Icons.inventory_2),
-                        label: Text('Price List'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.people_outline),
-                        selectedIcon: Icon(Icons.people),
-                        label: Text('Customers'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.local_shipping_outlined),
-                        selectedIcon: Icon(Icons.local_shipping),
-                        label: Text('Packing Slip'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.history_outlined),
-                        selectedIcon: Icon(Icons.history),
-                        label: Text('Invoices'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.insert_chart_outlined),
-                        selectedIcon: Icon(Icons.insert_chart),
-                        label: Text('Reports'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.settings_outlined),
-                        selectedIcon: Icon(Icons.settings),
-                        label: Text('Settings'),
-                      ),
-                    ],
-                  ),
-                  const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF1E2833)),
-                  Expanded(
-                    child: IndexedStack(
-                      index: _navIndex,
-                      children: [
-                        // Index 0: Material Gateway of MultiBill Home
-                        MaterialGatewayHomeScreen(
-                          items: _items,
-                          customers: _customers,
-                          estimates: _estimates,
-                          loadingSlip: _loadingSlip,
-                          onNavigate: (index) => setState(() => _navIndex = index),
-                          onOpenSettings: _openCompanyProfileDialog,
-                        ),
-                        // Index 1: Billing
-                        TallyBillingScreen(
-                          items: _items,
-                          customers: _customers,
-                          nextBillNo: _estimates.length + 1,
-                          invoiceToEdit: _invoiceToEdit,
-                          onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
-                          onSaved: () => _fetchData(silent: true),
-                          onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
-                        ),
-                        // Index 2: Price List
-                        PriceListDesktopView(
-                          items: _items,
-                          onRefreshRequired: () => _fetchData(silent: true),
-                        ),
-                        // Index 3: Customers
-                        CustomerDesktopView(
-                          customers: _customers,
-                          onRefreshRequired: () => _fetchData(silent: true),
-                        ),
-                        // Index 4: Packing Slip
-                        LoadingSlipView(
-                          loadingSlip: _loadingSlip,
-                          items: _items,
-                          customers: _customers,
-                        ),
-                        // Index 5: Invoices
-                        InvoiceHistoryView(
-                          estimates: _estimates,
-                          items: _items,
-                          customers: _customers,
-                          onEditInvoice: _onLoadInvoiceToEdit,
-                          onRefreshRequired: () => _fetchData(silent: true),
-                        ),
-                        // Index 6: Reports
-                        EnterpriseReportsView(
-                          estimates: _estimates,
-                          items: _items,
-                          customers: _customers,
-                          onEditInvoice: _onLoadInvoiceToEdit,
-                          onRefreshRequired: () => _fetchData(silent: true),
-                        ),
-                        // Index 7: Settings
-                        SettingsDesktopView(
-                          onReloadSheet: () => _fetchData(silent: true),
-                          onOpenProfile: _openCompanyProfileDialog,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------- 0. MATERIAL GATEWAY OF MULTIBILL (HOME SCREEN) ----------------
-
-class MaterialGatewayHomeScreen extends StatefulWidget {
-  final List<DCItem> items;
-  final List<DCCustomer> customers;
-  final List<DCEstimate> estimates;
-  final List<LoadingEntry> loadingSlip;
-  final Function(int) onNavigate;
-  final VoidCallback onOpenSettings;
-
-  const MaterialGatewayHomeScreen({
-    super.key,
-    required this.items,
-    required this.customers,
-    required this.estimates,
-    required this.loadingSlip,
-    required this.onNavigate,
-    required this.onOpenSettings,
-  });
-
-  @override
-  State<MaterialGatewayHomeScreen> createState() => _MaterialGatewayHomeScreenState();
-}
-
-class _MaterialGatewayHomeScreenState extends State<MaterialGatewayHomeScreen> {
-  int _highlightedIndex = 2; // Default to 'Vouchers (Billing)'
-
-  final List> _menuItems = [
-    {"type": "HEADER", "label": "MASTERS"},
-    {"type": "ITEM", "label": "Price List (Stock Items)", "keyChar": "P", "nav": 2},
-    {"type": "ITEM", "label": "Customers (Parties)", "keyChar": "C", "nav": 3},
-    {"type": "HEADER", "label": "TRANSACTIONS"},
-    {"type": "ITEM", "label": "Vouchers (Customer Billing)", "keyChar": "V", "nav": 1},
-    {"type": "ITEM", "label": "Day Book (Invoices)", "keyChar": "D", "nav": 5},
-    {"type": "ITEM", "label": "Loading / Packing Slip", "keyChar": "L", "nav": 4},
-    {"type": "HEADER", "label": "REPORTS & UTILITIES"},
-    {"type": "ITEM", "label": "Reports & Analytics", "keyChar": "R", "nav": 6},
-    {"type": "ITEM", "label": "Settings & Company Profile", "keyChar": "S", "nav": 7},
-  ];
-
-  KeyEventResult _handleGatewayKeys(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent) {
-      final key = event.logicalKey;
-      if (key == LogicalKeyboardKey.keyV) {
-        widget.onNavigate(1);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.keyP) {
-        widget.onNavigate(2);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.keyC) {
-        widget.onNavigate(3);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.keyD || key == LogicalKeyboardKey.keyK) {
-        widget.onNavigate(5);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.keyL) {
-        widget.onNavigate(4);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.keyR) {
-        widget.onNavigate(6);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.keyS) {
-        widget.onNavigate(7);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.arrowDown) {
-        _navigateMenu(1);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.arrowUp) {
-        _navigateMenu(-1);
-        return KeyEventResult.handled;
-      } else if (key == LogicalKeyboardKey.enter) {
-        final current = _selectableIndices[_highlightedIndex];
-        final nav = _menuItems[current]['nav'];
-        if (nav != null) widget.onNavigate(nav);
-        return KeyEventResult.handled;
-      }
-    }
-    return KeyEventResult.ignored;
-  }
-
-  List<int> get _selectableIndices {
-    List<int> idxs = [];
-    for (int i = 0; i < _menuItems.length; i++) {
-      if (_menuItems[i]['type'] == 'ITEM') idxs.add(i);
-    }
-    return idxs;
-  }
-
-  void _navigateMenu(int direction) {
-    setState(() {
-      _highlightedIndex = (_highlightedIndex + direction).clamp(0, _selectableIndices.length - 1);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final activeEstimates = widget.estimates.where((e) => e.status != 'CANCELLED').toList();
-
-    // Today's stats
-    final todaysEstimates = activeEstimates.where((e) {
-      final eDate = parseUniversalDate(e.date);
-      if (eDate == null) return false;
-      return DateTime(eDate.year, eDate.month, eDate.day).isAtSameMomentAs(today);
-    }).toList();
-
-    final double todaySales = todaysEstimates.fold(0.0, (s, e) => s + (double.tryParse(e.grandTotal) ?? 0.0));
-    final lastBill = widget.estimates.isNotEmpty ? widget.estimates.last : null;
-    final lastDateStr = lastBill != null ? formatDisplayDateTime(lastBill.date) : "No entries yet";
-
-    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final currentDateFull = "${weekdays[now.weekday - 1]}, ${now.day}-${months[now.month - 1]}-${now.year}";
-
-    final selectable = _selectableIndices;
-
-    return Focus(
-      autofocus: true,
-      onKeyEvent: _handleGatewayKeys,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 20.0),
-        child: Column(
-          children: [
-            // Top App Bar Header in Material Dark
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF131922),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF263342)),
-              ),
-              child: Row(
-                children: [
-                  const Text('SP MultiBill ERP • PRIME',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF38BDF8), letterSpacing: 0.8)),
-                  const SizedBox(width: 20),
-                  Text(CompanyConfig.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF18202B),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF263342)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.search, size: 16, color: Color(0xFF94A3B8)),
-                        const SizedBox(width: 8),
-                        Text('Alt+G : Go To / Quick Jump', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-
-            // Two Column Tally Style Body
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Left Side: Period, Date, Company, Last Entry
-                  Expanded(
-                    flex: 5,
-                    child: Container(
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF131922),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF263342)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _infoSection('CURRENT PERIOD', '1-Apr-2026 to 31-Mar-2027'),
-                              _infoSection('CURRENT DATE', currentDateFull, isRight: true),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          const Divider(color: Color(0xFF263342)),
-                          const SizedBox(height: 14),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _infoSection('NAME OF COMPANY', '${CompanyConfig.name} 2026-27', isHighlight: true),
-                              _infoSection('DATE OF LAST ENTRY', lastDateStr, isRight: true),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Live Day Snapshot Card
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0E141B),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFF1E2833)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
-                                  children: [
-                                    Icon(Icons.insights, size: 18, color: Color(0xFF38BDF8)),
-                                    SizedBox(width: 8),
-                                    Text("TODAY'S BUSINESS SNAPSHOT",
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5, color: Color(0xFF38BDF8))),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    _statMini('Today\'s Sales', '₹${todaySales.toStringAsFixed(2)}', const Color(0xFF10B981)),
-                                    _statMini('Bills Count', '${todaysEstimates.length}', Colors.white),
-                                    _statMini('Total Items in Master', '${widget.items.length}', const Color(0xFF38BDF8)),
-                                    _statMini('Total Parties', '${widget.customers.length}', const Color(0xFFC4B5FD)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Spacer(),
-
-                          // Quick Keyboard Hints Bar
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF18202B),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFF263342)),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Press V: New Bill', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                                Text('Press D: Day Book', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                                Text('Press P: Price List', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                                Text('Press R: Reports', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-
-                  // Right Side: Gateway of MultiBill Menu Box
-                  Expanded(
-                    flex: 4,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF131922),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF263342)),
-                      ),
-                      child: Column(
-                        children: [
-                          // Menu Box Title Header
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF0052D4),
-                              borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Gateway of MultiBill',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, letterSpacing: 0.8),
-                            ),
-                          ),
-
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              child: ListView.builder(
-                                itemCount: _menuItems.length,
-                                itemBuilder: (ctx, i) {
-                                  final m = _menuItems[i];
-                                  if (m['type'] == 'HEADER') {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 14, bottom: 6, left: 14),
-                                      child: Text(
-                                        m['label'],
-                                        style: const TextStyle(
-                                          color: Color(0xFF38BDF8),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.2,
-                                        ),
-                                      ),
-                                    );
-                                  }
-
-                                  final isHighlighted = selectable[_highlightedIndex] == i;
-
-                                  return InkWell(
-                                    borderRadius: BorderRadius.circular(6),
-                                    onTap: () {
-                                      final nav = m['nav'];
-                                      if (nav != null) widget.onNavigate(nav);
-                                    },
-                                    hoverColor: const Color(0xFF1E88E5).withOpacity(0.15),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: isHighlighted ? const Color(0xFF0284C7).withOpacity(0.35) : null,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: isHighlighted ? Border.all(color: const Color(0xFF38BDF8), width: 1.2) : null,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          _buildHighlightedLabel(m['label'], m['keyChar'], isHighlighted),
-                                          const Spacer(),
-                                          if (isHighlighted)
-                                            const Icon(Icons.keyboard_return, size: 16, color: Color(0xFF38BDF8)),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-
-                          // Bottom Quit / Esc row
-                          Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: const BoxDecoration(
-                              border: Border(top: BorderSide(color: Color(0xFF1E2833))),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Text('Use Arrow Keys ↑↓ to Navigate • Enter to Select',
-                                style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHighlightedLabel(String fullText, String keyChar, bool isSelected) {
-    int idx = fullText.indexOf(keyChar);
-    if (idx == -1) {
-      return Text(fullText, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal));
-    }
-
-    final before = fullText.substring(0, idx);
-    final key = fullText.substring(idx, idx + 1);
-    final after = fullText.substring(idx + 1);
-
-    return RichText(
-      text: TextSpan(
-        style: TextStyle(
-          fontSize: 14,
-          fontFamily: 'Roboto',
-          color: isSelected ? Colors.white : const Color(0xFFF1F5F9),
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-        ),
+    return Scaffold(
+      body: Column(
         children: [
-          TextSpan(text: before),
-          TextSpan(
-            text: key,
-            style: const TextStyle(
-              color: Color(0xFF38BDF8),
-              fontWeight: FontWeight.w900,
-              decoration: TextDecoration.underline,
+          if (_isBackgroundSyncing)
+            const LinearProgressIndicator(
+              minHeight: 3,
+              backgroundColor: Color(0xFF131922),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E88E5)),
             ),
+          Expanded(
+            child: _navIndex < 0
+                ? _buildGateway(context)
+                : _buildSelectedScreen(),
           ),
-          TextSpan(text: after),
         ],
       ),
-    );
-  }
-
-  Widget _infoSection(String title, String val, {bool isRight = false, bool isHighlight = false}) {
-    return Column(
-      crossAxisAlignment: isRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
-        const SizedBox(height: 4),
-        Text(
-          val,
-          style: TextStyle(
-            fontSize: isHighlight ? 17 : 14,
-            fontWeight: FontWeight.bold,
-            color: isHighlight ? const Color(0xFF38BDF8) : Colors.white,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _statMini(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-      ],
     );
   }
 }
@@ -2912,7 +2637,8 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
         content: SizedBox(
           width: 580,
           child: Column(
-            mainAxisSize: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Divider(color: Color(0xFF263342)),
               _buildCustomerModalRow('Customer Name:', customer.name),
@@ -3217,7 +2943,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   }
 }
 
-// ---------------- 4. INVOICE HISTORY VIEW ----------------
+// ---------------- 4. INVOICE HISTORY VIEW (DATE & TIME PARSED) ----------------
 
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -3243,8 +2969,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List> _parseSummaryTable(String summary) {
-    List> rows = [];
+  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
+    List<Map<String, dynamic>> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -3668,6 +3394,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                   children: [
                                     Row(
                                       children: [
+                                        // Customer Name Only (Without Date in Bracket)
                                         Text(
                                           est.customer,
                                           style: TextStyle(
@@ -3691,6 +3418,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                           ),
                                         ],
                                         const Spacer(),
+                                        // Exact Date and Time on the right
                                         Text(
                                           formatDisplayDateTime(est.date),
                                           style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
@@ -3957,7 +3685,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- 6. ENTERPRISE REPORTS VIEW ----------------
+// ---------------- 6. ENTERPRISE REPORTS VIEW (DRILL-DOWN & PDF EXPORT) ----------------
 
 class EnterpriseReportsView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -3990,8 +3718,8 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  List> _parseSummaryTable(String summary) {
-    List> rows = [];
+  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
+    List<Map<String, dynamic>> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -4260,6 +3988,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     );
   }
 
+  // Drilldown pop-up for Item-wise or Customer-wise clicks
   void _openDrilldownHistoryModal(String title, List<DCEstimate> bills) {
     showDialog(
       context: context,
@@ -4324,9 +4053,11 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     );
   }
 
+  // Export Enterprise Report to A4 PDF
   Future<void> _exportReportPdf(List<DCEstimate> activeEstimates, double totalRevenue, double totalCoolie) async {
     final pdf = pw.Document();
 
+    // Grouping for PDF
     Map<String, int> itemCounts = {};
     for (var est in activeEstimates) {
       for (var item in widget.items) {
@@ -4462,6 +4193,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     final double totalRevenue = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
     final double totalCoolie = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.coolie) ?? 0.0));
 
+    // Item-wise calculation
     Map<String, int> itemOrderCount = {};
     for (var est in activeEstimates) {
       for (var item in widget.items) {
@@ -4472,6 +4204,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     }
     final sortedItemSales = itemOrderCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
+    // Customer-wise calculation
     Map<String, double> customerTotalSpend = {};
     Map<String, int> customerBillCount = {};
     for (var est in activeEstimates) {
@@ -4757,6 +4490,31 @@ class SettingsDesktopView extends StatelessWidget {
                   onTap: onOpenProfile,
                 ),
                 const SizedBox(height: 20),
+                _buildSectionHeader('Appearance'),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    child: ValueListenableBuilder<ThemeMode>(
+                      valueListenable: spAppThemeMode,
+                      builder: (context, mode, _) => SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Dark Theme'),
+                        subtitle: Text(mode == ThemeMode.dark
+                            ? 'Dark Material 3 appearance is enabled'
+                            : 'Light Material 3 appearance is enabled'),
+                        secondary: Icon(mode == ThemeMode.dark
+                            ? Icons.dark_mode_outlined
+                            : Icons.light_mode_outlined),
+                        value: mode == ThemeMode.dark,
+                        onChanged: (enabled) {
+                          spAppThemeMode.value =
+                              enabled ? ThemeMode.dark : ThemeMode.light;
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
                 _buildSectionHeader('Backend & Sheet Sync'),
                 _buildCard(
                   title: 'Google Apps Script Webhook',
@@ -4804,7 +4562,7 @@ class SettingsDesktopView extends StatelessWidget {
                       const SizedBox(height: 10),
                       _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
                       _supportRow('Application Suite', 'SP MultiBill ERP (Desktop 64-bit Engine)'),
-                      _supportRow('Release Version', 'v3.8.0 (Windows Native Build)'),
+                      _supportRow('Release Version', 'v3.7.0 (Windows Native Build)'),
                       _supportRow('Target Framework', 'Flutter 3.x (Runner x64)'),
                     ],
                   ),
