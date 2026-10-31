@@ -1009,7 +1009,7 @@ class _MainDashboardState extends State<MainDashboard> {
       (section: 'MASTERS', title: 'Customers', subtitle: 'Create, view & edit', icon: Icons.people_alt_rounded, index: 2, tint: const Color(0xFF2878E8)),
       (section: 'MASTERS', title: 'Items / Price List', subtitle: 'Manage items and rates', icon: Icons.inventory_2_rounded, index: 1, tint: const Color(0xFF159B68)),
       (section: 'MASTERS', title: 'Company Setup', subtitle: 'Company details & logo', icon: Icons.business_rounded, index: 6, tint: const Color(0xFF8652D8)),
-      (section: 'TRANSACTIONS', title: 'Billing', subtitle: 'Create sales bill', icon: Icons.receipt_long_rounded, index: 0, tint: const Color(0xFFD94B78)),
+      (section: 'TRANSACTIONS', title: 'Sales', subtitle: 'Sales transactions', icon: Icons.receipt_long_rounded, index: -4, tint: const Color(0xFFD94B78)),
       (section: 'TRANSACTIONS', title: 'Packing Slip', subtitle: 'Create and manage slips', icon: Icons.local_shipping_rounded, index: 3, tint: const Color(0xFFDA8A26)),
       (section: 'TRANSACTIONS', title: 'Invoices', subtitle: 'View and print invoices', icon: Icons.description_rounded, index: 4, tint: const Color(0xFF159B68)),
       (section: 'UTILITIES', title: 'Data Sync', subtitle: 'Refresh connected data', icon: Icons.storage_rounded, index: -2, tint: const Color(0xFF2878E8)),
@@ -1087,61 +1087,43 @@ class _MainDashboardState extends State<MainDashboard> {
                                     padding: const EdgeInsets.only(top: 8, bottom: 8),
                                     child: Text(section, style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w800, letterSpacing: 0.7)),
                                   ),
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final count = constraints.maxWidth > 950 ? 3 : constraints.maxWidth > 600 ? 2 : 1;
-                                      final sectionEntries = entries.where((e) => e.section == section).toList();
-                                      return GridView.count(
-                                        crossAxisCount: count,
-                                        shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        crossAxisSpacing: 12,
-                                        mainAxisSpacing: 12,
-                                        childAspectRatio: count == 3 ? 2.9 : 3.2,
-                                        children: [
-                                          for (final entry in sectionEntries)
-                                            InkWell(
-                                              borderRadius: BorderRadius.circular(16),
-                                              onTap: () {
-                                                if (entry.index == -2) {
-                                                  _fetchData(silent: true);
-                                                } else if (entry.index == -3) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup & Restore is available in Settings.')));
-                                                  setState(() => _navIndex = 6);
-                                                } else {
-                                                  setState(() => _navIndex = entry.index);
-                                                }
-                                              },
-                                              child: Card(
-                                                margin: EdgeInsets.zero,
-                                                color: entry.tint.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.09),
-                                                child: Padding(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(entry.icon, size: 28, color: entry.tint),
-                                                      const SizedBox(width: 14),
-                                                      Expanded(
-                                                        child: Column(
-                                                          mainAxisAlignment: MainAxisAlignment.center,
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                          children: [
-                                                            Text(entry.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                                            const SizedBox(height: 4),
-                                                            Text(entry.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      Icon(Icons.chevron_right_rounded, color: entry.tint),
-                                                    ],
+                                  for (final entry in entries.where((e) => e.section == section))
+                                    Card(
+                                      margin: const EdgeInsets.symmetric(vertical: 4),
+                                      child: ListTile(
+                                        leading: Icon(entry.icon, color: entry.tint),
+                                        title: Text(entry.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                        subtitle: Text(entry.subtitle),
+                                        trailing: Icon(Icons.chevron_right_rounded, color: entry.tint),
+                                        onTap: () {
+                                          if (entry.index == -4) {
+                                            showDialog<void>(
+                                              context: context,
+                                              builder: (dialogContext) => AlertDialog(
+                                                title: const Text('Sales'),
+                                                content: const Text('Choose a sales option'),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(dialogContext).pop();
+                                                      setState(() => _navIndex = 0);
+                                                    },
+                                                    child: const Text('Billing'),
                                                   ),
-                                                ),
+                                                ],
                                               ),
-                                            ),
-                                        ],
-                                      );
-                                    },
-                                  ),
+                                            );
+                                          } else if (entry.index == -2) {
+                                            _fetchData(silent: true);
+                                          } else if (entry.index == -3) {
+                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup & Restore is available in Settings.')));
+                                            setState(() => _navIndex = 6);
+                                          } else {
+                                            setState(() => _navIndex = entry.index);
+                                          }
+                                        },
+                                      ),
+                                    ),
                                 ],
                               ],
                             ),
@@ -2954,8 +2936,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
+  List> _parseSummaryTable(String summary) {
+    List> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -3697,8 +3679,8 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> parsedRows = [];
+  List> _parseSummaryTable(String summary) {
+    List> parsedRows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
