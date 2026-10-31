@@ -587,7 +587,7 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
-  int _navIndex = 0;
+  int _navIndex = -1;
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
@@ -918,27 +918,86 @@ class _MainDashboardState extends State<MainDashboard> {
           Expanded(
             child: Row(
               children: [
-                NavigationRail(
-                  selectedIndex: _navIndex,
-                  onDestinationSelected: (val) => setState(() => _navIndex = val),
-                  labelType: NavigationRailLabelType.all,
-                  leading: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                Container(
+                  width: 76,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    border: Border(
+                      right: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                    ),
+                  ),
+                  child: Center(
                     child: Tooltip(
                       message: 'Click to edit Company Header & Logo',
                       child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(16),
                         onTap: _openCompanyProfileDialog,
                         child: CompanyConfig.logoUrl.isNotEmpty
                             ? CircleAvatar(
-                                radius: 22,
-                                backgroundColor: const Color(0xFF18202B),
+                                radius: 24,
+                                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                                 backgroundImage: NetworkImage(CompanyConfig.logoUrl),
                               )
-                            : _buildShieldLogoWidget(size: 44),
+                            : _buildShieldLogoWidget(size: 48),
                       ),
                     ),
                   ),
+                ),
+                Expanded(
+                  child: _navIndex < 0
+                      ? const SizedBox.expand()
+                      : IndexedStack(
+                          index: _navIndex,
+                    children: [
+                      TallyBillingScreen(
+                        items: _items,
+                        customers: _customers,
+                        nextBillNo: _estimates.length + 1,
+                        invoiceToEdit: _invoiceToEdit,
+                        onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
+                        onSaved: () => _fetchData(silent: true),
+                        onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+                      ),
+                      PriceListDesktopView(
+                        items: _items,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      CustomerDesktopView(
+                        customers: _customers,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      LoadingSlipView(
+                        loadingSlip: _loadingSlip,
+                        items: _items,
+                        customers: _customers,
+                      ),
+                      InvoiceHistoryView(
+                        estimates: _estimates,
+                        items: _items,
+                        customers: _customers,
+                        onEditInvoice: _onLoadInvoiceToEdit,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      EnterpriseReportsView(
+                        estimates: _estimates,
+                        items: _items,
+                        customers: _customers,
+                        onEditInvoice: _onLoadInvoiceToEdit,
+                        onRefreshRequired: () => _fetchData(silent: true),
+                      ),
+                      SettingsDesktopView(
+                        onReloadSheet: () => _fetchData(silent: true),
+                        onOpenProfile: _openCompanyProfileDialog,
+                      ),
+                          ],
+                        ),
+                ),
+              ],
+                const VerticalDivider(thickness: 1, width: 1),
+                NavigationRail(
+                  selectedIndex: _navIndex < 0 ? null : _navIndex,
+                  onDestinationSelected: (val) => setState(() => _navIndex = val),
+                  labelType: NavigationRailLabelType.all,
                   trailing: IconButton(
                     icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
                     tooltip: 'Sync from Google Sheet',
@@ -981,54 +1040,6 @@ class _MainDashboardState extends State<MainDashboard> {
                       label: Text('Settings'),
                     ),
                   ],
-                ),
-                const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF1E2833)),
-                Expanded(
-                  child: IndexedStack(
-                    index: _navIndex,
-                    children: [
-                      TallyBillingScreen(
-                        items: _items,
-                        customers: _customers,
-                        nextBillNo: _estimates.length + 1,
-                        invoiceToEdit: _invoiceToEdit,
-                        onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
-                        onSaved: () => _fetchData(silent: true),
-                        onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
-                      ),
-                      PriceListDesktopView(
-                        items: _items,
-                        onRefreshRequired: () => _fetchData(silent: true),
-                      ),
-                      CustomerDesktopView(
-                        customers: _customers,
-                        onRefreshRequired: () => _fetchData(silent: true),
-                      ),
-                      LoadingSlipView(
-                        loadingSlip: _loadingSlip,
-                        items: _items,
-                        customers: _customers,
-                      ),
-                      InvoiceHistoryView(
-                        estimates: _estimates,
-                        items: _items,
-                        customers: _customers,
-                        onEditInvoice: _onLoadInvoiceToEdit,
-                        onRefreshRequired: () => _fetchData(silent: true),
-                      ),
-                      EnterpriseReportsView(
-                        estimates: _estimates,
-                        items: _items,
-                        customers: _customers,
-                        onEditInvoice: _onLoadInvoiceToEdit,
-                        onRefreshRequired: () => _fetchData(silent: true),
-                      ),
-                      SettingsDesktopView(
-                        onReloadSheet: () => _fetchData(silent: true),
-                        onOpenProfile: _openCompanyProfileDialog,
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
