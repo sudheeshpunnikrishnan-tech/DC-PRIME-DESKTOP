@@ -1009,7 +1009,7 @@ class _MainDashboardState extends State<MainDashboard> {
       (section: 'MASTERS', title: 'Customers', subtitle: 'Create, view & edit', icon: Icons.people_alt_rounded, index: 2, tint: const Color(0xFF2878E8)),
       (section: 'MASTERS', title: 'Items / Price List', subtitle: 'Manage items and rates', icon: Icons.inventory_2_rounded, index: 1, tint: const Color(0xFF159B68)),
       (section: 'MASTERS', title: 'Company Setup', subtitle: 'Company details & logo', icon: Icons.business_rounded, index: 6, tint: const Color(0xFF8652D8)),
-      (section: 'TRANSACTIONS', title: 'Sales', subtitle: 'Sales transactions', icon: Icons.receipt_long_rounded, index: -4, tint: const Color(0xFFD94B78)),
+      (section: 'TRANSACTIONS', title: 'Vouchers', subtitle: 'Accounting vouchers', icon: Icons.receipt_long_rounded, index: -4, tint: const Color(0xFFD94B78)),
       (section: 'TRANSACTIONS', title: 'Packing Slip', subtitle: 'Create and manage slips', icon: Icons.local_shipping_rounded, index: 3, tint: const Color(0xFFDA8A26)),
       (section: 'TRANSACTIONS', title: 'Invoices', subtitle: 'View and print invoices', icon: Icons.description_rounded, index: 4, tint: const Color(0xFF159B68)),
       (section: 'UTILITIES', title: 'Data Sync', subtitle: 'Refresh connected data', icon: Icons.storage_rounded, index: -2, tint: const Color(0xFF2878E8)),
@@ -1100,17 +1100,48 @@ class _MainDashboardState extends State<MainDashboard> {
                                             showDialog<void>(
                                               context: context,
                                               builder: (dialogContext) => AlertDialog(
-                                                title: const Text('Sales'),
-                                                content: const Text('Choose a sales option'),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      Navigator.of(dialogContext).pop();
-                                                      setState(() => _navIndex = 0);
-                                                    },
-                                                    child: const Text('Billing'),
+                                                title: const Text('Vouchers'),
+                                                content: SizedBox(
+                                                  width: 360,
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Align(
+                                                        alignment: Alignment.centerLeft,
+                                                        child: Text('Select voucher type to continue'),
+                                                      ),
+                                                      const SizedBox(height: 12),
+                                                      for (final voucher in <({String title, IconData icon, Color color, int? index})>[
+                                                        (title: 'Sales', icon: Icons.point_of_sale_rounded, color: const Color(0xFF159B68), index: 0),
+                                                        (title: 'Purchase', icon: Icons.shopping_cart_rounded, color: const Color(0xFF2878E8), index: null),
+                                                        (title: 'Debit and Credit Notes', icon: Icons.description_rounded, color: const Color(0xFFDA8A26), index: null),
+                                                        (title: 'Receipt and Payments', icon: Icons.account_balance_wallet_rounded, color: const Color(0xFF8652D8), index: null),
+                                                        (title: 'Journal Entries', icon: Icons.menu_book_rounded, color: const Color(0xFF0D9EB0), index: null),
+                                                      ])
+                                                        Padding(
+                                                          padding: const EdgeInsets.only(bottom: 6),
+                                                          child: Card(
+                                                            margin: EdgeInsets.zero,
+                                                            child: ListTile(
+                                                              leading: Icon(voucher.icon, color: voucher.color),
+                                                              title: Text(voucher.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                                              trailing: const Icon(Icons.chevron_right_rounded),
+                                                              onTap: () {
+                                                                Navigator.of(dialogContext).pop();
+                                                                if (voucher.index != null) {
+                                                                  setState(() => _navIndex = voucher.index!);
+                                                                } else {
+                                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                                    SnackBar(content: Text('${voucher.title} will be added later.')),
+                                                                  );
+                                                                }
+                                                              },
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
                                                   ),
-                                                ],
+                                                ),
                                               ),
                                             );
                                           } else if (entry.index == -2) {
@@ -2936,8 +2967,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
+  List> _parseSummaryTable(String summary) {
+    List> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -3679,8 +3710,8 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> parsedRows = [];
+  List> _parseSummaryTable(String summary) {
+    List> parsedRows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
