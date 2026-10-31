@@ -53,7 +53,6 @@ DateTime? parseUniversalDate(String dateStr) {
   if (dateStr.trim().isEmpty) return null;
   final s = dateStr.trim();
   try {
-    // 1. Format: DD/MM/YYYY or DD/MM/YYYY HH:mm
     if (s.contains('/')) {
       final parts = s.split(' ');
       final dateParts = parts[0].split('/');
@@ -73,7 +72,6 @@ DateTime? parseUniversalDate(String dateStr) {
       }
     }
 
-    // 2. Format: "Thu Oct 29 2026 00:00:00 GMT..."
     final months = {
       'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
       'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
@@ -587,7 +585,7 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
-  int _navIndex = -1;
+  int _navIndex = 0; // 0 = Gateway of MultiBill (Home)
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
@@ -814,7 +812,7 @@ class _MainDashboardState extends State<MainDashboard> {
   void _onLoadInvoiceToEdit(DCEstimate est) {
     setState(() {
       _invoiceToEdit = est;
-      _navIndex = 0;
+      _navIndex = 1; // Switch to billing tab
     });
   }
 
@@ -889,7 +887,7 @@ class _MainDashboardState extends State<MainDashboard> {
               const Text('POWERED BY SP TECH SOLUTIONS',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 2.0, color: Color(0xFF38BDF8))),
               const SizedBox(height: 4),
-              const Text('Wholesale, Retail & Distribution Suite • v3.6.0',
+              const Text('Wholesale, Retail & Distribution Suite • v3.8.0',
                   style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
               const SizedBox(height: 36),
               const SizedBox(
@@ -906,145 +904,587 @@ class _MainDashboardState extends State<MainDashboard> {
       );
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          if (_isBackgroundSyncing)
-            const LinearProgressIndicator(
-              minHeight: 3,
-              backgroundColor: Color(0xFF131922),
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E88E5)),
-            ),
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 76,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerLow,
-                    border: Border(
-                      right: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-                    ),
-                  ),
-                  child: Center(
-                    child: Tooltip(
-                      message: 'Click to edit Company Header & Logo',
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: _openCompanyProfileDialog,
-                        child: CompanyConfig.logoUrl.isNotEmpty
-                            ? CircleAvatar(
-                                radius: 24,
-                                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                backgroundImage: NetworkImage(CompanyConfig.logoUrl),
-                              )
-                            : _buildShieldLogoWidget(size: 48),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: _navIndex < 0
-                      ? const SizedBox.expand()
-                      : IndexedStack(
-                          index: _navIndex,
-                    children: [
-                      TallyBillingScreen(
-                        items: _items,
-                        customers: _customers,
-                        nextBillNo: _estimates.length + 1,
-                        invoiceToEdit: _invoiceToEdit,
-                        onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
-                        onSaved: () => _fetchData(silent: true),
-                        onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
-                      ),
-                      PriceListDesktopView(
-                        items: _items,
-                        onRefreshRequired: () => _fetchData(silent: true),
-                      ),
-                      CustomerDesktopView(
-                        customers: _customers,
-                        onRefreshRequired: () => _fetchData(silent: true),
-                      ),
-                      LoadingSlipView(
-                        loadingSlip: _loadingSlip,
-                        items: _items,
-                        customers: _customers,
-                      ),
-                      InvoiceHistoryView(
-                        estimates: _estimates,
-                        items: _items,
-                        customers: _customers,
-                        onEditInvoice: _onLoadInvoiceToEdit,
-                        onRefreshRequired: () => _fetchData(silent: true),
-                      ),
-                      EnterpriseReportsView(
-                        estimates: _estimates,
-                        items: _items,
-                        customers: _customers,
-                        onEditInvoice: _onLoadInvoiceToEdit,
-                        onRefreshRequired: () => _fetchData(silent: true),
-                      ),
-                      SettingsDesktopView(
-                        onReloadSheet: () => _fetchData(silent: true),
-                        onOpenProfile: _openCompanyProfileDialog,
-                      ),
-                          ],
+    return FocusScope(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.escape && _navIndex != 0) {
+            setState(() => _navIndex = 0);
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            if (_isBackgroundSyncing)
+              const LinearProgressIndicator(
+                minHeight: 3,
+                backgroundColor: Color(0xFF131922),
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E88E5)),
+              ),
+            Expanded(
+              child: Row(
+                children: [
+                  NavigationRail(
+                    selectedIndex: _navIndex,
+                    onDestinationSelected: (val) => setState(() => _navIndex = val),
+                    labelType: NavigationRailLabelType.all,
+                    leading: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Tooltip(
+                        message: 'Click to edit Company Header & Logo',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: _openCompanyProfileDialog,
+                          child: CompanyConfig.logoUrl.isNotEmpty
+                              ? CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor: const Color(0xFF18202B),
+                                  backgroundImage: NetworkImage(CompanyConfig.logoUrl),
+                                )
+                              : _buildShieldLogoWidget(size: 44),
                         ),
-                ),
-                const VerticalDivider(thickness: 1, width: 1),
-                NavigationRail(
-                  selectedIndex: _navIndex < 0 ? null : _navIndex,
-                  onDestinationSelected: (val) => setState(() => _navIndex = val),
-                  labelType: NavigationRailLabelType.all,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
-                    tooltip: 'Sync from Google Sheet',
-                    onPressed: () => _fetchData(silent: true),
+                      ),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.refresh, color: Color(0xFF94A3B8)),
+                      tooltip: 'Sync from Google Sheet',
+                      onPressed: () => _fetchData(silent: true),
+                    ),
+                    destinations: const [
+                      NavigationRailDestination(
+                        icon: Icon(Icons.home_outlined),
+                        selectedIcon: Icon(Icons.home),
+                        label: Text('Gateway'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.receipt_long_outlined),
+                        selectedIcon: Icon(Icons.receipt_long),
+                        label: Text('Billing'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.inventory_2_outlined),
+                        selectedIcon: Icon(Icons.inventory_2),
+                        label: Text('Price List'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.people_outline),
+                        selectedIcon: Icon(Icons.people),
+                        label: Text('Customers'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.local_shipping_outlined),
+                        selectedIcon: Icon(Icons.local_shipping),
+                        label: Text('Packing Slip'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.history_outlined),
+                        selectedIcon: Icon(Icons.history),
+                        label: Text('Invoices'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.insert_chart_outlined),
+                        selectedIcon: Icon(Icons.insert_chart),
+                        label: Text('Reports'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.settings_outlined),
+                        selectedIcon: Icon(Icons.settings),
+                        label: Text('Settings'),
+                      ),
+                    ],
                   ),
-                  destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.receipt_long_outlined),
-                      selectedIcon: Icon(Icons.receipt_long),
-                      label: Text('Billing'),
+                  const VerticalDivider(thickness: 1, width: 1, color: Color(0xFF1E2833)),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _navIndex,
+                      children: [
+                        // Index 0: Material Gateway of MultiBill Home
+                        MaterialGatewayHomeScreen(
+                          items: _items,
+                          customers: _customers,
+                          estimates: _estimates,
+                          loadingSlip: _loadingSlip,
+                          onNavigate: (index) => setState(() => _navIndex = index),
+                          onOpenSettings: _openCompanyProfileDialog,
+                        ),
+                        // Index 1: Billing
+                        TallyBillingScreen(
+                          items: _items,
+                          customers: _customers,
+                          nextBillNo: _estimates.length + 1,
+                          invoiceToEdit: _invoiceToEdit,
+                          onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
+                          onSaved: () => _fetchData(silent: true),
+                          onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+                        ),
+                        // Index 2: Price List
+                        PriceListDesktopView(
+                          items: _items,
+                          onRefreshRequired: () => _fetchData(silent: true),
+                        ),
+                        // Index 3: Customers
+                        CustomerDesktopView(
+                          customers: _customers,
+                          onRefreshRequired: () => _fetchData(silent: true),
+                        ),
+                        // Index 4: Packing Slip
+                        LoadingSlipView(
+                          loadingSlip: _loadingSlip,
+                          items: _items,
+                          customers: _customers,
+                        ),
+                        // Index 5: Invoices
+                        InvoiceHistoryView(
+                          estimates: _estimates,
+                          items: _items,
+                          customers: _customers,
+                          onEditInvoice: _onLoadInvoiceToEdit,
+                          onRefreshRequired: () => _fetchData(silent: true),
+                        ),
+                        // Index 6: Reports
+                        EnterpriseReportsView(
+                          estimates: _estimates,
+                          items: _items,
+                          customers: _customers,
+                          onEditInvoice: _onLoadInvoiceToEdit,
+                          onRefreshRequired: () => _fetchData(silent: true),
+                        ),
+                        // Index 7: Settings
+                        SettingsDesktopView(
+                          onReloadSheet: () => _fetchData(silent: true),
+                          onOpenProfile: _openCompanyProfileDialog,
+                        ),
+                      ],
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.inventory_2_outlined),
-                      selectedIcon: Icon(Icons.inventory_2),
-                      label: Text('Price List'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- 0. MATERIAL GATEWAY OF MULTIBILL (HOME SCREEN) ----------------
+
+class MaterialGatewayHomeScreen extends StatefulWidget {
+  final List<DCItem> items;
+  final List<DCCustomer> customers;
+  final List<DCEstimate> estimates;
+  final List<LoadingEntry> loadingSlip;
+  final Function(int) onNavigate;
+  final VoidCallback onOpenSettings;
+
+  const MaterialGatewayHomeScreen({
+    super.key,
+    required this.items,
+    required this.customers,
+    required this.estimates,
+    required this.loadingSlip,
+    required this.onNavigate,
+    required this.onOpenSettings,
+  });
+
+  @override
+  State<MaterialGatewayHomeScreen> createState() => _MaterialGatewayHomeScreenState();
+}
+
+class _MaterialGatewayHomeScreenState extends State<MaterialGatewayHomeScreen> {
+  int _highlightedIndex = 2; // Default to 'Vouchers (Billing)'
+
+  final List> _menuItems = [
+    {"type": "HEADER", "label": "MASTERS"},
+    {"type": "ITEM", "label": "Price List (Stock Items)", "keyChar": "P", "nav": 2},
+    {"type": "ITEM", "label": "Customers (Parties)", "keyChar": "C", "nav": 3},
+    {"type": "HEADER", "label": "TRANSACTIONS"},
+    {"type": "ITEM", "label": "Vouchers (Customer Billing)", "keyChar": "V", "nav": 1},
+    {"type": "ITEM", "label": "Day Book (Invoices)", "keyChar": "D", "nav": 5},
+    {"type": "ITEM", "label": "Loading / Packing Slip", "keyChar": "L", "nav": 4},
+    {"type": "HEADER", "label": "REPORTS & UTILITIES"},
+    {"type": "ITEM", "label": "Reports & Analytics", "keyChar": "R", "nav": 6},
+    {"type": "ITEM", "label": "Settings & Company Profile", "keyChar": "S", "nav": 7},
+  ];
+
+  KeyEventResult _handleGatewayKeys(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent) {
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.keyV) {
+        widget.onNavigate(1);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.keyP) {
+        widget.onNavigate(2);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.keyC) {
+        widget.onNavigate(3);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.keyD || key == LogicalKeyboardKey.keyK) {
+        widget.onNavigate(5);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.keyL) {
+        widget.onNavigate(4);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.keyR) {
+        widget.onNavigate(6);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.keyS) {
+        widget.onNavigate(7);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.arrowDown) {
+        _navigateMenu(1);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.arrowUp) {
+        _navigateMenu(-1);
+        return KeyEventResult.handled;
+      } else if (key == LogicalKeyboardKey.enter) {
+        final current = _selectableIndices[_highlightedIndex];
+        final nav = _menuItems[current]['nav'];
+        if (nav != null) widget.onNavigate(nav);
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
+  }
+
+  List<int> get _selectableIndices {
+    List<int> idxs = [];
+    for (int i = 0; i < _menuItems.length; i++) {
+      if (_menuItems[i]['type'] == 'ITEM') idxs.add(i);
+    }
+    return idxs;
+  }
+
+  void _navigateMenu(int direction) {
+    setState(() {
+      _highlightedIndex = (_highlightedIndex + direction).clamp(0, _selectableIndices.length - 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final activeEstimates = widget.estimates.where((e) => e.status != 'CANCELLED').toList();
+
+    // Today's stats
+    final todaysEstimates = activeEstimates.where((e) {
+      final eDate = parseUniversalDate(e.date);
+      if (eDate == null) return false;
+      return DateTime(eDate.year, eDate.month, eDate.day).isAtSameMomentAs(today);
+    }).toList();
+
+    final double todaySales = todaysEstimates.fold(0.0, (s, e) => s + (double.tryParse(e.grandTotal) ?? 0.0));
+    final lastBill = widget.estimates.isNotEmpty ? widget.estimates.last : null;
+    final lastDateStr = lastBill != null ? formatDisplayDateTime(lastBill.date) : "No entries yet";
+
+    final weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final currentDateFull = "${weekdays[now.weekday - 1]}, ${now.day}-${months[now.month - 1]}-${now.year}";
+
+    final selectable = _selectableIndices;
+
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _handleGatewayKeys,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 20.0),
+        child: Column(
+          children: [
+            // Top App Bar Header in Material Dark
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF131922),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF263342)),
+              ),
+              child: Row(
+                children: [
+                  const Text('SP MultiBill ERP • PRIME',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF38BDF8), letterSpacing: 0.8)),
+                  const SizedBox(width: 20),
+                  Text(CompanyConfig.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF18202B),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF263342)),
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.people_outline),
-                      selectedIcon: Icon(Icons.people),
-                      label: Text('Customers'),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search, size: 16, color: Color(0xFF94A3B8)),
+                        const SizedBox(width: 8),
+                        Text('Alt+G : Go To / Quick Jump', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                      ],
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.local_shipping_outlined),
-                      selectedIcon: Icon(Icons.local_shipping),
-                      label: Text('Packing Slip'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // Two Column Tally Style Body
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Left Side: Period, Date, Company, Last Entry
+                  Expanded(
+                    flex: 5,
+                    child: Container(
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF131922),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF263342)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _infoSection('CURRENT PERIOD', '1-Apr-2026 to 31-Mar-2027'),
+                              _infoSection('CURRENT DATE', currentDateFull, isRight: true),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          const Divider(color: Color(0xFF263342)),
+                          const SizedBox(height: 14),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _infoSection('NAME OF COMPANY', '${CompanyConfig.name} 2026-27', isHighlight: true),
+                              _infoSection('DATE OF LAST ENTRY', lastDateStr, isRight: true),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Live Day Snapshot Card
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0E141B),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF1E2833)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.insights, size: 18, color: Color(0xFF38BDF8)),
+                                    SizedBox(width: 8),
+                                    Text("TODAY'S BUSINESS SNAPSHOT",
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5, color: Color(0xFF38BDF8))),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    _statMini('Today\'s Sales', '₹${todaySales.toStringAsFixed(2)}', const Color(0xFF10B981)),
+                                    _statMini('Bills Count', '${todaysEstimates.length}', Colors.white),
+                                    _statMini('Total Items in Master', '${widget.items.length}', const Color(0xFF38BDF8)),
+                                    _statMini('Total Parties', '${widget.customers.length}', const Color(0xFFC4B5FD)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+
+                          // Quick Keyboard Hints Bar
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF18202B),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF263342)),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Press V: New Bill', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                                Text('Press D: Day Book', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                                Text('Press P: Price List', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                                Text('Press R: Reports', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.history_outlined),
-                      selectedIcon: Icon(Icons.history),
-                      label: Text('Invoices'),
+                  ),
+                  const SizedBox(width: 20),
+
+                  // Right Side: Gateway of MultiBill Menu Box
+                  Expanded(
+                    flex: 4,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF131922),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF263342)),
+                      ),
+                      child: Column(
+                        children: [
+                          // Menu Box Title Header
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF0052D4),
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Gateway of MultiBill',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white, letterSpacing: 0.8),
+                            ),
+                          ),
+
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: ListView.builder(
+                                itemCount: _menuItems.length,
+                                itemBuilder: (ctx, i) {
+                                  final m = _menuItems[i];
+                                  if (m['type'] == 'HEADER') {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 14, bottom: 6, left: 14),
+                                      child: Text(
+                                        m['label'],
+                                        style: const TextStyle(
+                                          color: Color(0xFF38BDF8),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    );
+                                  }
+
+                                  final isHighlighted = selectable[_highlightedIndex] == i;
+
+                                  return InkWell(
+                                    borderRadius: BorderRadius.circular(6),
+                                    onTap: () {
+                                      final nav = m['nav'];
+                                      if (nav != null) widget.onNavigate(nav);
+                                    },
+                                    hoverColor: const Color(0xFF1E88E5).withOpacity(0.15),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isHighlighted ? const Color(0xFF0284C7).withOpacity(0.35) : null,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: isHighlighted ? Border.all(color: const Color(0xFF38BDF8), width: 1.2) : null,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          _buildHighlightedLabel(m['label'], m['keyChar'], isHighlighted),
+                                          const Spacer(),
+                                          if (isHighlighted)
+                                            const Icon(Icons.keyboard_return, size: 16, color: Color(0xFF38BDF8)),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+
+                          // Bottom Quit / Esc row
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: const BoxDecoration(
+                              border: Border(top: BorderSide(color: Color(0xFF1E2833))),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text('Use Arrow Keys ↑↓ to Navigate • Enter to Select',
+                                style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                          ),
+                        ],
+                      ),
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.insert_chart_outlined),
-                      selectedIcon: Icon(Icons.insert_chart),
-                      label: Text('Reports'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.settings_outlined),
-                      selectedIcon: Icon(Icons.settings),
-                      label: Text('Settings'),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHighlightedLabel(String fullText, String keyChar, bool isSelected) {
+    int idx = fullText.indexOf(keyChar);
+    if (idx == -1) {
+      return Text(fullText, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal));
+    }
+
+    final before = fullText.substring(0, idx);
+    final key = fullText.substring(idx, idx + 1);
+    final after = fullText.substring(idx + 1);
+
+    return RichText(
+      text: TextSpan(
+        style: TextStyle(
+          fontSize: 14,
+          fontFamily: 'Roboto',
+          color: isSelected ? Colors.white : const Color(0xFFF1F5F9),
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        ),
+        children: [
+          TextSpan(text: before),
+          TextSpan(
+            text: key,
+            style: const TextStyle(
+              color: Color(0xFF38BDF8),
+              fontWeight: FontWeight.w900,
+              decoration: TextDecoration.underline,
             ),
           ),
+          TextSpan(text: after),
         ],
       ),
+    );
+  }
+
+  Widget _infoSection(String title, String val, {bool isRight = false, bool isHighlight = false}) {
+    return Column(
+      crossAxisAlignment: isRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+        const SizedBox(height: 4),
+        Text(
+          val,
+          style: TextStyle(
+            fontSize: isHighlight ? 17 : 14,
+            fontWeight: FontWeight.bold,
+            color: isHighlight ? const Color(0xFF38BDF8) : Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _statMini(String label, String value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+      ],
     );
   }
 }
@@ -2472,8 +2912,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
         content: SizedBox(
           width: 580,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: CrossAxisAlignment.start,
             children: [
               const Divider(color: Color(0xFF263342)),
               _buildCustomerModalRow('Customer Name:', customer.name),
@@ -2778,7 +3217,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   }
 }
 
-// ---------------- 4. INVOICE HISTORY VIEW (DATE & TIME PARSED) ----------------
+// ---------------- 4. INVOICE HISTORY VIEW ----------------
 
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -2804,8 +3243,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
+  List> _parseSummaryTable(String summary) {
+    List> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -3229,7 +3668,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                   children: [
                                     Row(
                                       children: [
-                                        // Customer Name Only (Without Date in Bracket)
                                         Text(
                                           est.customer,
                                           style: TextStyle(
@@ -3253,7 +3691,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                           ),
                                         ],
                                         const Spacer(),
-                                        // Exact Date and Time on the right
                                         Text(
                                           formatDisplayDateTime(est.date),
                                           style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
@@ -3520,7 +3957,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- 6. ENTERPRISE REPORTS VIEW (DRILL-DOWN & PDF EXPORT) ----------------
+// ---------------- 6. ENTERPRISE REPORTS VIEW ----------------
 
 class EnterpriseReportsView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -3553,8 +3990,8 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
+  List> _parseSummaryTable(String summary) {
+    List> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -3823,7 +4260,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     );
   }
 
-  // Drilldown pop-up for Item-wise or Customer-wise clicks
   void _openDrilldownHistoryModal(String title, List<DCEstimate> bills) {
     showDialog(
       context: context,
@@ -3888,11 +4324,9 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     );
   }
 
-  // Export Enterprise Report to A4 PDF
   Future<void> _exportReportPdf(List<DCEstimate> activeEstimates, double totalRevenue, double totalCoolie) async {
     final pdf = pw.Document();
 
-    // Grouping for PDF
     Map<String, int> itemCounts = {};
     for (var est in activeEstimates) {
       for (var item in widget.items) {
@@ -4028,7 +4462,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     final double totalRevenue = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
     final double totalCoolie = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.coolie) ?? 0.0));
 
-    // Item-wise calculation
     Map<String, int> itemOrderCount = {};
     for (var est in activeEstimates) {
       for (var item in widget.items) {
@@ -4039,7 +4472,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     }
     final sortedItemSales = itemOrderCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
-    // Customer-wise calculation
     Map<String, double> customerTotalSpend = {};
     Map<String, int> customerBillCount = {};
     for (var est in activeEstimates) {
@@ -4372,7 +4804,7 @@ class SettingsDesktopView extends StatelessWidget {
                       const SizedBox(height: 10),
                       _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
                       _supportRow('Application Suite', 'SP MultiBill ERP (Desktop 64-bit Engine)'),
-                      _supportRow('Release Version', 'v3.7.0 (Windows Native Build)'),
+                      _supportRow('Release Version', 'v3.8.0 (Windows Native Build)'),
                       _supportRow('Target Framework', 'Flutter 3.x (Runner x64)'),
                     ],
                   ),
