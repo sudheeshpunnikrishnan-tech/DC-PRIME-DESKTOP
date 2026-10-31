@@ -53,7 +53,6 @@ DateTime? parseUniversalDate(String dateStr) {
   if (dateStr.trim().isEmpty) return null;
   final s = dateStr.trim();
   try {
-    // 1. Format: DD/MM/YYYY or DD/MM/YYYY HH:mm
     if (s.contains('/')) {
       final parts = s.split(' ');
       final dateParts = parts[0].split('/');
@@ -73,7 +72,6 @@ DateTime? parseUniversalDate(String dateStr) {
       }
     }
 
-    // 2. Format: "Thu Oct 29 2026 00:00:00 GMT..."
     final months = {
       'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
       'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
@@ -372,7 +370,7 @@ Future<Uint8List> generateTallyPdf({
                           pw.SizedBox(height: 2),
                           pw.Text(CompanyConfig.name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
                           pw.Text("${CompanyConfig.tradeSubtitle}, ${CompanyConfig.address}", style: const pw.TextStyle(fontSize: 9)),
-                          pw.Text("GSTIN/UIN: ${CompanyConfig.gstin}  |  State: ${CompanyConfig.stateCode}  |  Ph: ${CompanyConfig.phone}", style: const pw.TextStyle(fontSize: 9)),
+                          pw.Text("GSTIN/UIN: ${CompanyConfig.gstin} | State: ${CompanyConfig.stateCode} | Ph: ${CompanyConfig.phone}", style: const pw.TextStyle(fontSize: 9)),
                         ],
                       ),
                     ),
@@ -535,7 +533,7 @@ pw.Widget _pdfSummaryRow(String label, String value) {
 
 // ---------------- APP ROOT ----------------
 
-final ValueNotifier<ThemeMode> spAppThemeMode = ValueNotifier<ThemeMode>(ThemeMode.light);
+final ValueNotifier<ThemeMode> spAppThemeMode = ValueNotifier<ThemeMode>(ThemeMode.dark);
 
 String _spMonthName(int month) => const [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -552,7 +550,6 @@ String _spDate(DateTime date) =>
 
 String _spFullDate(DateTime date) =>
     '${_spWeekdayName(date.weekday)}, ${_spDate(date)}';
-
 
 class SPMultiBillApp extends StatelessWidget {
   const SPMultiBillApp({super.key});
@@ -909,7 +906,6 @@ class _MainDashboardState extends State<MainDashboard> {
       ),
     );
   }
-
 
   Widget _buildSelectedScreen() {
     final screens = <Widget>[
@@ -1864,8 +1860,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Party Input
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1925,8 +1919,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Table Area
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -2159,8 +2151,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Calculation Footer
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -2553,7 +2543,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              Text('Tally: ${item.tallyName}  |  Pack: ${item.qty}  |  Unit: ${item.billedIn}', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                              Text('Tally: ${item.tallyName} | Pack: ${item.qty} | Unit: ${item.billedIn}', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                             ],
                           ),
                         ),
@@ -2937,7 +2927,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                               ),
                               const SizedBox(height: 4),
                               if (c.contact.isNotEmpty || c.address.isNotEmpty)
-                                Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"}  |  📍 ${c.address.isNotEmpty ? c.address : "-"}',
+                                Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"} | 📍 ${c.address.isNotEmpty ? c.address : "-"}',
                                     style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                             ],
                           ),
@@ -2960,7 +2950,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   }
 }
 
-// ---------------- 4. INVOICE HISTORY VIEW (DATE & TIME PARSED) ----------------
+// ---------------- 4. INVOICE HISTORY VIEW ----------------
 
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -2986,8 +2976,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
+  List> _parseSummaryTable(String summary) {
+    List> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -3147,7 +3137,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Coolie Charges: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                    Text('SGST (2.5%): ₹${est.sgst}  |  CGST (2.5%): ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13)),
+                    Text('SGST (2.5%): ₹${est.sgst} | CGST (2.5%): ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13)),
                     Text('Round Off: ₹${est.roundOff}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
                   ],
                 ),
@@ -3411,7 +3401,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                   children: [
                                     Row(
                                       children: [
-                                        // Customer Name Only (Without Date in Bracket)
                                         Text(
                                           est.customer,
                                           style: TextStyle(
@@ -3435,7 +3424,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                                           ),
                                         ],
                                         const Spacer(),
-                                        // Exact Date and Time on the right
                                         Text(
                                           formatDisplayDateTime(est.date),
                                           style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
@@ -3702,7 +3690,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-// ---------------- 6. ENTERPRISE REPORTS VIEW (DRILL-DOWN & PDF EXPORT) ----------------
+// ---------------- 6. ENTERPRISE REPORTS VIEW ----------------
 
 class EnterpriseReportsView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -3735,8 +3723,8 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
+  List> _parseSummaryTable(String summary) {
+    List> parsedRows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -3766,7 +3754,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
           amount = (double.tryParse(qty) ?? 1.0) * (double.tryParse(rate) ?? 0.0);
         } catch (_) {}
 
-        rows.add({
+        parsedRows.add({
           "name": name,
           "qty": qty,
           "unit": unit,
@@ -3776,7 +3764,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
         });
       }
     }
-    return rows;
+    return parsedRows;
   }
 
   void _showInvoiceDetails(BuildContext context, DCEstimate est) {
@@ -3880,7 +3868,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Coolie Charges: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                    Text('SGST (2.5%): ₹${est.sgst}  |  CGST (2.5%): ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13)),
+                    Text('SGST (2.5%): ₹${est.sgst} | CGST (2.5%): ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13)),
                     Text('Round Off: ₹${est.roundOff}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
                   ],
                 ),
@@ -4005,7 +3993,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     );
   }
 
-  // Drilldown pop-up for Item-wise or Customer-wise clicks
   void _openDrilldownHistoryModal(String title, List<DCEstimate> bills) {
     showDialog(
       context: context,
@@ -4070,11 +4057,9 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     );
   }
 
-  // Export Enterprise Report to A4 PDF
   Future<void> _exportReportPdf(List<DCEstimate> activeEstimates, double totalRevenue, double totalCoolie) async {
     final pdf = pw.Document();
 
-    // Grouping for PDF
     Map<String, int> itemCounts = {};
     for (var est in activeEstimates) {
       for (var item in widget.items) {
@@ -4210,7 +4195,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     final double totalRevenue = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
     final double totalCoolie = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.coolie) ?? 0.0));
 
-    // Item-wise calculation
     Map<String, int> itemOrderCount = {};
     for (var est in activeEstimates) {
       for (var item in widget.items) {
@@ -4221,7 +4205,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     }
     final sortedItemSales = itemOrderCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
-    // Customer-wise calculation
     Map<String, double> customerTotalSpend = {};
     Map<String, int> customerBillCount = {};
     for (var est in activeEstimates) {
@@ -4287,8 +4270,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
             ],
           ),
           const SizedBox(height: 20),
-
-          // KPI Cards
           Row(
             children: [
               _buildKpiCard('Gross Invoiced Value', '₹${totalRevenue.toStringAsFixed(2)}', Icons.payments_outlined, const Color(0xFF0284C7)),
@@ -4301,8 +4282,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
             ],
           ),
           const SizedBox(height: 20),
-
-          // Tabs
           Container(
             height: 44,
             decoration: BoxDecoration(
@@ -4326,12 +4305,10 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
             ),
           ),
           const SizedBox(height: 14),
-
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                // 1. Item Sales Distribution
                 Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFF131922),
@@ -4382,8 +4359,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
                           },
                         ),
                 ),
-
-                // 2. Customer Revenue Ledger
                 Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFF131922),
