@@ -16,8 +16,6 @@ void main() {
 String sheetApiUrl =
     "https://script.google.com/macros/s/AKfycbzFDW5eeT4abGSRNLHlKs43JJ81YiKt0UrNEbbK2_cQIylsU_zGylqE8IMBqtpmXsjOEg/exec";
 
-// ---------------- 90+ FPS SMOOTH SCROLL BEHAVIOR ----------------
-
 class UltraSmoothScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
@@ -32,8 +30,6 @@ class UltraSmoothScrollBehavior extends MaterialScrollBehavior {
   }
 }
 
-// ---------------- CONFIG & COMPANY PROFILE ----------------
-
 class CompanyConfig {
   static String name = "DAVIS & COMPANY";
   static String tradeSubtitle = "Wholesale Rice Merchants";
@@ -46,8 +42,6 @@ class CompanyConfig {
   static String logoUrl = "";
   static double defaultGstRate = 5.0;
 }
-
-// ---------------- DATE & TIME HELPERS ----------------
 
 DateTime? parseUniversalDate(String dateStr) {
   if (dateStr.trim().isEmpty) return null;
@@ -145,8 +139,6 @@ String getCurrentFormattedDateTime() {
   final minStr = now.minute.toString().padLeft(2, '0');
   return "$d/$m/$y $hStr:$minStr $ampm";
 }
-
-// ---------------- MODELS ----------------
 
 class DCItem {
   int rowIndex;
@@ -311,8 +303,6 @@ class InvoiceRowItem {
 
   double get amount => qty * rate;
 }
-
-// ---------------- TOP-LEVEL TALLY PRIME PDF GENERATOR ----------------
 
 Future<Uint8List> generateTallyPdf({
   required PdfPageFormat format,
@@ -531,8 +521,6 @@ pw.Widget _pdfSummaryRow(String label, String value) {
   );
 }
 
-// ---------------- APP ROOT ----------------
-
 final ValueNotifier<ThemeMode> spAppThemeMode = ValueNotifier<ThemeMode>(ThemeMode.dark);
 
 String _spMonthName(int month) => const [
@@ -611,8 +599,6 @@ class SPMultiBillApp extends StatelessWidget {
     );
   }
 }
-
-// ---------------- MAIN DASHBOARD ----------------
 
 class MainDashboard extends StatefulWidget {
   const MainDashboard({super.key});
@@ -1226,8 +1212,6 @@ class _MainDashboardState extends State<MainDashboard> {
     );
   }
 }
-
-// ---------------- 1. BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -2239,8 +2223,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   }
 }
 
-// ---------------- 2. PRICE LIST VIEW ----------------
-
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
   final VoidCallback onRefreshRequired;
@@ -2564,8 +2546,6 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     );
   }
 }
-
-// ---------------- 3. CUSTOMERS VIEW ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -2949,8 +2929,6 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     );
   }
 }
-
-// ---------------- 4. INVOICE HISTORY VIEW ----------------
 
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -3455,8 +3433,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   }
 }
 
-// ---------------- 5. PACKING SLIP VIEW ----------------
-
 class LoadingSlipView extends StatefulWidget {
   final List<LoadingEntry> loadingSlip;
   final List<DCItem> items;
@@ -3689,8 +3665,6 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
     );
   }
 }
-
-// ---------------- 6. ENTERPRISE REPORTS VIEW ----------------
 
 class EnterpriseReportsView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -4447,8 +4421,6 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
     );
   }
 }
-
-// ---------------- 7. SETTINGS VIEW ----------------
 
 class SettingsDesktopView extends StatelessWidget {
   final VoidCallback onReloadSheet;
