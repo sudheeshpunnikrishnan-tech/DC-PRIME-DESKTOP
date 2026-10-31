@@ -992,7 +992,6 @@ class _MainDashboardState extends State<MainDashboard> {
                           ],
                         ),
                 ),
-              ],
                 const VerticalDivider(thickness: 1, width: 1),
                 NavigationRail(
                   selectedIndex: _navIndex < 0 ? null : _navIndex,
