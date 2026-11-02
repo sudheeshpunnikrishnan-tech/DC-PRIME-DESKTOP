@@ -10,7 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 void main() {
-  runApp(const SPMultiBillApp());
+  runApp(const MultiBillApp());
 }
 
 String sheetApiUrl =
@@ -31,11 +31,11 @@ class UltraSmoothScrollBehavior extends MaterialScrollBehavior {
 }
 
 class CompanyConfig {
-  static String name = "DAVIS & COMPANY";
-  static String tradeSubtitle = "Wholesale Rice Merchants";
+  static String name = "ANDROCODE SOFTWARE SOLUTIONS";
+  static String tradeSubtitle = "Enterprise ERP & Billing Suite";
   static String address = "Market Road, Aluva, Ernakulam, Kerala - 683101";
   static String phone = "+91 98470 12345";
-  static String email = "davisandcompanyaluva@gmail.com";
+  static String email = "androcode.solutions@gmail.com";
   static String gstin = "32AABCD1234E1Z5";
   static String regType = "Regular";
   static String stateCode = "Kerala (32)";
@@ -466,7 +466,7 @@ Future<Uint8List> generateTallyPdf({
                             pw.SizedBox(height: 15),
                             pw.Text("Authorised Signatory", style: const pw.TextStyle(fontSize: 8)),
                             pw.SizedBox(height: 5),
-                            pw.Text("Powered by SP MultiBill ERP • SP Tech Solutions", style: const pw.TextStyle(fontSize: 5, color: PdfColors.grey600)),
+                            pw.Text("Powered by MULTIBILL ERP • ANDROCODE SOFTWARE SOLUTIONS", style: const pw.TextStyle(fontSize: 5, color: PdfColors.grey600)),
                           ],
                         ),
                       ),
@@ -521,63 +521,51 @@ pw.Widget _pdfSummaryRow(String label, String value) {
   );
 }
 
-final ValueNotifier<ThemeMode> spAppThemeMode = ValueNotifier<ThemeMode>(ThemeMode.dark);
+final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier<ThemeMode>(ThemeMode.dark);
 
-String _spMonthName(int month) => const [
+String _m3MonthName(int month) => const [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ][month - 1];
 
-String _spWeekdayName(int weekday) => const [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-  'Friday', 'Saturday', 'Sunday',
-][weekday - 1];
+String _m3Date(DateTime date) =>
+    '${date.day.toString().padLeft(2, '0')} ${_m3MonthName(date.month)} ${date.year}';
 
-String _spDate(DateTime date) =>
-    '${date.day.toString().padLeft(2, '0')} ${_spMonthName(date.month)} ${date.year}';
-
-String _spFullDate(DateTime date) =>
-    '${_spWeekdayName(date.weekday)}, ${_spDate(date)}';
-
-class SPMultiBillApp extends StatelessWidget {
-  const SPMultiBillApp({super.key});
+class MultiBillApp extends StatelessWidget {
+  const MultiBillApp({super.key});
 
   ThemeData _theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF1769E0),
+      seedColor: const Color(0xFF1A73E8),
       brightness: brightness,
-      surface: dark ? const Color(0xFF111827) : const Color(0xFFF8FAFF),
+      surface: dark ? const Color(0xFF121316) : const Color(0xFFF8F9FA),
     );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: dark ? const Color(0xFF0B1220) : const Color(0xFFF3F7FD),
+      scaffoldBackgroundColor: dark ? const Color(0xFF0E0F12) : const Color(0xFFF1F3F4),
       appBarTheme: AppBarTheme(
-        backgroundColor: dark ? const Color(0xFF111827) : const Color(0xFFF8FAFF),
+        backgroundColor: Colors.transparent,
         foregroundColor: scheme.onSurface,
         elevation: 0,
       ),
       cardTheme: CardThemeData(
-        color: dark ? const Color(0xFF172235) : Colors.white,
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        color: dark ? const Color(0xFF1E1F24) : Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: dark ? const Color(0xFF1B293D) : const Color(0xFFF1F5FB),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: scheme.outlineVariant),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: scheme.outlineVariant),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: scheme.primary, width: 1.5),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 68,
+        elevation: 2,
+        backgroundColor: dark ? const Color(0xFF16171B) : const Color(0xFFECEFF1),
+        indicatorColor: scheme.primaryContainer,
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            fontSize: 12,
+            fontWeight: states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -586,10 +574,10 @@ class SPMultiBillApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
-      valueListenable: spAppThemeMode,
+      valueListenable: appThemeMode,
       builder: (context, mode, _) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'SP MULTIBILL ERP',
+        title: 'MULTIBILL ERP',
         scrollBehavior: UltraSmoothScrollBehavior(),
         theme: _theme(Brightness.light),
         darkTheme: _theme(Brightness.dark),
@@ -608,7 +596,8 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
-  int _navIndex = -1;
+  int _bottomNavIndex = 0;
+  int _activeScreenIndex = -1;
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
@@ -667,6 +656,13 @@ class _MainDashboardState extends State<MainDashboard> {
     }
   }
 
+  void _onLoadInvoiceToEdit(DCEstimate est) {
+    setState(() {
+      _invoiceToEdit = est;
+      _activeScreenIndex = 0;
+    });
+  }
+
   void _openCompanyProfileDialog() {
     final nameCtrl = TextEditingController(text: CompanyConfig.name);
     final subCtrl = TextEditingController(text: CompanyConfig.tradeSubtitle);
@@ -682,16 +678,16 @@ class _MainDashboardState extends State<MainDashboard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDlgState) => AlertDialog(
-          backgroundColor: const Color(0xFF131922),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Row(
             children: [
-              Icon(Icons.business, color: Color(0xFF3B82F6)),
+              Icon(Icons.business_rounded, color: Color(0xFF1A73E8)),
               SizedBox(width: 10),
-              Text('Company Profile & Header', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Company Profile', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: SizedBox(
-            width: 540,
+            width: 520,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -699,20 +695,19 @@ class _MainDashboardState extends State<MainDashboard> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0E141B),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF263342)),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
                           radius: 26,
-                          backgroundColor: const Color(0xFF18202B),
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                           backgroundImage: logoPathLocal.isNotEmpty
                               ? FileImage(File(logoPathLocal))
                               : (CompanyConfig.logoUrl.isNotEmpty ? NetworkImage(CompanyConfig.logoUrl) as ImageProvider : null),
                           child: (logoPathLocal.isEmpty && CompanyConfig.logoUrl.isEmpty)
-                              ? const Icon(Icons.image, color: Color(0xFF94A3B8))
+                              ? const Text('AC', style: TextStyle(fontWeight: FontWeight.bold))
                               : null,
                         ),
                         const SizedBox(width: 14),
@@ -721,19 +716,15 @@ class _MainDashboardState extends State<MainDashboard> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(logoPathLocal.isNotEmpty
-                                  ? 'Selected: ${logoPathLocal.split(Platform.pathSeparator).last}'
-                                  : (CompanyConfig.logoUrl.isNotEmpty ? 'Cloud Logo Synced' : 'No Logo Uploaded')),
-                              const SizedBox(height: 4),
-                              const Text('Select PNG/JPG to upload', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                                  ? logoPathLocal.split(Platform.pathSeparator).last
+                                  : (CompanyConfig.logoUrl.isNotEmpty ? 'Cloud Logo Synced' : 'Default Brand Logo')),
+                              const SizedBox(height: 2),
+                              const Text('Upload PNG or JPG', style: TextStyle(fontSize: 11, color: Colors.grey)),
                             ],
                           ),
                         ),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF3B82F6)),
-                            foregroundColor: const Color(0xFF6FB1FC),
-                          ),
-                          icon: const Icon(Icons.file_upload, size: 16),
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.file_upload_outlined, size: 16),
                           label: const Text('Browse'),
                           onPressed: () async {
                             final res = await FilePicker.platform.pickFiles(type: FileType.image);
@@ -751,25 +742,25 @@ class _MainDashboardState extends State<MainDashboard> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Company / Firm Name')),
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Company Name')),
                   const SizedBox(height: 10),
-                  TextField(controller: subCtrl, decoration: const InputDecoration(labelText: 'Trade Subtitle / Slogan')),
+                  TextField(controller: subCtrl, decoration: const InputDecoration(labelText: 'Subtitle / Slogan')),
                   const SizedBox(height: 10),
-                  TextField(controller: addrCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Full Address')),
+                  TextField(controller: addrCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Address')),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Contact Phone'))),
+                      Expanded(child: TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone'))),
                       const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address'))),
+                      Expanded(child: TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email'))),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: gstinCtrl, decoration: const InputDecoration(labelText: 'GSTIN / UIN Number'))),
+                      Expanded(child: TextField(controller: gstinCtrl, decoration: const InputDecoration(labelText: 'GSTIN'))),
                       const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: regTypeCtrl, decoration: const InputDecoration(labelText: 'Reg. Type'))),
+                      Expanded(child: TextField(controller: regTypeCtrl, decoration: const InputDecoration(labelText: 'Reg Type'))),
                     ],
                   ),
                 ],
@@ -779,13 +770,9 @@ class _MainDashboardState extends State<MainDashboard> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
+              child: const Text('Cancel'),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E88E5),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              ),
+            FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
                 setState(() => _isBackgroundSyncing = true);
@@ -824,7 +811,7 @@ class _MainDashboardState extends State<MainDashboard> {
 
                 setState(() => _isBackgroundSyncing = false);
               },
-              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('Save Changes'),
             ),
           ],
         ),
@@ -832,68 +819,292 @@ class _MainDashboardState extends State<MainDashboard> {
     );
   }
 
-  void _onLoadInvoiceToEdit(DCEstimate est) {
-    setState(() {
-      _invoiceToEdit = est;
-      _navIndex = 0;
-    });
-  }
-
-  Widget _buildShieldLogoWidget({double size = 100}) {
+  Widget _buildTopSearchBar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      width: size,
-      height: size,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1A26),
-        borderRadius: BorderRadius.circular(size * 0.22),
-        border: Border.all(color: const Color(0xFF38BDF8), width: 2.5),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0284C7).withOpacity(0.45),
-            blurRadius: 28,
-            spreadRadius: 4,
-          ),
-        ],
+        color: scheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(30),
       ),
-      child: Stack(
-        alignment: Alignment.center,
+      child: Row(
         children: [
-          Icon(Icons.shield_rounded, size: size * 0.76, color: const Color(0xFF132D4B)),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'SP',
-                style: TextStyle(
-                  fontSize: size * 0.36,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                  foreground: Paint()
-                    ..shader = const LinearGradient(
-                      colors: [Colors.white, Color(0xFF67E8F9), Color(0xFF0284C7)],
-                    ).createShader(Rect.fromLTWH(0, 0, size, size * 0.4)),
-                  shadows: const [
-                    Shadow(color: Colors.black, blurRadius: 8, offset: Offset(0, 2)),
-                  ],
-                ),
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: scheme.primaryContainer,
+            child: Text(
+              'AC',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: scheme.onPrimaryContainer),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search MULTIBILL ERP...',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+                contentPadding: EdgeInsets.zero,
+                isDense: true,
               ),
-              Text(
-                'MultiBill ERP',
-                style: TextStyle(
-                  fontSize: size * 0.10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
-                  color: const Color(0xFFE0F2FE),
-                ),
-              ),
-            ],
+              onSubmitted: (value) {
+                final q = value.toLowerCase();
+                final i = ['billing', 'price', 'customer', 'packing', 'invoice', 'report', 'setting']
+                    .indexWhere((s) => s.startsWith(q) || q.startsWith(s));
+                if (i >= 0) setState(() => _activeScreenIndex = i);
+              },
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              appThemeMode.value == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              size: 20,
+            ),
+            tooltip: 'Theme',
+            onPressed: () => appThemeMode.value =
+                appThemeMode.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+          ),
+          IconButton(
+            icon: const Icon(Icons.sync_rounded, size: 20),
+            tooltip: 'Sync',
+            onPressed: () => _fetchData(silent: true),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSelectedScreen() {
+  Widget _buildMobileGoogleHomeTab(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      children: [
+        // Compact Google Hero Card
+        Card(
+          color: scheme.primaryContainer.withOpacity(0.45),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        CompanyConfig.name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: scheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        CompanyConfig.tradeSubtitle,
+                        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: scheme.surface,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _m3Date(DateTime.now()),
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: scheme.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Setup'),
+                  onPressed: _openCompanyProfileDialog,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Quick Launch Row
+        Row(
+          children: [
+            Expanded(
+              child: _buildQuickActionCard(
+                context,
+                title: 'New Bill',
+                icon: Icons.receipt_long_rounded,
+                color: const Color(0xFF1A73E8),
+                onTap: () => setState(() => _activeScreenIndex = 0),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildQuickActionCard(
+                context,
+                title: 'Packing Slip',
+                icon: Icons.local_shipping_rounded,
+                color: const Color(0xFFF29900),
+                onTap: () => setState(() => _activeScreenIndex = 3),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildQuickActionCard(
+                context,
+                title: 'Invoices',
+                icon: Icons.description_rounded,
+                color: const Color(0xFF188038),
+                onTap: () => setState(() => _activeScreenIndex = 4),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        // Collapsible Modules
+        _buildCollapsibleSection(
+          context,
+          title: 'Masters',
+          icon: Icons.folder_open_rounded,
+          initiallyExpanded: false,
+          items: [
+            _M3MenuItem('Customers Directory', Icons.people_alt_rounded, 2, const Color(0xFF1A73E8)),
+            _M3MenuItem('Items / Price List', Icons.inventory_2_rounded, 1, const Color(0xFF188038)),
+            _M3MenuItem('Company Profile', Icons.business_rounded, 6, const Color(0xFF9334E6)),
+          ],
+        ),
+        _buildCollapsibleSection(
+          context,
+          title: 'Transactions',
+          icon: Icons.swap_horiz_rounded,
+          initiallyExpanded: true,
+          items: [
+            _M3MenuItem('Customer Billing (Sales)', Icons.receipt_long_rounded, 0, const Color(0xFFD93025)),
+            _M3MenuItem('Packing & Loading Slip', Icons.local_shipping_rounded, 3, const Color(0xFFF29900)),
+            _M3MenuItem('Invoice History Log', Icons.description_rounded, 4, const Color(0xFF188038)),
+          ],
+        ),
+        _buildCollapsibleSection(
+          context,
+          title: 'Reports & Analytics',
+          icon: Icons.bar_chart_rounded,
+          initiallyExpanded: false,
+          items: [
+            _M3MenuItem('Sales & Revenue Reports', Icons.analytics_rounded, 5, const Color(0xFFD93025)),
+          ],
+        ),
+        _buildCollapsibleSection(
+          context,
+          title: 'Utilities & Settings',
+          icon: Icons.tune_rounded,
+          initiallyExpanded: false,
+          items: [
+            _M3MenuItem('Sync with Google Sheet', Icons.storage_rounded, -2, const Color(0xFF1A73E8)),
+            _M3MenuItem('Settings & Preferences', Icons.settings_rounded, 6, const Color(0xFF12B5CB)),
+          ],
+        ),
+        const SizedBox(height: 40),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: scheme.outlineVariant.withOpacity(0.35)),
+        ),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: color.withOpacity(0.14),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollapsibleSection(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required bool initiallyExpanded,
+    required List<_M3MenuItem> items,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          leading: Icon(icon, color: scheme.primary, size: 22),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          children: items.map((item) {
+            return ListTile(
+              dense: true,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              leading: Icon(item.icon, color: item.color, size: 22),
+              title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 18, color: Colors.grey),
+              onTap: () {
+                if (item.index == -2) {
+                  _fetchData(silent: true);
+                } else {
+                  setState(() => _activeScreenIndex = item.index);
+                }
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveScreenContent() {
     final screens = <Widget>[
       TallyBillingScreen(
         items: _items,
@@ -932,274 +1143,65 @@ class _MainDashboardState extends State<MainDashboard> {
         onOpenProfile: _openCompanyProfileDialog,
       ),
     ];
-    return Column(
-      children: [
-        _gatewayTopBar(context, showBack: true),
-        Expanded(child: screens[_navIndex]),
-      ],
-    );
-  }
-
-  Widget _gatewayTopBar(BuildContext context, {bool showBack = false}) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surface,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(
-          children: [
-            if (showBack)
-              IconButton(
-                tooltip: 'Back to Gateway',
-                onPressed: () => setState(() => _navIndex = -1),
-                icon: const Icon(Icons.arrow_back_rounded),
-              )
-            else
-              _buildShieldLogoWidget(size: 38),
-            const SizedBox(width: 12),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('SP MULTIBILL ERP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                Text('Billing • Inventory • Reports', style: TextStyle(fontSize: 11)),
-              ],
-            ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: SizedBox(
-                height: 42,
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'Search menu (Ctrl + F) ...',
-                    prefixIcon: Icon(Icons.search_rounded),
-                    contentPadding: EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  onSubmitted: (value) {
-                    final q = value.toLowerCase();
-                    final i = ['billing', 'price', 'customer', 'packing', 'invoice', 'report', 'setting']
-                        .indexWhere((s) => s.startsWith(q) || q.startsWith(s));
-                    if (i >= 0) setState(() => _navIndex = i);
-                  },
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: 'Toggle light/dark theme',
-              onPressed: () => spAppThemeMode.value =
-                  spAppThemeMode.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
-              icon: Icon(spAppThemeMode.value == ThemeMode.dark
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined),
-            ),
-            IconButton(
-              tooltip: 'Sync data',
-              onPressed: () => _fetchData(silent: true),
-              icon: const Icon(Icons.sync_rounded),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGateway(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final entries = <({String section, String title, String subtitle, IconData icon, int index, Color tint})>[
-      (section: 'MASTERS', title: 'Customers', subtitle: 'Create, view & edit', icon: Icons.people_alt_rounded, index: 2, tint: const Color(0xFF2878E8)),
-      (section: 'MASTERS', title: 'Items / Price List', subtitle: 'Manage items and rates', icon: Icons.inventory_2_rounded, index: 1, tint: const Color(0xFF159B68)),
-      (section: 'MASTERS', title: 'Company Setup', subtitle: 'Company details & logo', icon: Icons.business_rounded, index: 6, tint: const Color(0xFF8652D8)),
-      (section: 'TRANSACTIONS', title: 'Vouchers', subtitle: 'Accounting vouchers', icon: Icons.receipt_long_rounded, index: -4, tint: const Color(0xFFD94B78)),
-      (section: 'TRANSACTIONS', title: 'Packing Slip', subtitle: 'Create and manage slips', icon: Icons.local_shipping_rounded, index: 3, tint: const Color(0xFFDA8A26)),
-      (section: 'TRANSACTIONS', title: 'Invoices', subtitle: 'View and print invoices', icon: Icons.description_rounded, index: 4, tint: const Color(0xFF159B68)),
-      (section: 'UTILITIES', title: 'Data Sync', subtitle: 'Refresh connected data', icon: Icons.storage_rounded, index: -2, tint: const Color(0xFF2878E8)),
-      (section: 'UTILITIES', title: 'Backup & Restore', subtitle: 'Manage your data', icon: Icons.cloud_upload_rounded, index: -3, tint: const Color(0xFF8652D8)),
-      (section: 'UTILITIES', title: 'Settings', subtitle: 'App preferences and theme', icon: Icons.settings_rounded, index: 6, tint: const Color(0xFF0D9EB0)),
-      (section: 'REPORTS', title: 'Sales Reports', subtitle: 'Bill summary and trends', icon: Icons.bar_chart_rounded, index: 5, tint: const Color(0xFFD94B78)),
-      (section: 'REPORTS', title: 'Stock Reports', subtitle: 'Current stock and movement', icon: Icons.analytics_rounded, index: 5, tint: const Color(0xFFDA8A26)),
-      (section: 'REPORTS', title: 'Misc Reports', subtitle: 'More reports', icon: Icons.pie_chart_rounded, index: 5, tint: const Color(0xFF159B68)),
-    ];
 
     return Column(
       children: [
-        _gatewayTopBar(context),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Card(
-              clipBehavior: Clip.antiAlias,
-              child: Row(
-                children: [
-                  Container(
-                    width: 270,
-                    padding: const EdgeInsets.all(22),
-                    color: scheme.surfaceContainerLow,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(child: _buildShieldLogoWidget(size: 76)),
-                          const SizedBox(height: 14),
-                          const Center(child: Text('SP MULTIBILL ERP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17))),
-                          const SizedBox(height: 24),
-                          Text(CompanyConfig.name.isEmpty ? 'Company Profile' : CompanyConfig.name,
-                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                          const SizedBox(height: 6),
-                          const Text('Billing • Inventory • Reports'),
-                          const SizedBox(height: 20),
-                          const Divider(),
-                          const SizedBox(height: 12),
-                          const Text('Current Date', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text(_spFullDate(DateTime.now())),
-                          const SizedBox(height: 16),
-                          const Text('Current Period', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text('${_spDate(DateTime(DateTime.now().month >= 4 ? DateTime.now().year : DateTime.now().year - 1, 4, 1))} – ${_spDate(DateTime(DateTime.now().month >= 4 ? DateTime.now().year + 1 : DateTime.now().year, 3, 31))}'),
-                          const SizedBox(height: 18),
-                          OutlinedButton.icon(
-                            onPressed: _openCompanyProfileDialog,
-                            icon: const Icon(Icons.edit_outlined),
-                            label: const Text('Company Setup'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text('Gateway of SP MULTIBILL ERP', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-                              const Spacer(),
-                              Text('Select an option to continue', style: TextStyle(color: scheme.onSurfaceVariant)),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          const Divider(),
-                          Expanded(
-                            child: ListView(
-                              children: [
-                                for (final section in ['MASTERS', 'TRANSACTIONS', 'UTILITIES', 'REPORTS']) ...[
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8, bottom: 8),
-                                    child: Text(section, style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w800, letterSpacing: 0.7)),
-                                  ),
-                                  for (final entry in entries.where((e) => e.section == section))
-                                    Card(
-                                      margin: const EdgeInsets.symmetric(vertical: 4),
-                                      child: ListTile(
-                                        leading: Icon(entry.icon, color: entry.tint),
-                                        title: Text(entry.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                        subtitle: Text(entry.subtitle),
-                                        trailing: Icon(Icons.chevron_right_rounded, color: entry.tint),
-                                        onTap: () {
-                                          if (entry.index == -4) {
-                                            showDialog<void>(
-                                              context: context,
-                                              builder: (dialogContext) => AlertDialog(
-                                                title: const Text('Vouchers'),
-                                                content: SizedBox(
-                                                  width: 360,
-                                                  child: Column(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      const Align(
-                                                        alignment: Alignment.centerLeft,
-                                                        child: Text('Select voucher type to continue'),
-                                                      ),
-                                                      const SizedBox(height: 12),
-                                                      for (final voucher in <({String title, IconData icon, Color color, int? index})>[
-                                                        (title: 'Sales', icon: Icons.point_of_sale_rounded, color: const Color(0xFF159B68), index: 0),
-                                                        (title: 'Purchase', icon: Icons.shopping_cart_rounded, color: const Color(0xFF2878E8), index: null),
-                                                        (title: 'Debit and Credit Notes', icon: Icons.description_rounded, color: const Color(0xFFDA8A26), index: null),
-                                                        (title: 'Receipt and Payments', icon: Icons.account_balance_wallet_rounded, color: const Color(0xFF8652D8), index: null),
-                                                        (title: 'Journal Entries', icon: Icons.menu_book_rounded, color: const Color(0xFF0D9EB0), index: null),
-                                                      ])
-                                                        Padding(
-                                                          padding: const EdgeInsets.only(bottom: 6),
-                                                          child: Card(
-                                                            margin: EdgeInsets.zero,
-                                                            child: ListTile(
-                                                              leading: Icon(voucher.icon, color: voucher.color),
-                                                              title: Text(voucher.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                                              trailing: const Icon(Icons.chevron_right_rounded),
-                                                              onTap: () {
-                                                                Navigator.of(dialogContext).pop();
-                                                                if (voucher.index != null) {
-                                                                  setState(() => _navIndex = voucher.index!);
-                                                                } else {
-                                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                                    SnackBar(content: Text('${voucher.title} will be added later.')),
-                                                                  );
-                                                                }
-                                                              },
-                                                            ),
-                                                          ),
-                                                        ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          } else if (entry.index == -2) {
-                                            _fetchData(silent: true);
-                                          } else if (entry.index == -3) {
-                                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup & Restore is available in Settings.')));
-                                            setState(() => _navIndex = 6);
-                                          } else {
-                                            setState(() => _navIndex = entry.index);
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => setState(() => _activeScreenIndex = -1),
           ),
+          title: const Text('Back to Home', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
+        Expanded(child: screens[_activeScreenIndex]),
       ],
     );
+  }
+
+  Widget _getCurrentTabScreen(BuildContext context) {
+    if (_activeScreenIndex >= 0) {
+      return _buildActiveScreenContent();
+    }
+
+    switch (_bottomNavIndex) {
+      case 0:
+        return _buildMobileGoogleHomeTab(context);
+      case 1:
+        return CustomerDesktopView(customers: _customers, onRefreshRequired: () => _fetchData(silent: true));
+      case 2:
+        return PriceListDesktopView(items: _items, onRefreshRequired: () => _fetchData(silent: true));
+      case 3:
+        return EnterpriseReportsView(
+          estimates: _estimates,
+          items: _items,
+          customers: _customers,
+          onEditInvoice: _onLoadInvoiceToEdit,
+          onRefreshRequired: () => _fetchData(silent: true),
+        );
+      default:
+        return _buildMobileGoogleHomeTab(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0B1015),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildShieldLogoWidget(size: 130),
-              const SizedBox(height: 28),
-              const Text('SP MULTIBILL ERP',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Color(0xFFF8FAFC))),
-              const SizedBox(height: 6),
-              const Text('POWERED BY SP TECH SOLUTIONS',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 2.0, color: Color(0xFF38BDF8))),
-              const SizedBox(height: 4),
-              const Text('Wholesale, Retail & Distribution Suite • v3.6.0',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
-              const SizedBox(height: 36),
-              const SizedBox(
-                width: 170,
-                child: LinearProgressIndicator(
-                  minHeight: 3,
-                  backgroundColor: Color(0xFF131922),
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0284C7)),
-                ),
+              CircleAvatar(
+                radius: 36,
+                backgroundColor: const Color(0xFF1A73E8),
+                child: const Text('AC', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
               ),
+              const SizedBox(height: 20),
+              const Text('MULTIBILL ERP', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              const SizedBox(height: 4),
+              const Text('ANDROCODE SOFTWARE SOLUTIONS', style: TextStyle(fontSize: 11, color: Colors.grey, letterSpacing: 1.5)),
+              const SizedBox(height: 24),
+              const SizedBox(width: 140, child: LinearProgressIndicator(minHeight: 3)),
             ],
           ),
         ),
@@ -1207,24 +1209,86 @@ class _MainDashboardState extends State<MainDashboard> {
     }
 
     return Scaffold(
-      body: Column(
-        children: [
-          if (_isBackgroundSyncing)
-            const LinearProgressIndicator(
-              minHeight: 3,
-              backgroundColor: Color(0xFF131922),
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1E88E5)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            if (_isBackgroundSyncing)
+              const LinearProgressIndicator(minHeight: 2.5),
+            if (_activeScreenIndex < 0)
+              _buildTopSearchBar(context),
+            Expanded(
+              child: Center(
+                // Orupaad wide aavathe center-il compact aayi nirthunnu
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 820),
+                  child: _getCurrentTabScreen(context),
+                ),
+              ),
             ),
-          Expanded(
-            child: _navIndex < 0
-                ? _buildGateway(context)
-                : _buildSelectedScreen(),
-          ),
-        ],
+          ],
+        ),
       ),
+      // Google-style Floating Action Button for direct billing
+      floatingActionButton: _activeScreenIndex < 0 && _bottomNavIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: () => setState(() => _activeScreenIndex = 0),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New Bill'),
+            )
+          : null,
+      bottomNavigationBar: _activeScreenIndex < 0
+          ? Center(
+              // Bottom Bar-um over-wide aavathe nirthunnu
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 820),
+                child: NavigationBar(
+                  selectedIndex: _bottomNavIndex,
+                  onDestinationSelected: (idx) {
+                    setState(() {
+                      _bottomNavIndex = idx;
+                      _activeScreenIndex = -1;
+                    });
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home_rounded),
+                      label: 'Home',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.people_alt_outlined),
+                      selectedIcon: Icon(Icons.people_alt_rounded),
+                      label: 'Parties',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.inventory_2_outlined),
+                      selectedIcon: Icon(Icons.inventory_2_rounded),
+                      label: 'Items',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.bar_chart_outlined),
+                      selectedIcon: Icon(Icons.bar_chart_rounded),
+                      label: 'Reports',
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 }
+
+class _M3MenuItem {
+  final String title;
+  final IconData icon;
+  final int index;
+  final Color color;
+
+  _M3MenuItem(this.title, this.icon, this.index, this.color);
+}
+
+// ---------------- 1. BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -1421,14 +1485,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               offset: const Offset(0, 52),
               child: Material(
                 elevation: 14,
-                color: const Color(0xFF18202B),
-                borderRadius: BorderRadius.circular(8),
+                color: const Color(0xFF1E1F24),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 220),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18202B),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF1E88E5), width: 1.2),
+                    color: const Color(0xFF1E1F24),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF1A73E8), width: 1.2),
                   ),
                   child: ListView.builder(
                     controller: _partyScrollCtrl,
@@ -1440,18 +1504,18 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                       return InkWell(
                         onTap: () => _selectParty(p),
                         child: Container(
-                          color: isSelected ? const Color(0xFF1E88E5).withOpacity(0.3) : null,
+                          color: isSelected ? const Color(0xFF1A73E8).withOpacity(0.2) : null,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           child: Row(
                             children: [
                               if (isSelected)
-                                const Text('> ', style: TextStyle(color: Color(0xFF6FB1FC), fontWeight: FontWeight.bold)),
+                                const Text('> ', style: TextStyle(color: Color(0xFF8AB4F8), fontWeight: FontWeight.bold)),
                               Expanded(
                                 child: Text(
                                   "${p.name} ${p.b2b.isNotEmpty ? '(${p.b2b})' : ''}",
                                   style: TextStyle(
                                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    color: isSelected ? const Color(0xFF6FB1FC) : Colors.white,
+                                    color: isSelected ? const Color(0xFF8AB4F8) : Colors.white,
                                   ),
                                 ),
                               ),
@@ -1550,14 +1614,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
               offset: Offset(0, offsetY),
               child: Material(
                 elevation: 16,
-                color: const Color(0xFF18202B),
-                borderRadius: BorderRadius.circular(8),
+                color: const Color(0xFF1E1F24),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
                   height: popupHeight,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF18202B),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF1E88E5), width: 1.2),
+                    color: const Color(0xFF1E1F24),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF1A73E8), width: 1.2),
                   ),
                   child: ListView.builder(
                     controller: _itemScrollCtrl,
@@ -1569,7 +1633,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                       return InkWell(
                         onTap: () => _selectItem(rowIdx, item),
                         child: Container(
-                          color: isSelected ? const Color(0xFF1E88E5).withOpacity(0.35) : null,
+                          color: isSelected ? const Color(0xFF1A73E8).withOpacity(0.2) : null,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1577,17 +1641,17 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                               Row(
                                 children: [
                                   if (isSelected)
-                                    const Text('> ', style: TextStyle(color: Color(0xFF6FB1FC), fontWeight: FontWeight.bold)),
+                                    const Text('> ', style: TextStyle(color: Color(0xFF8AB4F8), fontWeight: FontWeight.bold)),
                                   Text(
                                     item.name,
                                     style: TextStyle(
                                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      color: isSelected ? const Color(0xFF6FB1FC) : Colors.white,
+                                      color: isSelected ? const Color(0xFF8AB4F8) : Colors.white,
                                     ),
                                   ),
                                 ],
                               ),
-                              Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF6FB1FC), fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF8AB4F8), fontWeight: FontWeight.bold, fontSize: 13)),
                             ],
                           ),
                         ),
@@ -1751,7 +1815,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF131922),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         insetPadding: const EdgeInsets.all(20),
         child: SizedBox(
           width: 920,
@@ -1759,7 +1823,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
           child: Column(
             children: [
               AppBar(
-                backgroundColor: const Color(0xFF0E141B),
                 title: Text('Invoice #$billNo (Tally Prime Format)'),
                 actions: [
                   IconButton(
@@ -1812,150 +1875,122 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
         return KeyEventResult.ignored;
       },
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Text(isEditing ? 'Edit Customer Bill' : 'Customer Bill',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFF8FAFC))),
-                const SizedBox(width: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isEditing ? Colors.orange.withOpacity(0.2) : const Color(0xFF18202B),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: isEditing ? Colors.orangeAccent : const Color(0xFF263342)),
-                  ),
-                  child: Text(isEditing ? 'Editing Bill #${widget.invoiceToEdit!.slNo}' : 'Bill #${widget.nextBillNo}',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isEditing ? Colors.orangeAccent : const Color(0xFF6FB1FC))),
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 12),
+                Chip(
+                  label: Text(isEditing ? 'Bill #${widget.invoiceToEdit!.slNo}' : 'Bill #${widget.nextBillNo}'),
+                  visualDensity: VisualDensity.compact,
                 ),
                 const Spacer(),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
+                TextButton.icon(
                   icon: const Icon(Icons.cancel_outlined, size: 18),
-                  label: Text(isEditing ? 'Cancel Edit' : 'Cancel Bill'),
+                  label: Text(isEditing ? 'Cancel Edit' : 'Cancel'),
                   onPressed: _clearBilling,
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0052D4),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  icon: const Icon(Icons.print, color: Colors.white, size: 18),
-                  label: Text(isEditing ? 'Update & Print (Ctrl+S / F8)' : 'Save & Print (Ctrl+S / F8)',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  icon: const Icon(Icons.print_rounded, size: 18),
+                  label: Text(isEditing ? 'Update & Print' : 'Save & Print'),
                   onPressed: _saveInvoice,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF131922),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF263342)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: CompositedTransformTarget(
-                      link: _partyLayerLink,
-                      child: Focus(
-                        onKeyEvent: _handlePartyKeyEvent,
-                        child: TextField(
-                          controller: _partyTextCtrl,
-                          focusNode: _partyFocus,
-                          decoration: const InputDecoration(
-                            labelText: 'Party / Customer Name (Type & Arrow Navigate)',
-                            hintText: 'Search customer...',
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: CompositedTransformTarget(
+                        link: _partyLayerLink,
+                        child: Focus(
+                          onKeyEvent: _handlePartyKeyEvent,
+                          child: TextField(
+                            controller: _partyTextCtrl,
+                            focusNode: _partyFocus,
+                            decoration: const InputDecoration(
+                              labelText: 'Party / Customer Name',
+                              hintText: 'Search customer...',
+                              prefixIcon: Icon(Icons.person_search_rounded),
+                            ),
+                            onChanged: (val) {
+                              setState(() {
+                                _partySelectedIndex = 0;
+                                _filteredParties = widget.customers.where((c) {
+                                  return c.name.toLowerCase().contains(val.toLowerCase()) ||
+                                      c.b2b.toLowerCase().contains(val.toLowerCase());
+                                }).toList();
+                              });
+                              _showPartyOverlay();
+                            },
+                            onTap: () {
+                              setState(() {
+                                _filteredParties = widget.customers;
+                              });
+                              _showPartyOverlay();
+                            },
                           ),
-                          onChanged: (val) {
-                            setState(() {
-                              _partySelectedIndex = 0;
-                              _filteredParties = widget.customers.where((c) {
-                                return c.name.toLowerCase().contains(val.toLowerCase()) ||
-                                    c.b2b.toLowerCase().contains(val.toLowerCase());
-                              }).toList();
-                            });
-                            _showPartyOverlay();
-                          },
-                          onTap: () {
-                            setState(() {
-                              _filteredParties = widget.customers;
-                            });
-                            _showPartyOverlay();
-                          },
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  SizedBox(
-                    width: 180,
-                    child: DropdownButtonFormField<String>(
-                      value: _invoiceType,
-                      decoration: const InputDecoration(labelText: 'Supply Type'),
-                      items: const [
-                        DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
-                        DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
-                      ],
-                      onChanged: (v) => setState(() => _invoiceType = v!),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 160,
+                      child: DropdownButtonFormField<String>(
+                        value: _invoiceType,
+                        decoration: const InputDecoration(labelText: 'Supply Type'),
+                        items: const [
+                          DropdownMenuItem(value: 'Regular B2C', child: Text('Regular B2C')),
+                          DropdownMenuItem(value: 'Regular B2B', child: Text('Regular B2B')),
+                        ],
+                        onChanged: (v) => setState(() => _invoiceType = v!),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF131922),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF263342)),
-                ),
+              child: Card(
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF18202B),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       child: const Row(
                         children: [
-                          SizedBox(width: 40, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 12),
-                          Expanded(flex: 5, child: Text('Name of Item', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 12),
-                          SizedBox(width: 110, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 12),
-                          SizedBox(width: 100, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 12),
-                          SizedBox(width: 90, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 12),
-                          SizedBox(width: 80, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
-                          SizedBox(width: 12),
-                          SizedBox(width: 110, child: Text('Net Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF94A3B8)))),
+                          SizedBox(width: 35, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                          SizedBox(width: 10),
+                          Expanded(flex: 5, child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                          SizedBox(width: 10),
+                          SizedBox(width: 100, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                          SizedBox(width: 10),
+                          SizedBox(width: 90, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                          SizedBox(width: 10),
+                          SizedBox(width: 80, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                          SizedBox(width: 10),
+                          SizedBox(width: 75, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                          SizedBox(width: 10),
+                          SizedBox(width: 100, child: Text('Net (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
                           SizedBox(width: 36),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Color(0xFF263342)),
+                    const Divider(height: 1),
                     Expanded(
                       child: ListView.separated(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         itemCount: _rows.length,
-                        separatorBuilder: (ctx, i) => const Divider(height: 12, color: Color(0xFF263342)),
+                        separatorBuilder: (ctx, i) => const Divider(height: 10),
                         itemBuilder: (ctx, idx) {
                           final row = _rows[idx];
 
@@ -1964,9 +1999,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                             children: [
                               Padding(
                                 padding: const EdgeInsets.only(top: 14),
-                                child: SizedBox(width: 40, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8)))),
+                                child: SizedBox(width: 35, child: Text('${idx + 1}', style: const TextStyle(color: Colors.grey))),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               Expanded(
                                 flex: 5,
                                 child: CompositedTransformTarget(
@@ -2000,9 +2035,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               SizedBox(
-                                width: 110,
+                                width: 100,
                                 child: TextFormField(
                                   key: ValueKey('rate_${row.item?.name}_$idx'),
                                   initialValue: row.rate.toStringAsFixed(2),
@@ -2017,9 +2052,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                   onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               SizedBox(
-                                width: 100,
+                                width: 90,
                                 child: TextFormField(
                                   initialValue: row.qty.toStringAsFixed(0),
                                   focusNode: row.qtyFocus,
@@ -2033,9 +2068,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                   onFieldSubmitted: (_) => row.unitFocus.requestFocus(),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               SizedBox(
-                                width: 90,
+                                width: 80,
                                 child: Focus(
                                   focusNode: row.unitFocus,
                                   onKeyEvent: (node, event) => _handleUnitKeyEvent(idx, node, event),
@@ -2050,28 +2085,21 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                           row.unitFocus.requestFocus();
                                         },
                                         child: Container(
-                                          height: 48,
+                                          height: 44,
                                           padding: const EdgeInsets.symmetric(horizontal: 8),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF18202B),
-                                            borderRadius: BorderRadius.circular(4),
+                                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(10),
                                             border: Border.all(
-                                              color: hasFocus ? const Color(0xFF1E88E5) : const Color(0xFF263342),
-                                              width: hasFocus ? 1.5 : 1.0,
+                                              color: hasFocus ? const Color(0xFF1A73E8) : Colors.transparent,
+                                              width: 1.2,
                                             ),
                                           ),
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Text(
-                                                row.unit,
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 13,
-                                                  color: hasFocus ? const Color(0xFF6FB1FC) : Colors.white,
-                                                ),
-                                              ),
-                                              const Icon(Icons.swap_vert, size: 16, color: Color(0xFF94A3B8)),
+                                              Text(row.unit, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                              const Icon(Icons.swap_vert, size: 16, color: Colors.grey),
                                             ],
                                           ),
                                         ),
@@ -2080,9 +2108,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               SizedBox(
-                                width: 80,
+                                width: 75,
                                 child: TextFormField(
                                   initialValue: row.bags.toString(),
                                   focusNode: row.bagsFocus,
@@ -2105,21 +2133,18 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                   },
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               Padding(
                                 padding: const EdgeInsets.only(top: 14),
                                 child: SizedBox(
-                                  width: 110,
-                                  child: Text(
-                                    '₹${row.amount.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
+                                  width: 100,
+                                  child: Text('₹${row.amount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                                 ),
                               ),
                               SizedBox(
                                 width: 36,
                                 child: IconButton(
-                                  icon: const Icon(Icons.close, size: 18, color: Color(0xFF64748B)),
+                                  icon: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
                                   onPressed: () => _removeRow(idx),
                                 ),
                               ),
@@ -2128,18 +2153,17 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         },
                       ),
                     ),
-                    Container(
+                    Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Row(
                         children: [
-                          TextButton.icon(
-                            icon: const Icon(Icons.add, size: 18, color: Color(0xFF1E88E5)),
-                            label: const Text('+ Add Item Row', style: TextStyle(color: Color(0xFF6FB1FC))),
+                          FilledButton.tonalIcon(
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('Add Row'),
                             onPressed: _addRow,
                           ),
                           const Spacer(),
-                          Text('Total Bags in Bill: $_totalBags Bags',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC))),
+                          Text('Bags in Bill: $_totalBags', style: const TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
@@ -2147,72 +2171,47 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF131922),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF263342)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 140,
-                          child: TextField(
-                            controller: _coolieCtrl,
-                            focusNode: _coolieFocus,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Coolie (₹)'),
-                            onChanged: (_) => setState(() {}),
-                            onSubmitted: (_) => _saveInvoice(),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 130,
+                            child: TextField(
+                              controller: _coolieCtrl,
+                              focusNode: _coolieFocus,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(labelText: 'Coolie (₹)'),
+                              onChanged: (_) => setState(() {}),
+                              onSubmitted: (_) => _saveInvoice(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 20),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Inclusive Tax: ₹${_totalGst.toStringAsFixed(2)}',
-                              style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              'Taxable Base: ₹${_taxableBaseAmount.toStringAsFixed(2)}',
-                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ],
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Tax (5%): ₹${_totalGst.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF29900), fontSize: 13)),
+                              Text('Taxable: ₹${_taxableBaseAmount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _summaryLine('Total Item Value (Inc. Tax):', '₹${_grossItemsTotal.toStringAsFixed(2)}'),
-                        if (_coolie > 0) _summaryLine('Coolie:', '₹${_coolie.toStringAsFixed(2)}'),
-                        if (_sgst > 0) _summaryLine('Incl. SGST (2.5%):', '₹${_sgst.toStringAsFixed(2)}'),
-                        if (_cgst > 0) _summaryLine('Incl. CGST (2.5%):', '₹${_cgst.toStringAsFixed(2)}'),
-                        _summaryLine('Round Off:', '₹${_roundOff.toStringAsFixed(2)}'),
-                        const Divider(height: 12, color: Color(0xFF263342)),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            const Text('Grand Total: ',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-                            Text('₹${_grandTotal.toStringAsFixed(2)}',
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC))),
-                          ],
-                        ),
+                        Text('Subtotal: ₹${_grossItemsTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        const SizedBox(height: 2),
+                        Text('Grand Total: ₹${_grandTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1A73E8))),
                       ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -2220,21 +2219,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       ),
     );
   }
-
-  Widget _summaryLine(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-          const SizedBox(width: 14),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        ],
-      ),
-    );
-  }
 }
+
+// ---------------- 2. PRICE LIST VIEW ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -2252,90 +2239,6 @@ class PriceListDesktopView extends StatefulWidget {
 class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   String _query = '';
 
-  void _showItemPreviewModal(DCItem item) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19))),
-            TextButton.icon(
-              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-              icon: const Icon(Icons.delete_forever, size: 18),
-              label: const Text('Delete Item'),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _confirmDeleteItem(item);
-              },
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 540,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Divider(color: Color(0xFF263342)),
-              _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
-              _buildModalRow('Rate Unit:', item.rateType),
-              _buildModalRow('Quantity / Pack Size:', '${item.qty} KG/Bag'),
-              _buildModalRow('Item Name on Tally:', item.tallyName),
-              _buildModalRow('Billed Unit:', item.billedIn),
-              _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE (5% INCL)' : 'NON-TAXABLE'),
-            ],
-          ),
-        ),
-        actions: [
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
-            label: const Text('Edit Item Details', style: TextStyle(color: Colors.white)),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _openEditItemDialog(item: item);
-            },
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmDeleteItem(DCItem item) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        title: const Text('Confirm Delete Item'),
-        content: Text('Are you sure you want to permanently remove "${item.name}" from Google Sheet?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await http.post(
-                Uri.parse(sheetApiUrl),
-                body: jsonEncode({
-                  "action": "DELETE_ITEM",
-                  "rowIndex": item.rowIndex,
-                }),
-              );
-              widget.onRefreshRequired();
-            },
-            child: const Text('Delete from Sheet'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _openEditItemDialog({DCItem? item}) {
     final isNew = item == null;
     final nameCtrl = TextEditingController(text: isNew ? '' : item.name);
@@ -2350,11 +2253,10 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF131922),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isNew ? 'Add New Item' : 'Edit Item'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(isNew ? 'Add Item' : 'Edit Item'),
           content: SizedBox(
-            width: 520,
+            width: 480,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2371,13 +2273,13 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Quantity'))),
+                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty'))),
                       const SizedBox(width: 10),
                       Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Item Name on Tally')),
+                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Tally Name')),
                   const SizedBox(height: 10),
                   SwitchListTile(
                     title: const Text('Taxable (5% Inclusive)'),
@@ -2390,8 +2292,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
+            FilledButton(
               onPressed: () async {
                 if (nameCtrl.text.trim().isNotEmpty) {
                   Navigator.pop(ctx);
@@ -2412,34 +2313,10 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                   widget.onRefreshRequired();
                 }
               },
-              child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('Save'),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildModalRow(String title, String val, {bool isColor = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 160, child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14))),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              val,
-              softWrap: true,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: isColor ? const Color(0xFF6FB1FC) : Colors.white,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -2451,100 +2328,51 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
         .toList();
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(CompanyConfig.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('PRICE LIST (${widget.items.length} ITEMS)', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const Spacer(),
-              SizedBox(
-                width: 300,
+              Expanded(
                 child: TextField(
                   onChanged: (v) => setState(() => _query = v),
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 20), hintText: 'Search items...'),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search_rounded),
+                    hintText: 'Search items...',
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Item', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 10),
+              FilledButton.icon(
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Item'),
                 onPressed: () => _openEditItemDialog(),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Expanded(
             child: ListView.separated(
               physics: const BouncingScrollPhysics(),
               itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+              separatorBuilder: (ctx, i) => const SizedBox(height: 8),
               itemBuilder: (ctx, idx) {
                 final item = filtered[idx];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showItemPreviewModal(item),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF131922),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF263342)),
+                return Card(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      child: Text('${item.no}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    subtitle: Text('${item.qty} ${item.billedIn} • Tally: ${item.tallyName}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: const Color(0xFF18202B),
-                          child: Text('${item.no}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, letterSpacing: 0.3)),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Color(0xFF6FB1FC))),
-                                  const SizedBox(width: 8),
-                                  Text('(${item.rateType})', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
-                                  const SizedBox(width: 14),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF18202B),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF263342)),
-                                    ),
-                                    child: Text(
-                                      item.isTaxable ? 'TAXABLE (5%)' : 'NON-TAXABLE',
-                                      style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: item.isTaxable ? Colors.orangeAccent : const Color(0xFF94A3B8)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text('Tally: ${item.tallyName} | Pack: ${item.qty} | Unit: ${item.billedIn}', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                            ],
-                          ),
-                        ),
+                        Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1A73E8))),
                         IconButton(
-                          icon: const Icon(Icons.edit_note, color: Color(0xFF1E88E5), size: 24),
-                          tooltip: 'Edit Item',
+                          icon: const Icon(Icons.edit_outlined, size: 20),
                           onPressed: () => _openEditItemDialog(item: item),
                         ),
                       ],
@@ -2559,6 +2387,8 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     );
   }
 }
+
+// ---------------- 3. CUSTOMERS VIEW ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -2576,143 +2406,6 @@ class CustomerDesktopView extends StatefulWidget {
 class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   String _query = '';
 
-  Widget _buildTagChip(String tag) {
-    Color bg;
-    Color border;
-    Color text;
-
-    if (tag == 'VAZHI BILL') {
-      bg = const Color(0xFF38230B);
-      border = const Color(0xFFF59E0B);
-      text = const Color(0xFFFCD34D);
-    } else if (tag == 'CREDIT') {
-      bg = const Color(0xFF28183B);
-      border = const Color(0xFF8B5CF6);
-      text = const Color(0xFFC4B5FD);
-    } else if (tag == 'NO COOLI') {
-      bg = const Color(0xFF1E1B4B);
-      border = const Color(0xFF6366F1);
-      text = const Color(0xFFA5B4FC);
-    } else {
-      bg = const Color(0xFF0F291E);
-      border = const Color(0xFF10B981);
-      text = const Color(0xFF6EE7B7);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: border, width: 1.0),
-      ),
-      child: Text(
-        tag,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: text, letterSpacing: 0.5),
-      ),
-    );
-  }
-
-  void _showCustomerPreviewModal(DCCustomer customer) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(child: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20))),
-            TextButton.icon(
-              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-              icon: const Icon(Icons.person_remove, size: 18),
-              label: const Text('Delete Customer'),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _confirmDeleteCustomer(customer);
-              },
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 580,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Divider(color: Color(0xFF263342)),
-              _buildCustomerModalRow('Customer Name:', customer.name),
-              _buildCustomerModalRow('Contact Number:', customer.contact.isEmpty ? '-' : customer.contact),
-              _buildCustomerModalRow('Address:', customer.address.isEmpty ? '-' : customer.address),
-              _buildCustomerModalRow('B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b, isB2B: true),
-              _buildCustomerModalRow('B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c, isB2C: true),
-              _buildCustomerModalRow('Billing Category:', customer.billingTag),
-              if (customer.remarks.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Text('Delivery & Special Billing Rules:', style: TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 13)),
-                const SizedBox(height: 4),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF231908),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
-                  ),
-                  child: Text(customer.remarks, style: const TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.bold, fontSize: 13, height: 1.4)),
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
-            label: const Text('Edit Customer Details', style: TextStyle(color: Colors.white)),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _openEditCustomerDialog(customer: customer);
-            },
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmDeleteCustomer(DCCustomer customer) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        title: const Text('Confirm Delete Customer'),
-        content: Text('Are you sure you want to permanently delete party "${customer.name}" from Google Sheet?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await http.post(
-                Uri.parse(sheetApiUrl),
-                body: jsonEncode({
-                  "action": "DELETE_CUSTOMER",
-                  "rowIndex": customer.rowIndex,
-                }),
-              );
-              widget.onRefreshRequired();
-            },
-            child: const Text('Delete from Sheet'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _openEditCustomerDialog({DCCustomer? customer}) {
     final isNew = customer == null;
     final nameCtrl = TextEditingController(text: isNew ? '' : customer.name);
@@ -2725,11 +2418,10 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(isNew ? 'Add Customer' : 'Edit Customer'),
         content: SizedBox(
-          width: 520,
+          width: 480,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2744,19 +2436,18 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'B2B Trade Name (Important)')),
+                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'Trade Name (B2B)')),
                 const SizedBox(height: 10),
-                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Reference')),
+                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Ref')),
                 const SizedBox(height: 10),
-                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Remarks / Delivery Rules')),
+                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Delivery Rules / Remarks')),
               ],
             ),
           ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
+          FilledButton(
             onPressed: () async {
               if (nameCtrl.text.trim().isNotEmpty) {
                 Navigator.pop(ctx);
@@ -2776,36 +2467,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                 widget.onRefreshRequired();
               }
             },
-            child: Text(isNew ? 'Save to Sheet' : 'Update Sheet', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCustomerModalRow(String title, String val, {bool isB2B = false, bool isB2C = false}) {
-    Color valColor = Colors.white;
-    if (isB2B) valColor = const Color(0xFF38BDF8);
-    if (isB2C) valColor = const Color(0xFF94A3B8);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 150, child: Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              val,
-              softWrap: true,
-              style: TextStyle(
-                fontWeight: isB2B ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 13,
-                color: valColor,
-                height: 1.3,
-              ),
-            ),
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -2817,120 +2479,62 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     final filtered = widget.customers.where((c) {
       return c.name.toLowerCase().contains(_query.toLowerCase()) ||
           c.b2b.toLowerCase().contains(_query.toLowerCase()) ||
-          c.b2c.toLowerCase().contains(_query.toLowerCase()) ||
           c.contact.contains(_query);
     }).toList();
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('CUSTOMERS DIRECTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('TOTAL ${widget.customers.length} PARTIES', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const Spacer(),
-              SizedBox(
-                width: 300,
+              Expanded(
                 child: TextField(
                   onChanged: (v) => setState(() => _query = v),
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search, size: 20), hintText: 'Search customer name...'),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search_rounded),
+                    hintText: 'Search parties...',
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
-                icon: const Icon(Icons.person_add, color: Colors.white, size: 18),
-                label: const Text('Add Customer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 10),
+              FilledButton.icon(
+                icon: const Icon(Icons.person_add_rounded),
+                label: const Text('Party'),
                 onPressed: () => _openEditCustomerDialog(),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Expanded(
             child: ListView.separated(
               physics: const BouncingScrollPhysics(),
               itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+              separatorBuilder: (ctx, i) => const SizedBox(height: 8),
               itemBuilder: (ctx, i) {
                 final c = filtered[i];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showCustomerPreviewModal(c),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF131922),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF263342)),
+                return Card(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      child: Text('${c.slNo}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    title: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: const Color(0xFF18202B),
-                          child: Text('${c.slNo}', style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    c.name,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, letterSpacing: 0.3),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  _buildTagChip(c.billingTag),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  if (c.b2b.isNotEmpty) ...[
-                                    Text(
-                                      'B2B: ${c.b2b}',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF38BDF8),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                  ],
-                                  if (c.b2c.isNotEmpty)
-                                    Text(
-                                      'B2C: ${c.b2c}',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w400,
-                                        color: Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              if (c.contact.isNotEmpty || c.address.isNotEmpty)
-                                Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"} | 📍 ${c.address.isNotEmpty ? c.address : "-"}',
-                                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_note, color: Color(0xFF1E88E5), size: 24),
-                          tooltip: 'Edit Customer',
-                          onPressed: () => _openEditCustomerDialog(customer: c),
+                        Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        const SizedBox(width: 8),
+                        Chip(
+                          label: Text(c.billingTag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
                         ),
                       ],
+                    ),
+                    subtitle: Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"} • 📍 ${c.address.isNotEmpty ? c.address : "-"}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      onPressed: () => _openEditCustomerDialog(customer: c),
                     ),
                   ),
                 );
@@ -2942,6 +2546,8 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     );
   }
 }
+
+// ---------------- 4. INVOICE HISTORY VIEW ----------------
 
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -2967,484 +2573,105 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
-    final parts = summary.split(',');
-    for (var part in parts) {
-      if (part.trim().isNotEmpty) {
-        final raw = part.trim();
-        String name = raw;
-        String qty = '1';
-        String unit = 'KG';
-        String rate = '0.00';
-        String bags = '1';
-        double amount = 0.0;
-
-        try {
-          if (raw.contains('(') && raw.contains(')')) {
-            name = raw.substring(0, raw.indexOf('(')).trim();
-            final inside = raw.substring(raw.indexOf('(') + 1, raw.indexOf(')'));
-            final xParts = inside.split('x');
-            if (xParts.length == 2) {
-              final qParts = xParts[0].trim().split(' ');
-              qty = qParts[0];
-              if (qParts.length > 1) unit = qParts[1];
-              rate = xParts[1].trim();
-            }
-          }
-          if (raw.contains('[') && raw.contains(']')) {
-            bags = raw.substring(raw.indexOf('[') + 1, raw.indexOf(']')).replaceAll('B', '').trim();
-          }
-          amount = (double.tryParse(qty) ?? 1.0) * (double.tryParse(rate) ?? 0.0);
-        } catch (_) {}
-
-        rows.add({
-          "name": name,
-          "qty": qty,
-          "unit": unit,
-          "rate": rate,
-          "bags": bags,
-          "amount": amount.toStringAsFixed(2),
-        });
-      }
-    }
-    return rows;
-  }
-
-  void _showInvoiceDetails(BuildContext context, DCEstimate est) {
-    final parsedRows = _parseSummaryTable(est.itemSummary);
-    final isCancelled = est.status == 'CANCELLED';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Invoice #${est.slNo}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isCancelled ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    est.status,
-                    style: TextStyle(
-                      color: isCancelled ? Colors.redAccent : const Color(0xFF6FB1FC),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                if (!isCancelled) ...[
-                  const SizedBox(width: 10),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                    icon: const Icon(Icons.cancel, size: 16),
-                    label: const Text('Cancel Bill'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _confirmCancelDialog(context, est);
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 760,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                    Text('Date & Time: ${formatDisplayDateTime(est.date)}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0E141B),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF263342)),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF18202B),
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                        ),
-                        child: const Row(
-                          children: [
-                            SizedBox(width: 35, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            Expanded(flex: 5, child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 80, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 90, child: Text('Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 1, color: Color(0xFF263342)),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(12),
-                        itemCount: parsedRows.length,
-                        separatorBuilder: (c, i) => const Divider(height: 10, color: Color(0xFF1E2833)),
-                        itemBuilder: (c, i) {
-                          final r = parsedRows[i];
-                          return Row(
-                            children: [
-                              SizedBox(width: 35, child: Text('${i + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
-                              Expanded(flex: 5, child: Text(r['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-                              SizedBox(width: 80, child: Text('₹${r['rate']}', style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 60, child: Text(r['qty'], style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 60, child: Text(r['unit'], style: const TextStyle(fontSize: 13, color: Color(0xFF6FB1FC)))),
-                              SizedBox(width: 60, child: Text(r['bags'], style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 90, child: Text('₹${r['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF38BDF8)))),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Coolie Charges: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                    Text('SGST (2.5%): ₹${est.sgst} | CGST (2.5%): ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13)),
-                    Text('Round Off: ₹${est.roundOff}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('Grand Total: ₹${est.grandTotal}',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC))),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-            icon: const Icon(Icons.print, size: 16, color: Colors.white),
-            label: const Text('Print / View PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _printHistoryInvoice(context, est);
-            },
-          ),
-          if (!isCancelled)
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF1E88E5),
-                side: const BorderSide(color: Color(0xFF1E88E5)),
-              ),
-              icon: const Icon(Icons.edit_document, size: 16),
-              label: const Text('Edit Invoice'),
-              onPressed: () {
-                Navigator.pop(ctx);
-                widget.onEditInvoice(est);
-              },
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmCancelDialog(BuildContext context, DCEstimate est) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        title: const Text('Cancel Confirmation'),
-        content: Text('Are you sure you want to CANCEL Invoice #${est.slNo}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('NO (Back)'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await http.post(
-                Uri.parse(sheetApiUrl),
-                body: jsonEncode({
-                  "action": "CANCEL_ESTIMATE",
-                  "rowIndex": est.rowIndex,
-                }),
-              );
-              widget.onRefreshRequired();
-            },
-            child: const Text('YES (Cancel Bill)', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _printHistoryInvoice(BuildContext context, DCEstimate est) {
-    final matchedCustomer = widget.customers.firstWhere(
-      (c) => c.name.toLowerCase() == est.customer.toLowerCase(),
-      orElse: () => DCCustomer(rowIndex: 0, slNo: 0, name: est.customer, contact: '', address: '', b2c: '', b2b: '', remarks: ''),
-    );
-
-    final List<InvoiceRowItem> parsedItems = [];
-    final itemsParts = est.itemSummary.split(',');
-    for (var part in itemsParts) {
-      if (part.trim().isNotEmpty) {
-        parsedItems.add(
-          InvoiceRowItem(
-            item: DCItem(
-              rowIndex: 0,
-              no: 1,
-              name: part.trim(),
-              rateType: 'KG',
-              rate: '0',
-              qty: 1,
-              tallyName: '',
-              billedIn: '',
-              isTaxable: false,
-            ),
-            rate: double.tryParse(est.grandTotal) ?? 0,
-            qty: 1,
-            unit: 'KG',
-            bags: 1,
-          ),
-        );
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF131922),
-        insetPadding: const EdgeInsets.all(20),
-        child: SizedBox(
-          width: 920,
-          height: 720,
-          child: Column(
-            children: [
-              AppBar(
-                backgroundColor: const Color(0xFF0E141B),
-                title: Text('Invoice #${est.slNo} - Print View'),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: PdfPreview(
-                  build: (format) => generateTallyPdf(
-                    format: format,
-                    billNo: est.slNo.toString(),
-                    dateStr: formatDisplayDateTime(est.date),
-                    customer: matchedCustomer,
-                    items: parsedItems,
-                    subTotal: double.tryParse(est.grandTotal) ?? 0,
-                    coolie: double.tryParse(est.coolie) ?? 0,
-                    sgst: double.tryParse(est.sgst) ?? 0,
-                    cgst: double.tryParse(est.cgst) ?? 0,
-                    roundOff: double.tryParse(est.roundOff) ?? 0,
-                    grandTotal: double.tryParse(est.grandTotal) ?? 0,
-                  ),
-                  allowPrinting: true,
-                  allowSharing: true,
-                  canChangePageFormat: false,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
 
-    final sortedEstimates = List<DCEstimate>.from(widget.estimates.reversed);
-
-    final filtered = sortedEstimates.where((e) {
+    final sorted = List<DCEstimate>.from(widget.estimates.reversed);
+    final filtered = sorted.where((e) {
       final eDate = parseUniversalDate(e.date);
-      if (eDate == null) {
-        if (_selectedFilter == 'TODAY') return false;
-        return true;
-      }
+      if (eDate == null) return _selectedFilter != 'TODAY';
 
       final checkDay = DateTime(eDate.year, eDate.month, eDate.day);
-
-      if (_selectedFilter == 'TODAY') {
-        return checkDay.isAtSameMomentAs(today);
-      } else if (_selectedFilter == 'YESTERDAY') {
-        return checkDay.isAtSameMomentAs(yesterday);
-      } else if (_selectedFilter == 'CUSTOM' && _customDateRange != null) {
-        return (checkDay.isAfter(_customDateRange!.start.subtract(const Duration(days: 1))) &&
-            checkDay.isBefore(_customDateRange!.end.add(const Duration(days: 1))));
+      if (_selectedFilter == 'TODAY') return checkDay.isAtSameMomentAs(today);
+      if (_selectedFilter == 'YESTERDAY') return checkDay.isAtSameMomentAs(yesterday);
+      if (_selectedFilter == 'CUSTOM' && _customDateRange != null) {
+        return checkDay.isAfter(_customDateRange!.start.subtract(const Duration(days: 1))) &&
+            checkDay.isBefore(_customDateRange!.end.add(const Duration(days: 1)));
       }
       return true;
     }).toList();
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('INVOICE HISTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('${filtered.length} INVOICES (NEWEST FIRST)', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
-              const Spacer(),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'ALL', label: Text('All')),
-                  ButtonSegment(value: 'TODAY', label: Text('Today')),
-                  ButtonSegment(value: 'YESTERDAY', label: Text('Yesterday')),
-                  ButtonSegment(value: 'CUSTOM', label: Text('Custom Date')),
-                ],
-                selected: {_selectedFilter},
-                onSelectionChanged: (val) async {
-                  final chosen = val.first;
-                  if (chosen == 'CUSTOM') {
-                    final picked = await showDateRangePicker(
-                      context: context,
-                      firstDate: DateTime(2024),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _customDateRange = picked;
-                        _selectedFilter = 'CUSTOM';
-                      });
-                    }
-                  } else {
-                    setState(() {
-                      _selectedFilter = chosen;
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: filtered.isEmpty
-                ? const Center(child: Text('No invoice history logged for this period.', style: TextStyle(color: Color(0xFF94A3B8))))
-                : ListView.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, idx) {
-                      final est = filtered[idx];
-                      final isCancelled = est.status == 'CANCELLED';
-
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () => _showInvoiceDetails(context, est),
-                        child: Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF131922),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: isCancelled ? Colors.redAccent.withOpacity(0.4) : const Color(0xFF263342)),
-                          ),
-                          child: Row(
-                            children: [
-                              Text('#${est.slNo}',
-                                  style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          est.customer,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: Colors.white,
-                                            decoration: isCancelled ? TextDecoration.lineThrough : null,
-                                          ),
-                                        ),
-                                        if (isCancelled) ...[
-                                          const SizedBox(width: 10),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red.withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: const Text('CANCELLED',
-                                                style: TextStyle(
-                                                    color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-                                          ),
-                                        ],
-                                        const Spacer(),
-                                        Text(
-                                          formatDisplayDateTime(est.date),
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(est.itemSummary,
-                                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Text('₹${est.grandTotal}',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: isCancelled ? Colors.grey : const Color(0xFF6FB1FC))),
-                            ],
-                          ),
-                        ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'ALL', label: Text('All')),
+                    ButtonSegment(value: 'TODAY', label: Text('Today')),
+                    ButtonSegment(value: 'YESTERDAY', label: Text('Yesterday')),
+                    ButtonSegment(value: 'CUSTOM', label: Text('Custom')),
+                  ],
+                  selected: {_selectedFilter},
+                  onSelectionChanged: (val) async {
+                    if (val.first == 'CUSTOM') {
+                      final picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime(2024),
+                        lastDate: DateTime(2030),
                       );
-                    },
+                      if (picked != null) {
+                        setState(() {
+                          _customDateRange = picked;
+                          _selectedFilter = 'CUSTOM';
+                        });
+                      }
+                    } else {
+                      setState(() => _selectedFilter = val.first);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: ListView.separated(
+              physics: const BouncingScrollPhysics(),
+              itemCount: filtered.length,
+              separatorBuilder: (ctx, i) => const SizedBox(height: 8),
+              itemBuilder: (ctx, idx) {
+                final est = filtered[idx];
+                final isCancelled = est.status == 'CANCELLED';
+
+                return Card(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    title: Row(
+                      children: [
+                        Text('#${est.slNo}  ${est.customer}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        const Spacer(),
+                        Text('₹${est.grandTotal}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isCancelled ? Colors.grey : const Color(0xFF1A73E8))),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(formatDisplayDateTime(est.date), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text(est.itemSummary, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    onTap: () => widget.onEditInvoice(est),
                   ),
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+// ---------------- 5. PACKING SLIP VIEW ----------------
 
 class LoadingSlipView extends StatefulWidget {
   final List<LoadingEntry> loadingSlip;
@@ -3473,11 +2700,10 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF131922),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Add to Packing Slip'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Add Entry'),
           content: SizedBox(
-            width: 500,
+            width: 480,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -3485,31 +2711,23 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                   DropdownButtonFormField<String>(
                     value: selectedCust,
                     isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Party / Customer Name'),
+                    decoration: const InputDecoration(labelText: 'Party Name'),
                     items: widget.customers.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))).toList(),
                     onChanged: (v) => setDialogState(() => selectedCust = v),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   TextField(controller: placeCtrl, decoration: const InputDecoration(labelText: 'Place')),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: summaryCtrl,
-                    decoration: const InputDecoration(labelText: 'Item Summary'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: bagsCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Total Nos of Bags'),
-                  ),
+                  const SizedBox(height: 10),
+                  TextField(controller: summaryCtrl, decoration: const InputDecoration(labelText: 'Summary')),
+                  const SizedBox(height: 10),
+                  TextField(controller: bagsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Bags')),
                 ],
               ),
             ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
+            FilledButton(
               onPressed: () async {
                 if (selectedCust != null && bagsCtrl.text.trim().isNotEmpty) {
                   final party = selectedCust!;
@@ -3539,28 +2757,11 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                   );
                 }
               },
-              child: const Text('Save to Sheet', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('Save'),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  void _copySlipToClipboard() {
-    final buffer = StringBuffer();
-    buffer.writeln("--- SP MULTIBILL PACKING SLIP ---");
-    int total = 0;
-    for (int i = 0; i < widget.loadingSlip.length; i++) {
-      final e = widget.loadingSlip[i];
-      total += e.bags;
-      buffer.writeln("${i + 1}. ${e.customerName} (${e.place}) : ${e.summary} - ${e.bags} Bags");
-    }
-    buffer.writeln("TOTAL BAGS: $total");
-
-    Clipboard.setData(ClipboardData(text: buffer.toString()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Packing slip copied to clipboard!')),
     );
   }
 
@@ -3569,108 +2770,50 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
     int totalBags = widget.loadingSlip.fold(0, (sum, entry) => sum + entry.bags);
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('PACKING / LOADING SLIP', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('LINKED DIRECTLY TO GOOGLE SHEET', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
-              ),
+              Text('Total: $totalBags Bags', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const Spacer(),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF18202B)),
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text('Copy Slip'),
-                onPressed: widget.loadingSlip.isEmpty ? null : _copySlipToClipboard,
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text('Add Entry', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              FilledButton.icon(
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Entry'),
                 onPressed: _openAddPackingSlipDialog,
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Expanded(
-            child: widget.loadingSlip.isEmpty
-                ? const Center(child: Text('No entries added yet. Tap "Add Entry" to create a slip.', style: TextStyle(color: Color(0xFF94A3B8))))
-                : ListView.separated(
-                    itemCount: widget.loadingSlip.length,
-                    separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-                    itemBuilder: (ctx, idx) {
-                      final entry = widget.loadingSlip[idx];
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF131922),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF263342)),
+            child: ListView.separated(
+              physics: const BouncingScrollPhysics(),
+              itemCount: widget.loadingSlip.length,
+              separatorBuilder: (ctx, i) => const SizedBox(height: 8),
+              itemBuilder: (ctx, idx) {
+                final entry = widget.loadingSlip[idx];
+                return Card(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      child: Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    title: Text(entry.customerName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('${entry.place} • ${entry.summary}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFFF29900))),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          onPressed: () => setState(() => widget.loadingSlip.removeAt(idx)),
                         ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: const Color(0xFF18202B),
-                              child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8))),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(entry.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                      if (entry.place.isNotEmpty) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: const Color(0xFF18202B), borderRadius: BorderRadius.circular(4)),
-                                          child: Text(entry.place, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(entry.summary, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                            Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF6FB1FC))),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Color(0xFF64748B)),
-                              onPressed: () {
-                                setState(() {
-                                  widget.loadingSlip.removeAt(idx);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF131922),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF263342)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('TOTAL DISPATCH LOAD:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('$totalBags BAGS', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC))),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -3679,7 +2822,9 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
   }
 }
 
-class EnterpriseReportsView extends StatefulWidget {
+// ---------------- 6. ENTERPRISE REPORTS VIEW ----------------
+
+class EnterpriseReportsView extends StatelessWidget {
   final List<DCEstimate> estimates;
   final List<DCItem> items;
   final List<DCCustomer> customers;
@@ -3696,744 +2841,54 @@ class EnterpriseReportsView extends StatefulWidget {
   });
 
   @override
-  State<EnterpriseReportsView> createState() => _EnterpriseReportsViewState();
-}
+  Widget build(BuildContext context) {
+    final active = estimates.where((e) => e.status != 'CANCELLED').toList();
+    final double totalRevenue = active.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
+    final double totalCoolie = active.fold(0.0, (sum, e) => sum + (double.tryParse(e.coolie) ?? 0.0));
 
-class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String _reportFilter = 'ALL';
-  DateTimeRange? _reportDateRange;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> parsedRows = [];
-    final parts = summary.split(',');
-    for (var part in parts) {
-      if (part.trim().isNotEmpty) {
-        final raw = part.trim();
-        String name = raw;
-        String qty = '1';
-        String unit = 'KG';
-        String rate = '0.00';
-        String bags = '1';
-        double amount = 0.0;
-
-        try {
-          if (raw.contains('(') && raw.contains(')')) {
-            name = raw.substring(0, raw.indexOf('(')).trim();
-            final inside = raw.substring(raw.indexOf('(') + 1, raw.indexOf(')'));
-            final xParts = inside.split('x');
-            if (xParts.length == 2) {
-              final qParts = xParts[0].trim().split(' ');
-              qty = qParts[0];
-              if (qParts.length > 1) unit = qParts[1];
-              rate = xParts[1].trim();
-            }
-          }
-          if (raw.contains('[') && raw.contains(']')) {
-            bags = raw.substring(raw.indexOf('[') + 1, raw.indexOf(']')).replaceAll('B', '').trim();
-          }
-          amount = (double.tryParse(qty) ?? 1.0) * (double.tryParse(rate) ?? 0.0);
-        } catch (_) {}
-
-        parsedRows.add({
-          "name": name,
-          "qty": qty,
-          "unit": unit,
-          "rate": rate,
-          "bags": bags,
-          "amount": amount.toStringAsFixed(2),
-        });
-      }
-    }
-    return parsedRows;
-  }
-
-  void _showInvoiceDetails(BuildContext context, DCEstimate est) {
-    final parsedRows = _parseSummaryTable(est.itemSummary);
-    final isCancelled = est.status == 'CANCELLED';
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Invoice #${est.slNo}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: isCancelled ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                est.status,
-                style: TextStyle(
-                  color: isCancelled ? Colors.redAccent : const Color(0xFF6FB1FC),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 760,
-          child: SingleChildScrollView(
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text('Total Invoiced Revenue', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                Text('₹${totalRevenue.toStringAsFixed(2)}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1A73E8))),
+                const SizedBox(height: 12),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8))),
-                    Text('Date & Time: ${formatDisplayDateTime(est.date)}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0E141B),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF263342)),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF18202B),
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                        ),
-                        child: const Row(
-                          children: [
-                            SizedBox(width: 35, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            Expanded(flex: 5, child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 80, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 60, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                            SizedBox(width: 90, child: Text('Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF94A3B8)))),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 1, color: Color(0xFF263342)),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(12),
-                        itemCount: parsedRows.length,
-                        separatorBuilder: (c, i) => const Divider(height: 10, color: Color(0xFF1E2833)),
-                        itemBuilder: (c, i) {
-                          final r = parsedRows[i];
-                          return Row(
-                            children: [
-                              SizedBox(width: 35, child: Text('${i + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
-                              Expanded(flex: 5, child: Text(r['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-                              SizedBox(width: 80, child: Text('₹${r['rate']}', style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 60, child: Text(r['qty'], style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 60, child: Text(r['unit'], style: const TextStyle(fontSize: 13, color: Color(0xFF6FB1FC)))),
-                              SizedBox(width: 60, child: Text(r['bags'], style: const TextStyle(fontSize: 13))),
-                              SizedBox(width: 90, child: Text('₹${r['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF38BDF8)))),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Coolie Charges: ₹${est.coolie}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                    Text('SGST (2.5%): ₹${est.sgst} | CGST (2.5%): ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 13)),
-                    Text('Round Off: ₹${est.roundOff}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('Grand Total: ₹${est.grandTotal}',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC))),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0052D4)),
-            icon: const Icon(Icons.print, size: 16, color: Colors.white),
-            label: const Text('Print / View PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _printReportInvoice(context, est);
-            },
-          ),
-          if (!isCancelled)
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF1E88E5),
-                side: const BorderSide(color: Color(0xFF1E88E5)),
-              ),
-              icon: const Icon(Icons.edit_document, size: 16),
-              label: const Text('Edit Invoice'),
-              onPressed: () {
-                Navigator.pop(ctx);
-                widget.onEditInvoice(est);
-              },
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _printReportInvoice(BuildContext context, DCEstimate est) {
-    final matchedCustomer = widget.customers.firstWhere(
-      (c) => c.name.toLowerCase() == est.customer.toLowerCase(),
-      orElse: () => DCCustomer(rowIndex: 0, slNo: 0, name: est.customer, contact: '', address: '', b2c: '', b2b: '', remarks: ''),
-    );
-
-    final List<InvoiceRowItem> parsedItems = [];
-    final itemsParts = est.itemSummary.split(',');
-    for (var part in itemsParts) {
-      if (part.trim().isNotEmpty) {
-        parsedItems.add(
-          InvoiceRowItem(
-            item: DCItem(
-              rowIndex: 0,
-              no: 1,
-              name: part.trim(),
-              rateType: 'KG',
-              rate: '0',
-              qty: 1,
-              tallyName: '',
-              billedIn: '',
-              isTaxable: false,
-            ),
-            rate: double.tryParse(est.grandTotal) ?? 0,
-            qty: 1,
-            unit: 'KG',
-            bags: 1,
-          ),
-        );
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF131922),
-        insetPadding: const EdgeInsets.all(20),
-        child: SizedBox(
-          width: 920,
-          height: 720,
-          child: Column(
-            children: [
-              AppBar(
-                backgroundColor: const Color(0xFF0E141B),
-                title: Text('Invoice #${est.slNo} - Print View'),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: PdfPreview(
-                  build: (format) => generateTallyPdf(
-                    format: format,
-                    billNo: est.slNo.toString(),
-                    dateStr: formatDisplayDateTime(est.date),
-                    customer: matchedCustomer,
-                    items: parsedItems,
-                    subTotal: double.tryParse(est.grandTotal) ?? 0,
-                    coolie: double.tryParse(est.coolie) ?? 0,
-                    sgst: double.tryParse(est.sgst) ?? 0,
-                    cgst: double.tryParse(est.cgst) ?? 0,
-                    roundOff: double.tryParse(est.roundOff) ?? 0,
-                    grandTotal: double.tryParse(est.grandTotal) ?? 0,
-                  ),
-                  allowPrinting: true,
-                  allowSharing: true,
-                  canChangePageFormat: false,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openDrilldownHistoryModal(String title, List<DCEstimate> bills) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131922),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.receipt_long, color: Color(0xFF38BDF8)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
-          ],
-        ),
-        content: SizedBox(
-          width: 680,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Total Invoices: ${bills.length} (Click invoice to view complete details)',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-              const SizedBox(height: 12),
-              Container(
-                constraints: const BoxConstraints(maxHeight: 380),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0E141B),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF263342)),
-                ),
-                child: bills.isEmpty
-                    ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('No billed records found.')))
-                    : ListView.separated(
-                        itemCount: bills.length,
-                        separatorBuilder: (c, i) => const Divider(height: 1, color: Color(0xFF1E2833)),
-                        itemBuilder: (c, i) {
-                          final b = bills[i];
-                          return ListTile(
-                            hoverColor: const Color(0xFF1E88E5).withOpacity(0.15),
-                            title: Row(
-                              children: [
-                                Text('#${b.slNo} • ${b.customer}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                const Spacer(),
-                                Text('₹${b.grandTotal}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC), fontSize: 15)),
-                              ],
-                            ),
-                            subtitle: Text("${formatDisplayDateTime(b.date)} | ${b.itemSummary}", style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              _showInvoiceDetails(context, b);
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8)))),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _exportReportPdf(List<DCEstimate> activeEstimates, double totalRevenue, double totalCoolie) async {
-    final pdf = pw.Document();
-
-    Map<String, int> itemCounts = {};
-    for (var est in activeEstimates) {
-      for (var item in widget.items) {
-        if (est.itemSummary.toLowerCase().contains(item.name.toLowerCase())) {
-          itemCounts[item.name] = (itemCounts[item.name] ?? 0) + 1;
-        }
-      }
-    }
-    final sortedItems = itemCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-
-    Map<String, double> custRevenue = {};
-    for (var est in activeEstimates) {
-      custRevenue[est.customer] = (custRevenue[est.customer] ?? 0.0) + (double.tryParse(est.grandTotal) ?? 0.0);
-    }
-    final sortedCust = custRevenue.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
-        build: (pw.Context ctx) => [
-          pw.Header(
-            level: 0,
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(CompanyConfig.name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("BUSINESS PERFORMANCE & SALES REPORT", style: const pw.TextStyle(fontSize: 11)),
-                    pw.Text("Generated on: ${getCurrentFormattedDateTime()}", style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
-                  ],
-                ),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.end,
-                  children: [
-                    pw.Text("Filter: $_reportFilter", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                    pw.Text("Total Billed Value: Rs ${totalRevenue.toStringAsFixed(2)}", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                    Text('Invoices: ${active.length}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(width: 20),
+                    Text('Coolie: ₹${totalCoolie.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   ],
                 ),
               ],
             ),
           ),
-          pw.SizedBox(height: 12),
-          pw.Text("TOP CUSTOMER REVENUE LEDGER", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 6),
-          pw.TableHelper.fromTextArray(
-            headers: ['Sl', 'Customer / Party Name', 'Invoiced Value (Rs)'],
-            data: List<List<dynamic>>.generate(sortedCust.length, (idx) {
-              final c = sortedCust[idx];
-              return [idx + 1, c.key, c.value.toStringAsFixed(2)];
-            }),
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-            cellStyle: const pw.TextStyle(fontSize: 9),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
-          ),
-          pw.SizedBox(height: 16),
-          pw.Text("ITEM DISTRIBUTION SUMMARY", style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 6),
-          pw.TableHelper.fromTextArray(
-            headers: ['Sl', 'Item Description', 'Billed Frequency'],
-            data: List<List<dynamic>>.generate(sortedItems.length, (idx) {
-              final itm = sortedItems[idx];
-              return [idx + 1, itm.key, "${itm.value} Invoices"];
-            }),
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-            cellStyle: const pw.TextStyle(fontSize: 9),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
-          ),
-        ],
-      ),
-    );
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF131922),
-        insetPadding: const EdgeInsets.all(20),
-        child: SizedBox(
-          width: 920,
-          height: 720,
-          child: Column(
-            children: [
-              AppBar(
-                backgroundColor: const Color(0xFF0E141B),
-                title: const Text('Enterprise Report PDF Export'),
-                actions: [
-                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-                ],
-              ),
-              Expanded(
-                child: PdfPreview(
-                  build: (format) => pdf.save(),
-                  allowPrinting: true,
-                  allowSharing: true,
-                  canChangePageFormat: false,
-                ),
-              ),
-            ],
-          ),
         ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-
-    final activeEstimates = widget.estimates.where((e) {
-      if (e.status == 'CANCELLED') return false;
-      final eDate = parseUniversalDate(e.date);
-      if (eDate == null) {
-        if (_reportFilter == 'TODAY') return false;
-        return true;
-      }
-
-      final checkDay = DateTime(eDate.year, eDate.month, eDate.day);
-      if (_reportFilter == 'TODAY') {
-        return checkDay.isAtSameMomentAs(today);
-      } else if (_reportFilter == 'YESTERDAY') {
-        return checkDay.isAtSameMomentAs(yesterday);
-      } else if (_reportFilter == 'CUSTOM' && _reportDateRange != null) {
-        return (checkDay.isAfter(_reportDateRange!.start.subtract(const Duration(days: 1))) &&
-            checkDay.isBefore(_reportDateRange!.end.add(const Duration(days: 1))));
-      }
-      return true;
-    }).toList();
-
-    final double totalRevenue = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
-    final double totalCoolie = activeEstimates.fold(0.0, (sum, e) => sum + (double.tryParse(e.coolie) ?? 0.0));
-
-    Map<String, int> itemOrderCount = {};
-    for (var est in activeEstimates) {
-      for (var item in widget.items) {
-        if (est.itemSummary.toLowerCase().contains(item.name.toLowerCase())) {
-          itemOrderCount[item.name] = (itemOrderCount[item.name] ?? 0) + 1;
-        }
-      }
-    }
-    final sortedItemSales = itemOrderCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-
-    Map<String, double> customerTotalSpend = {};
-    Map<String, int> customerBillCount = {};
-    for (var est in activeEstimates) {
-      customerTotalSpend[est.customer] = (customerTotalSpend[est.customer] ?? 0.0) + (double.tryParse(est.grandTotal) ?? 0.0);
-      customerBillCount[est.customer] = (customerBillCount[est.customer] ?? 0) + 1;
-    }
-    final sortedCustSales = customerTotalSpend.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('ENTERPRISE BUSINESS REPORTS', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                  Text('${activeEstimates.length} INVOICES ANALYSED • CLICK ROWS TO VIEW INVOICES', style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                ],
+        const SizedBox(height: 16),
+        const Text('Recent Invoices', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 8),
+        ...active.take(10).map((est) => Card(
+              child: ListTile(
+                title: Text(est.customer, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(formatDisplayDateTime(est.date), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                trailing: Text('₹${est.grandTotal}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF188038))),
+                onTap: () => onEditInvoice(est),
               ),
-              const Spacer(),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'ALL', label: Text('All')),
-                  ButtonSegment(value: 'TODAY', label: Text('Today')),
-                  ButtonSegment(value: 'YESTERDAY', label: Text('Yesterday')),
-                  ButtonSegment(value: 'CUSTOM', label: Text('Custom Date')),
-                ],
-                selected: {_reportFilter},
-                onSelectionChanged: (val) async {
-                  final chosen = val.first;
-                  if (chosen == 'CUSTOM') {
-                    final picked = await showDateRangePicker(
-                      context: context,
-                      firstDate: DateTime(2024),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        _reportDateRange = picked;
-                        _reportFilter = 'CUSTOM';
-                      });
-                    }
-                  } else {
-                    setState(() {
-                      _reportFilter = chosen;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0052D4),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 18),
-                label: const Text('Export PDF Report', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                onPressed: () => _exportReportPdf(activeEstimates, totalRevenue, totalCoolie),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              _buildKpiCard('Gross Invoiced Value', '₹${totalRevenue.toStringAsFixed(2)}', Icons.payments_outlined, const Color(0xFF0284C7)),
-              const SizedBox(width: 14),
-              _buildKpiCard('Total Invoices', '${activeEstimates.length}', Icons.receipt_long_outlined, const Color(0xFF10B981)),
-              const SizedBox(width: 14),
-              _buildKpiCard('Cumulative Coolie', '₹${totalCoolie.toStringAsFixed(2)}', Icons.local_shipping_outlined, const Color(0xFFF59E0B)),
-              const SizedBox(width: 14),
-              _buildKpiCard('Active Parties', '${sortedCustSales.length}', Icons.groups_outlined, const Color(0xFF8B5CF6)),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFF131922),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF263342)),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: const Color(0xFF1E88E5),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              labelColor: Colors.white,
-              unselectedLabelColor: const Color(0xFF94A3B8),
-              tabs: const [
-                Tab(text: 'Item-wise Sales Breakdown (Click to View Bills)'),
-                Tab(text: 'Customer Revenue Ledger (Click to View Bills)'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF131922),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF263342)),
-                  ),
-                  child: sortedItemSales.isEmpty
-                      ? const Center(child: Text('No item sales logged for this period.', style: TextStyle(color: Color(0xFF94A3B8))))
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: sortedItemSales.length,
-                          separatorBuilder: (c, i) => const Divider(height: 14, color: Color(0xFF1E2833)),
-                          itemBuilder: (ctx, idx) {
-                            final entry = sortedItemSales[idx];
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              onTap: () {
-                                final matchedBills = activeEstimates.where((e) {
-                                  return e.itemSummary.toLowerCase().contains(entry.key.toLowerCase());
-                                }).toList();
-                                _openDrilldownHistoryModal('Item Invoices: ${entry.key}', matchedBills);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                child: Row(
-                                  children: [
-                                    SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold))),
-                                    Expanded(
-                                      flex: 4,
-                                      child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF18202B),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: const Color(0xFF263342)),
-                                      ),
-                                      child: Text(
-                                        'Billed in ${entry.value} Invoices >',
-                                        style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 13),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF131922),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFF263342)),
-                  ),
-                  child: sortedCustSales.isEmpty
-                      ? const Center(child: Text('No customer invoices logged for this period.', style: TextStyle(color: Color(0xFF94A3B8))))
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: sortedCustSales.length,
-                          separatorBuilder: (c, i) => const Divider(height: 14, color: Color(0xFF1E2833)),
-                          itemBuilder: (ctx, idx) {
-                            final entry = sortedCustSales[idx];
-                            final bills = customerBillCount[entry.key] ?? 0;
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(8),
-                              onTap: () {
-                                final matchedBills = activeEstimates.where((e) {
-                                  return e.customer.toLowerCase().trim() == entry.key.toLowerCase().trim();
-                                }).toList();
-                                _openDrilldownHistoryModal('Customer Invoices: ${entry.key}', matchedBills);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                child: Row(
-                                  children: [
-                                    SizedBox(width: 32, child: Text('${idx + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.bold))),
-                                    Expanded(
-                                      flex: 4,
-                                      child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                    ),
-                                    Text('$bills Invoices', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-                                    const SizedBox(width: 30),
-                                    Text(
-                                      '₹${entry.value.toStringAsFixed(2)}',
-                                      style: const TextStyle(color: Color(0xFF6FB1FC), fontWeight: FontWeight.bold, fontSize: 16),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF64748B)),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKpiCard(String title, String value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: const Color(0xFF131922),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF263342)),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: color.withOpacity(0.15),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
-                  const SizedBox(height: 4),
-                  Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+            )),
+      ],
     );
   }
 }
+
+// ---------------- 7. SETTINGS VIEW ----------------
 
 class SettingsDesktopView extends StatelessWidget {
   final VoidCallback onReloadSheet;
@@ -4447,168 +2902,51 @@ class SettingsDesktopView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('SYSTEM SETTINGS & SUPPORT', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const Text('Configure SP MultiBill ERP & Technical Support', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 24),
-          Expanded(
-            child: ListView(
-              children: [
-                _buildSectionHeader('Company & Header Setup (Google Sheets Linked)'),
-                _buildCard(
-                  title: 'Firm Details & GST Settings',
-                  subtitle: '${CompanyConfig.name} • ${CompanyConfig.gstin}',
-                  icon: Icons.storefront,
-                  actionText: 'Configure Header',
-                  onTap: onOpenProfile,
-                ),
-                const SizedBox(height: 20),
-                _buildSectionHeader('Appearance'),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    child: ValueListenableBuilder<ThemeMode>(
-                      valueListenable: spAppThemeMode,
-                      builder: (context, mode, _) => SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Dark Theme'),
-                        subtitle: Text(mode == ThemeMode.dark
-                            ? 'Dark Material 3 appearance is enabled'
-                            : 'Light Material 3 appearance is enabled'),
-                        secondary: Icon(mode == ThemeMode.dark
-                            ? Icons.dark_mode_outlined
-                            : Icons.light_mode_outlined),
-                        value: mode == ThemeMode.dark,
-                        onChanged: (enabled) {
-                          spAppThemeMode.value =
-                              enabled ? ThemeMode.dark : ThemeMode.light;
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildSectionHeader('Backend & Sheet Sync'),
-                _buildCard(
-                  title: 'Google Apps Script Webhook',
-                  subtitle: sheetApiUrl,
-                  icon: Icons.sync_alt,
-                  actionText: 'Force Reload',
-                  onTap: () {
-                    onReloadSheet();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Syncing data with Google Sheets...')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-                _buildSectionHeader('Developer & Technical Support'),
-                Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF131922),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF263342)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: Color(0xFF0052D4),
-                            child: Icon(Icons.support_agent, color: Colors.white, size: 24),
-                          ),
-                          SizedBox(width: 14),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('SP Tech Solutions', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                              Text('Enterprise Software Systems & Custom ERP Solutions', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Divider(color: Color(0xFF263342)),
-                      const SizedBox(height: 10),
-                      _supportRow('Developer Email', 'sudheeshpunnikrishnan@gmail.com'),
-                      _supportRow('Application Suite', 'SP MultiBill ERP (Desktop 64-bit Engine)'),
-                      _supportRow('Release Version', 'v3.7.0 (Windows Native Build)'),
-                      _supportRow('Target Framework', 'Flutter 3.x (Runner x64)'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.business_rounded, color: Color(0xFF1A73E8)),
+            title: const Text('Company & GST Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('${CompanyConfig.name} • ${CompanyConfig.gstin}'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: onOpenProfile,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF6FB1FC))),
-    );
-  }
-
-  Widget _buildCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required String actionText,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF131922),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF263342)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFF1E88E5), size: 28),
-          const SizedBox(width: 16),
-          Expanded(
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.sync_rounded, color: Color(0xFF188038)),
+            title: const Text('Force Sheet Sync', style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: const Text('Reload data from Google Sheets'),
+            onTap: () {
+              onReloadSheet();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Syncing data with Google Sheets...')),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Text('About', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text('ANDROCODE SOFTWARE SOLUTIONS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 const SizedBox(height: 4),
-                Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)), overflow: TextOverflow.ellipsis),
+                const Text('MULTIBILL ERP Suite', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const Divider(height: 20),
+                const Text('Target: Flutter M3 Desktop / Mobile Responsive', style: TextStyle(fontSize: 12)),
               ],
             ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF18202B),
-              side: const BorderSide(color: Color(0xFF263342)),
-            ),
-            onPressed: onTap,
-            child: Text(actionText, style: const TextStyle(color: Colors.white, fontSize: 12)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _supportRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          SizedBox(width: 160, child: Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13))),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFF8FAFC)))),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
