@@ -10,7 +10,129 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 void main() {
-  runApp(const MultiBillApp());
+  runApp(const BrandBootApp());
+}
+
+class BrandBootApp extends StatefulWidget {
+  const BrandBootApp({super.key});
+
+  @override
+  State<BrandBootApp> createState() => _BrandBootAppState();
+}
+
+class _BrandBootAppState extends State<BrandBootApp> {
+  bool _showBoot = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _showBoot = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _showBoot ? const BrandBootScreen() : const MultiBillApp();
+  }
+}
+
+class BrandBootScreen extends StatelessWidget {
+  const BrandBootScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const blue = Color(0xFF1769E0);
+    const navy = Color(0xFF102A56);
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xFFF7F9FC),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 112,
+                  height: 112,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [blue, navy],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: blue.withOpacity(0.22),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'AC',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 42,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 26),
+                const Text(
+                  'MULTIBILLER ERP SUITE',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: navy,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'BY ANDROCODE SOFTWARE SOLUTIONS',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF53657D),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Every Bill. Every Business. One Smart Suite.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF65748B),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 34),
+                const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: blue,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 String sheetApiUrl =
