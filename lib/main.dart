@@ -377,7 +377,7 @@ Future<Uint8List> generateTallyPdf({
                         padding: const pw.EdgeInsets.all(8),
                         decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1))),
                         child: pw.Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
                           children: [
                             pw.Text("Buyer / Consignee:", style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
                             pw.Text(customer.name, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
@@ -393,7 +393,7 @@ Future<Uint8List> generateTallyPdf({
                       child: pw.Container(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
                           children: [
                             pw.Text("Invoice No: $billNo", style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                             pw.SizedBox(height: 4),
