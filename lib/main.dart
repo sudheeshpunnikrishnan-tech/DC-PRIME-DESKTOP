@@ -10,129 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 void main() {
-  runApp(const BrandBootApp());
-}
-
-class BrandBootApp extends StatefulWidget {
-  const BrandBootApp({super.key});
-
-  @override
-  State<BrandBootApp> createState() => _BrandBootAppState();
-}
-
-class _BrandBootAppState extends State<BrandBootApp> {
-  bool _showBoot = true;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      setState(() => _showBoot = false);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _showBoot ? const BrandBootScreen() : const MultiBillApp();
-  }
-}
-
-class BrandBootScreen extends StatelessWidget {
-  const BrandBootScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    const blue = Color(0xFF1769E0);
-    const navy = Color(0xFF102A56);
-
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: const Color(0xFFF7F9FC),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 112,
-                  height: 112,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [blue, navy],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: blue.withOpacity(0.22),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'AC',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 42,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -2,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 26),
-                const Text(
-                  'MULTIBILLER ERP SUITE',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: navy,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'BY ANDROCODE SOFTWARE SOLUTIONS',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF53657D),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Every Bill. Every Business. One Smart Suite.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF65748B),
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 34),
-                const SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: blue,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  runApp(const MultiBillApp());
 }
 
 String sheetApiUrl =
@@ -730,7 +608,7 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
-  int _navIndex = -1;
+  int _navIndex = 0; // 0: Home, 1: Billing, 2: Price List, 3: Customers, 4: Packing Slip, 5: Invoices, 6: Reports, 7: Settings
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
@@ -792,7 +670,7 @@ class _MainDashboardState extends State<MainDashboard> {
   void _onLoadInvoiceToEdit(DCEstimate est) {
     setState(() {
       _invoiceToEdit = est;
-      _navIndex = 0;
+      _navIndex = 1; // Switches straight to Billing screen
     });
   }
 
@@ -957,61 +835,63 @@ class _MainDashboardState extends State<MainDashboard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: scheme.outlineVariant.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 17,
-                  backgroundColor: scheme.primaryContainer,
-                  child: Text(
-                    'AC',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: scheme.onPrimaryContainer),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: scheme.outlineVariant.withOpacity(0.25)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.search_rounded, size: 20, color: Colors.grey),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search menu (Billing, Items, Customers, Reports)...',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    contentPadding: EdgeInsets.zero,
+                    isDense: true,
                   ),
+                  onSubmitted: (value) {
+                    final q = value.toLowerCase();
+                    if (q.contains('bill') || q.contains('sale')) {
+                      setState(() => _navIndex = 1);
+                    } else if (q.contains('item') || q.contains('price')) {
+                      setState(() => _navIndex = 2);
+                    } else if (q.contains('cust') || q.contains('part')) {
+                      setState(() => _navIndex = 3);
+                    } else if (q.contains('pack') || q.contains('load')) {
+                      setState(() => _navIndex = 4);
+                    } else if (q.contains('invo') || q.contains('hist')) {
+                      setState(() => _navIndex = 5);
+                    } else if (q.contains('rep')) {
+                      setState(() => _navIndex = 6);
+                    } else if (q.contains('set') || q.contains('prof')) {
+                      setState(() => _navIndex = 7);
+                    }
+                  },
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Search menu (Billing, Items, Customers, Reports)...',
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      filled: false,
-                      contentPadding: EdgeInsets.zero,
-                      isDense: true,
-                    ),
-                    onSubmitted: (value) {
-                      final q = value.toLowerCase();
-                      final i = ['billing', 'price', 'customer', 'packing', 'invoice', 'report', 'setting']
-                          .indexWhere((s) => s.startsWith(q) || q.startsWith(s));
-                      if (i >= 0) setState(() => _navIndex = i);
-                    },
-                  ),
+              ),
+              IconButton(
+                icon: Icon(
+                  appThemeMode.value == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                  size: 20,
                 ),
-                IconButton(
-                  icon: Icon(
-                    appThemeMode.value == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                    size: 20,
-                  ),
-                  tooltip: 'Toggle Theme',
-                  onPressed: () => appThemeMode.value =
-                      appThemeMode.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.sync_rounded, size: 20),
-                  tooltip: 'Sync Google Sheet',
-                  onPressed: () => _fetchData(silent: true),
-                ),
-              ],
-            ),
+                tooltip: 'Toggle Theme',
+                onPressed: () => appThemeMode.value =
+                    appThemeMode.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+              ),
+              IconButton(
+                icon: const Icon(Icons.sync_rounded, size: 20),
+                tooltip: 'Sync Google Sheet',
+                onPressed: () => _fetchData(silent: true),
+              ),
+            ],
           ),
         ),
       ),
@@ -1023,184 +903,179 @@ class _MainDashboardState extends State<MainDashboard> {
 
     final categories = <String, List<({String title, IconData icon, int index, Color tint})>>{
       'MASTERS': [
-        (title: 'Customers Directory', icon: Icons.people_alt_rounded, index: 2, tint: const Color(0xFF1A73E8)),
-        (title: 'Items / Price List', icon: Icons.inventory_2_rounded, index: 1, tint: const Color(0xFF188038)),
-        (title: 'Company Setup & Header', icon: Icons.business_rounded, index: 6, tint: const Color(0xFF9334E6)),
+        (title: 'Customers Directory', icon: Icons.people_alt_rounded, index: 3, tint: const Color(0xFF1A73E8)),
+        (title: 'Items / Price List', icon: Icons.inventory_2_rounded, index: 2, tint: const Color(0xFF188038)),
+        (title: 'Company Setup & Header', icon: Icons.business_rounded, index: 7, tint: const Color(0xFF9334E6)),
       ],
       'TRANSACTIONS': [
-        (title: 'Customer Billing (Sales)', icon: Icons.receipt_long_rounded, index: 0, tint: const Color(0xFFD93025)),
-        (title: 'Packing & Loading Slip', icon: Icons.local_shipping_rounded, index: 3, tint: const Color(0xFFF29900)),
-        (title: 'Invoice History Log', icon: Icons.description_rounded, index: 4, tint: const Color(0xFF188038)),
+        (title: 'Customer Billing (Sales)', icon: Icons.receipt_long_rounded, index: 1, tint: const Color(0xFFD93025)),
+        (title: 'Packing & Loading Slip', icon: Icons.local_shipping_rounded, index: 4, tint: const Color(0xFFF29900)),
+        (title: 'Invoice History Log', icon: Icons.description_rounded, index: 5, tint: const Color(0xFF188038)),
       ],
       'REPORTS': [
-        (title: 'Sales & Business Reports', icon: Icons.bar_chart_rounded, index: 5, tint: const Color(0xFFD93025)),
+        (title: 'Sales & Business Reports', icon: Icons.bar_chart_rounded, index: 6, tint: const Color(0xFFD93025)),
       ],
       'UTILITIES': [
         (title: 'Google Sheet Sync', icon: Icons.storage_rounded, index: -2, tint: const Color(0xFF1A73E8)),
-        (title: 'Settings & Theme Preferences', icon: Icons.tune_rounded, index: 6, tint: const Color(0xFF12B5CB)),
+        (title: 'Settings & Theme Preferences', icon: Icons.tune_rounded, index: 7, tint: const Color(0xFF12B5CB)),
       ],
     };
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 860),
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-          children: [
-            // Google M3 Profile Banner
-            Card(
-              color: scheme.surfaceContainerHighest.withOpacity(0.35),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: scheme.primaryContainer,
-                      child: Text(
-                        'AC',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: scheme.onPrimaryContainer),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            CompanyConfig.name,
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            "${CompanyConfig.tradeSubtitle} • MULTIBILL ERP",
-                            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _m3FullDate(DateTime.now()),
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: scheme.primary),
-                          ),
-                        ],
-                      ),
-                    ),
-                    FilledButton.tonalIcon(
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text('Setup'),
-                      onPressed: _openCompanyProfileDialog,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Quick Shortcut Buttons
-            Row(
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      children: [
+        // Google M3 Profile Banner
+        Card(
+          color: scheme.surfaceContainerHighest.withOpacity(0.35),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
               children: [
-                Expanded(
-                  child: _quickActionButton(
-                    context,
-                    title: 'New Bill (Sales)',
-                    icon: Icons.receipt_long_rounded,
-                    color: const Color(0xFFD93025),
-                    onTap: () => setState(() => _navIndex = 0),
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: scheme.primaryContainer,
+                  child: Text(
+                    'AC',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: scheme.onPrimaryContainer),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 16),
                 Expanded(
-                  child: _quickActionButton(
-                    context,
-                    title: 'Price List',
-                    icon: Icons.inventory_2_rounded,
-                    color: const Color(0xFF188038),
-                    onTap: () => setState(() => _navIndex = 1),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        CompanyConfig.name,
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "${CompanyConfig.tradeSubtitle} • MULTIBILL ERP",
+                        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _m3FullDate(DateTime.now()),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: scheme.primary),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _quickActionButton(
-                    context,
-                    title: 'Parties',
-                    icon: Icons.people_alt_rounded,
-                    color: const Color(0xFF1A73E8),
-                    onTap: () => setState(() => _navIndex = 2),
+                FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _quickActionButton(
-                    context,
-                    title: 'Reports',
-                    icon: Icons.bar_chart_rounded,
-                    color: const Color(0xFFF29900),
-                    onTap: () => setState(() => _navIndex = 5),
-                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Setup'),
+                  onPressed: _openCompanyProfileDialog,
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+          ),
+        ),
+        const SizedBox(height: 14),
 
-            // Collapsible M3 Categories
-            ...categories.entries.map((cat) {
-              final isTransactions = cat.key == 'TRANSACTIONS';
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 5),
-                child: Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    initiallyExpanded: isTransactions,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    leading: Icon(
-                      isTransactions
-                          ? Icons.swap_horiz_rounded
-                          : cat.key == 'MASTERS'
-                              ? Icons.folder_open_rounded
-                              : cat.key == 'REPORTS'
-                                  ? Icons.analytics_rounded
-                                  : Icons.tune_rounded,
-                      color: scheme.primary,
-                      size: 22,
-                    ),
-                    title: Text(
-                      cat.key,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.6,
-                        color: scheme.primary,
-                        fontSize: 13,
-                      ),
-                    ),
-                    children: cat.value.map((item) {
-                      return ListTile(
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 18),
-                        leading: Icon(item.icon, color: item.tint, size: 22),
-                        title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
-                        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
-                        onTap: () {
-                          if (item.index == -2) {
-                            _fetchData(silent: true);
-                          } else {
-                            setState(() => _navIndex = item.index);
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ),
-              );
-            }),
+        // Quick Shortcut Buttons
+        Row(
+          children: [
+            Expanded(
+              child: _quickActionButton(
+                context,
+                title: 'New Bill (Sales)',
+                icon: Icons.receipt_long_rounded,
+                color: const Color(0xFFD93025),
+                onTap: () => setState(() => _navIndex = 1),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _quickActionButton(
+                context,
+                title: 'Price List',
+                icon: Icons.inventory_2_rounded,
+                color: const Color(0xFF188038),
+                onTap: () => setState(() => _navIndex = 2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _quickActionButton(
+                context,
+                title: 'Parties',
+                icon: Icons.people_alt_rounded,
+                color: const Color(0xFF1A73E8),
+                onTap: () => setState(() => _navIndex = 3),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _quickActionButton(
+                context,
+                title: 'Reports',
+                icon: Icons.bar_chart_rounded,
+                color: const Color(0xFFF29900),
+                onTap: () => setState(() => _navIndex = 6),
+              ),
+            ),
           ],
         ),
-      ),
+        const SizedBox(height: 16),
+
+        // Collapsible M3 Categories
+        ...categories.entries.map((cat) {
+          final isTransactions = cat.key == 'TRANSACTIONS';
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                initiallyExpanded: isTransactions,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                leading: Icon(
+                  isTransactions
+                      ? Icons.swap_horiz_rounded
+                      : cat.key == 'MASTERS'
+                          ? Icons.folder_open_rounded
+                          : cat.key == 'REPORTS'
+                              ? Icons.analytics_rounded
+                              : Icons.tune_rounded,
+                  color: scheme.primary,
+                  size: 22,
+                ),
+                title: Text(
+                  cat.key,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.6,
+                    color: scheme.primary,
+                    fontSize: 13,
+                  ),
+                ),
+                children: cat.value.map((item) {
+                  return ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+                    leading: Icon(item.icon, color: item.tint, size: 22),
+                    title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                    onTap: () {
+                      if (item.index == -2) {
+                        _fetchData(silent: true);
+                      } else {
+                        setState(() => _navIndex = item.index);
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 
@@ -1216,7 +1091,7 @@ class _MainDashboardState extends State<MainDashboard> {
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest.withOpacity(0.3),
           borderRadius: BorderRadius.circular(14),
@@ -1225,14 +1100,14 @@ class _MainDashboardState extends State<MainDashboard> {
         child: Column(
           children: [
             CircleAvatar(
-              radius: 17,
+              radius: 18,
               backgroundColor: color.withOpacity(0.14),
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11.5),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1242,63 +1117,66 @@ class _MainDashboardState extends State<MainDashboard> {
     );
   }
 
-  Widget _buildSelectedScreen() {
-    final screens = <Widget>[
-      TallyBillingScreen(
-        items: _items,
-        customers: _customers,
-        nextBillNo: _estimates.length + 1,
-        invoiceToEdit: _invoiceToEdit,
-        onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
-        onSaved: () => _fetchData(silent: true),
-        onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
-      ),
-      PriceListDesktopView(
-        items: _items,
-        onRefreshRequired: () => _fetchData(silent: true),
-      ),
-      CustomerDesktopView(
-        customers: _customers,
-        onRefreshRequired: () => _fetchData(silent: true),
-      ),
-      LoadingSlipView(loadingSlip: _loadingSlip, items: _items, customers: _customers),
-      InvoiceHistoryView(
-        estimates: _estimates,
-        items: _items,
-        customers: _customers,
-        onEditInvoice: _onLoadInvoiceToEdit,
-        onRefreshRequired: () => _fetchData(silent: true),
-      ),
-      EnterpriseReportsView(
-        estimates: _estimates,
-        items: _items,
-        customers: _customers,
-        onEditInvoice: _onLoadInvoiceToEdit,
-        onRefreshRequired: () => _fetchData(silent: true),
-      ),
-      SettingsDesktopView(
-        onReloadSheet: () => _fetchData(silent: true),
-        onOpenProfile: _openCompanyProfileDialog,
-      ),
-    ];
-
-    return Column(
-      children: [
-        AppBar(
-          leading: IconButton(
-            tooltip: 'Back to Home',
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => setState(() => _navIndex = -1),
-          ),
-          title: Text(CompanyConfig.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ),
-        Expanded(child: screens[_navIndex]),
-      ],
-    );
+  Widget _buildActiveBodyContent() {
+    switch (_navIndex) {
+      case 0:
+        return _buildGoogleHomeDashboard(context);
+      case 1:
+        return TallyBillingScreen(
+          items: _items,
+          customers: _customers,
+          nextBillNo: _estimates.length + 1,
+          invoiceToEdit: _invoiceToEdit,
+          onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
+          onSaved: () => _fetchData(silent: true),
+          onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+        );
+      case 2:
+        return PriceListDesktopView(
+          items: _items,
+          onRefreshRequired: () => _fetchData(silent: true),
+        );
+      case 3:
+        return CustomerDesktopView(
+          customers: _customers,
+          onRefreshRequired: () => _fetchData(silent: true),
+        );
+      case 4:
+        return LoadingSlipView(
+          loadingSlip: _loadingSlip,
+          items: _items,
+          customers: _customers,
+        );
+      case 5:
+        return InvoiceHistoryView(
+          estimates: _estimates,
+          items: _items,
+          customers: _customers,
+          onEditInvoice: _onLoadInvoiceToEdit,
+          onRefreshRequired: () => _fetchData(silent: true),
+        );
+      case 6:
+        return EnterpriseReportsView(
+          estimates: _estimates,
+          items: _items,
+          customers: _customers,
+          onEditInvoice: _onLoadInvoiceToEdit,
+          onRefreshRequired: () => _fetchData(silent: true),
+        );
+      case 7:
+        return SettingsDesktopView(
+          onReloadSheet: () => _fetchData(silent: true),
+          onOpenProfile: _openCompanyProfileDialog,
+        );
+      default:
+        return _buildGoogleHomeDashboard(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     if (_isLoading) {
       return Scaffold(
         body: Center(
@@ -1324,16 +1202,114 @@ class _MainDashboardState extends State<MainDashboard> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: Row(
           children: [
-            if (_isBackgroundSyncing)
-              const LinearProgressIndicator(minHeight: 2.5),
-            if (_navIndex < 0)
-              _buildTopSearchBar(context),
+            // Left Material 3 NavigationRail (Exactly like in your Screenshot)
+            NavigationRail(
+              selectedIndex: _navIndex,
+              onDestinationSelected: (int index) {
+                setState(() {
+                  _navIndex = index;
+                });
+              },
+              labelType: NavigationRailLabelType.all,
+              backgroundColor: scheme.surface,
+              indicatorColor: scheme.primaryContainer,
+              leading: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => setState(() => _navIndex = 0),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A73E8),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'AC',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: Text('Home'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long_rounded),
+                  label: Text('Billing'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  selectedIcon: Icon(Icons.inventory_2_rounded),
+                  label: Text('Price List'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.people_alt_outlined),
+                  selectedIcon: Icon(Icons.people_alt_rounded),
+                  label: Text('Customers'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.local_shipping_outlined),
+                  selectedIcon: Icon(Icons.local_shipping_rounded),
+                  label: Text('Packing Slip'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.history_rounded),
+                  selectedIcon: Icon(Icons.description_rounded),
+                  label: Text('Invoices'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.bar_chart_outlined),
+                  selectedIcon: Icon(Icons.bar_chart_rounded),
+                  label: Text('Reports'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings_rounded),
+                  label: Text('Settings'),
+                ),
+              ],
+              trailing: Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: IconButton(
+                      tooltip: 'Sync Google Sheet',
+                      icon: const Icon(Icons.sync_rounded),
+                      onPressed: () => _fetchData(silent: true),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+
+            // Right Main Screen Content
             Expanded(
-              child: _navIndex < 0
-                  ? _buildGoogleHomeDashboard(context)
-                  : _buildSelectedScreen(),
+              child: Column(
+                children: [
+                  if (_isBackgroundSyncing)
+                    const LinearProgressIndicator(minHeight: 2.5),
+                  _buildTopSearchBar(context),
+                  Expanded(
+                    child: _buildActiveBodyContent(),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1341,7 +1317,6 @@ class _MainDashboardState extends State<MainDashboard> {
     );
   }
 }
-
 // ---------------- 1. BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
