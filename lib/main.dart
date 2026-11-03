@@ -1317,6 +1317,7 @@ class _MainDashboardState extends State<MainDashboard> {
     );
   }
 }
+
 // ---------------- 1. BILLING SCREEN ----------------
 
 class TallyBillingScreen extends StatefulWidget {
@@ -2268,6 +2269,88 @@ class PriceListDesktopView extends StatefulWidget {
 class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   String _query = '';
 
+  void _showItemPreviewModal(DCItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19))),
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              icon: const Icon(Icons.delete_forever, size: 18),
+              label: const Text('Delete Item'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _confirmDeleteItem(item);
+              },
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Divider(),
+              _buildModalRow('Current Rate:', '₹${item.rate}', isColor: true),
+              _buildModalRow('Rate Unit:', item.rateType),
+              _buildModalRow('Quantity / Pack Size:', '${item.qty} KG/Bag'),
+              _buildModalRow('Item Name on Tally:', item.tallyName),
+              _buildModalRow('Billed Unit:', item.billedIn),
+              _buildModalRow('Tax Status:', item.isTaxable ? 'TAXABLE (5% INCL)' : 'NON-TAXABLE'),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton.icon(
+            icon: const Icon(Icons.edit, size: 16),
+            label: const Text('Edit Item Details'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openEditItemDialog(item: item);
+            },
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteItem(DCItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Confirm Delete Item'),
+        content: Text('Are you sure you want to permanently remove "${item.name}" from Google Sheet?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await http.post(
+                Uri.parse(sheetApiUrl),
+                body: jsonEncode({
+                  "action": "DELETE_ITEM",
+                  "rowIndex": item.rowIndex,
+                }),
+              );
+              widget.onRefreshRequired();
+            },
+            child: const Text('Delete from Sheet'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openEditItemDialog({DCItem? item}) {
     final isNew = item == null;
     final nameCtrl = TextEditingController(text: isNew ? '' : item.name);
@@ -2350,6 +2433,30 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     );
   }
 
+  Widget _buildModalRow(String title, String val, {bool isColor = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 160, child: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 13.5))),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              val,
+              softWrap: true,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: isColor ? const Color(0xFF1A73E8) : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = widget.items
@@ -2388,23 +2495,36 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
               itemBuilder: (ctx, idx) {
                 final item = filtered[idx];
                 return Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: Text('${item.no}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                    title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    subtitle: Text('${item.qty} ${item.billedIn} • Tally: ${item.tallyName}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1A73E8))),
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 20),
-                          onPressed: () => _openEditItemDialog(item: item),
-                        ),
-                      ],
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _showItemPreviewModal(item),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                            child: Text('${item.no}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                const SizedBox(height: 3),
+                                Text('${item.qty} ${item.billedIn} • Tally: ${item.tallyName}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1A73E8))),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            onPressed: () => _openEditItemDialog(item: item),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -2434,6 +2554,141 @@ class CustomerDesktopView extends StatefulWidget {
 
 class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   String _query = '';
+
+  Widget _buildTagChip(String tag) {
+    Color bg;
+    Color border;
+    Color text;
+
+    if (tag == 'VAZHI BILL') {
+      bg = const Color(0xFF38230B);
+      border = const Color(0xFFF59E0B);
+      text = const Color(0xFFFCD34D);
+    } else if (tag == 'CREDIT') {
+      bg = const Color(0xFF28183B);
+      border = const Color(0xFF8B5CF6);
+      text = const Color(0xFFC4B5FD);
+    } else if (tag == 'NO COOLI') {
+      bg = const Color(0xFF1E1B4B);
+      border = const Color(0xFF6366F1);
+      text = const Color(0xFFA5B4FC);
+    } else {
+      bg = const Color(0xFF0F291E);
+      border = const Color(0xFF10B981);
+      text = const Color(0xFF6EE7B7);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border, width: 1.0),
+      ),
+      child: Text(
+        tag,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: text),
+      ),
+    );
+  }
+
+  void _showCustomerPreviewModal(DCCustomer customer) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(child: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 19))),
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              icon: const Icon(Icons.person_remove, size: 18),
+              label: const Text('Delete Party'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _confirmDeleteCustomer(customer);
+              },
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 560,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Divider(),
+              _buildCustomerModalRow('Customer Name:', customer.name),
+              _buildCustomerModalRow('Contact Number:', customer.contact.isEmpty ? '-' : customer.contact),
+              _buildCustomerModalRow('Address:', customer.address.isEmpty ? '-' : customer.address),
+              _buildCustomerModalRow('B2B Firm Name:', customer.b2b.isEmpty ? '-' : customer.b2b, isB2B: true),
+              _buildCustomerModalRow('B2C Reference:', customer.b2c.isEmpty ? '-' : customer.b2c),
+              _buildCustomerModalRow('Billing Category:', customer.billingTag),
+              if (customer.remarks.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Delivery & Special Billing Rules:', style: TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF231908),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+                  ),
+                  child: Text(customer.remarks, style: const TextStyle(color: Color(0xFFFDE68A), fontWeight: FontWeight.bold, fontSize: 13, height: 1.4)),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton.icon(
+            icon: const Icon(Icons.edit, size: 16),
+            label: const Text('Edit Customer Details'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openEditCustomerDialog(customer: customer);
+            },
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteCustomer(DCCustomer customer) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Confirm Delete Customer'),
+        content: Text('Are you sure you want to permanently delete party "${customer.name}" from Google Sheet?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await http.post(
+                Uri.parse(sheetApiUrl),
+                body: jsonEncode({
+                  "action": "DELETE_CUSTOMER",
+                  "rowIndex": customer.rowIndex,
+                }),
+              );
+              widget.onRefreshRequired();
+            },
+            child: const Text('Delete from Sheet'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _openEditCustomerDialog({DCCustomer? customer}) {
     final isNew = customer == null;
@@ -2503,6 +2758,30 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     );
   }
 
+  Widget _buildCustomerModalRow(String title, String val, {bool isB2B = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 150, child: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 13))),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              val,
+              softWrap: true,
+              style: TextStyle(
+                fontWeight: isB2B ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13.5,
+                color: isB2B ? const Color(0xFF1A73E8) : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = widget.customers.where((c) {
@@ -2543,27 +2822,40 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
               itemBuilder: (ctx, i) {
                 final c = filtered[i];
                 return Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: Text('${c.slNo}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                    title: Row(
-                      children: [
-                        Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                        const SizedBox(width: 8),
-                        Chip(
-                          label: Text(c.billingTag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                        ),
-                      ],
-                    ),
-                    subtitle: Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"} • 📍 ${c.address.isNotEmpty ? c.address : "-"}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                      onPressed: () => _openEditCustomerDialog(customer: c),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _showCustomerPreviewModal(c),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                            child: Text('${c.slNo}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    const SizedBox(width: 8),
+                                    _buildTagChip(c.billingTag),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"} • 📍 ${c.address.isNotEmpty ? c.address : "-"}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            onPressed: () => _openEditCustomerDialog(customer: c),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -2601,6 +2893,317 @@ class InvoiceHistoryView extends StatefulWidget {
 class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
+
+  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
+    List<Map<String, dynamic>> rows = [];
+    final parts = summary.split(',');
+    for (var part in parts) {
+      if (part.trim().isNotEmpty) {
+        final raw = part.trim();
+        String name = raw;
+        String qty = '1';
+        String unit = 'KG';
+        String rate = '0.00';
+        String bags = '1';
+        double amount = 0.0;
+
+        try {
+          if (raw.contains('(') && raw.contains(')')) {
+            name = raw.substring(0, raw.indexOf('(')).trim();
+            final inside = raw.substring(raw.indexOf('(') + 1, raw.indexOf(')'));
+            final xParts = inside.split('x');
+            if (xParts.length == 2) {
+              final qParts = xParts[0].trim().split(' ');
+              qty = qParts[0];
+              if (qParts.length > 1) unit = qParts[1];
+              rate = xParts[1].trim();
+            }
+          }
+          if (raw.contains('[') && raw.contains(']')) {
+            bags = raw.substring(raw.indexOf('[') + 1, raw.indexOf(']')).replaceAll('B', '').trim();
+          }
+          amount = (double.tryParse(qty) ?? 1.0) * (double.tryParse(rate) ?? 0.0);
+        } catch (_) {}
+
+        rows.add({
+          "name": name,
+          "qty": qty,
+          "unit": unit,
+          "rate": rate,
+          "bags": bags,
+          "amount": amount.toStringAsFixed(2),
+        });
+      }
+    }
+    return rows;
+  }
+
+  void _showInvoiceDetails(BuildContext context, DCEstimate est) {
+    final parsedRows = _parseSummaryTable(est.itemSummary);
+    final isCancelled = est.status == 'CANCELLED';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Invoice #${est.slNo}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isCancelled ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    est.status,
+                    style: TextStyle(
+                      color: isCancelled ? Colors.redAccent : Colors.greenAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                if (!isCancelled) ...[
+                  const SizedBox(width: 10),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                    icon: const Icon(Icons.cancel, size: 16),
+                    label: const Text('Cancel Bill'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _confirmCancelDialog(context, est);
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 760,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Party: ${est.customer}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF1A73E8))),
+                    Text('Date: ${formatDisplayDateTime(est.date)}', style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        ),
+                        child: const Row(
+                          children: [
+                            SizedBox(width: 35, child: Text('No', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
+                            Expanded(flex: 5, child: Text('Item Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
+                            SizedBox(width: 80, child: Text('Rate (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
+                            SizedBox(width: 60, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
+                            SizedBox(width: 60, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
+                            SizedBox(width: 60, child: Text('Bags', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
+                            SizedBox(width: 90, child: Text('Amount (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey))),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(12),
+                        itemCount: parsedRows.length,
+                        separatorBuilder: (c, i) => const Divider(height: 10),
+                        itemBuilder: (c, i) {
+                          final r = parsedRows[i];
+                          return Row(
+                            children: [
+                              SizedBox(width: 35, child: Text('${i + 1}', style: const TextStyle(color: Colors.grey, fontSize: 13))),
+                              Expanded(flex: 5, child: Text(r['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+                              SizedBox(width: 80, child: Text('₹${r['rate']}', style: const TextStyle(fontSize: 13))),
+                              SizedBox(width: 60, child: Text(r['qty'], style: const TextStyle(fontSize: 13))),
+                              SizedBox(width: 60, child: Text(r['unit'], style: const TextStyle(fontSize: 13, color: Color(0xFF1A73E8)))),
+                              SizedBox(width: 60, child: Text(r['bags'], style: const TextStyle(fontSize: 13))),
+                              SizedBox(width: 90, child: Text('₹${r['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Coolie: ₹${est.coolie}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                    Text('SGST: ₹${est.sgst} | CGST: ₹${est.cgst}', style: const TextStyle(color: Color(0xFFF29900), fontSize: 13)),
+                    Text('Round Off: ₹${est.roundOff}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('Grand Total: ₹${est.grandTotal}',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A73E8))),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton.icon(
+            icon: const Icon(Icons.print, size: 16),
+            label: const Text('Print / View PDF'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _printHistoryInvoice(context, est);
+            },
+          ),
+          if (!isCancelled)
+            OutlinedButton.icon(
+              icon: const Icon(Icons.edit_document, size: 16),
+              label: const Text('Edit Invoice'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                widget.onEditInvoice(est);
+              },
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmCancelDialog(BuildContext context, DCEstimate est) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cancel Confirmation'),
+        content: Text('Are you sure you want to CANCEL Invoice #${est.slNo}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('NO (Back)'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await http.post(
+                Uri.parse(sheetApiUrl),
+                body: jsonEncode({
+                  "action": "CANCEL_ESTIMATE",
+                  "rowIndex": est.rowIndex,
+                }),
+              );
+              widget.onRefreshRequired();
+            },
+            child: const Text('YES (Cancel Bill)'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _printHistoryInvoice(BuildContext context, DCEstimate est) {
+    final matchedCustomer = widget.customers.firstWhere(
+      (c) => c.name.toLowerCase() == est.customer.toLowerCase(),
+      orElse: () => DCCustomer(rowIndex: 0, slNo: 0, name: est.customer, contact: '', address: '', b2c: '', b2b: '', remarks: ''),
+    );
+
+    final List<InvoiceRowItem> parsedItems = [];
+    final itemsParts = est.itemSummary.split(',');
+    for (var part in itemsParts) {
+      if (part.trim().isNotEmpty) {
+        parsedItems.add(
+          InvoiceRowItem(
+            item: DCItem(
+              rowIndex: 0,
+              no: 1,
+              name: part.trim(),
+              rateType: 'KG',
+              rate: '0',
+              qty: 1,
+              tallyName: '',
+              billedIn: '',
+              isTaxable: false,
+            ),
+            rate: double.tryParse(est.grandTotal) ?? 0,
+            qty: 1,
+            unit: 'KG',
+            bags: 1,
+          ),
+        );
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.all(20),
+        child: SizedBox(
+          width: 920,
+          height: 720,
+          child: Column(
+            children: [
+              AppBar(
+                title: Text('Invoice #${est.slNo} - Print View'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: PdfPreview(
+                  build: (format) => generateTallyPdf(
+                    format: format,
+                    billNo: est.slNo.toString(),
+                    dateStr: formatDisplayDateTime(est.date),
+                    customer: matchedCustomer,
+                    items: parsedItems,
+                    subTotal: double.tryParse(est.grandTotal) ?? 0,
+                    coolie: double.tryParse(est.coolie) ?? 0,
+                    sgst: double.tryParse(est.sgst) ?? 0,
+                    cgst: double.tryParse(est.cgst) ?? 0,
+                    roundOff: double.tryParse(est.roundOff) ?? 0,
+                    grandTotal: double.tryParse(est.grandTotal) ?? 0,
+                  ),
+                  allowPrinting: true,
+                  allowSharing: true,
+                  canChangePageFormat: false,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2688,7 +3291,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                         Text(est.itemSummary, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
                       ],
                     ),
-                    onTap: () => widget.onEditInvoice(est),
+                    onTap: () => _showInvoiceDetails(context, est),
                   ),
                 );
               },
@@ -2853,7 +3456,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
 
 // ---------------- 6. ENTERPRISE REPORTS VIEW ----------------
 
-class EnterpriseReportsView extends StatelessWidget {
+class EnterpriseReportsView extends StatefulWidget {
   final List<DCEstimate> estimates;
   final List<DCItem> items;
   final List<DCCustomer> customers;
@@ -2870,49 +3473,177 @@ class EnterpriseReportsView extends StatelessWidget {
   });
 
   @override
+  State<EnterpriseReportsView> createState() => _EnterpriseReportsViewState();
+}
+
+class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  String _reportFilter = 'ALL';
+  DateTimeRange? _reportDateRange;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  void _openDrilldownHistoryModal(String title, List<DCEstimate> bills) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.receipt_long, color: Color(0xFF1A73E8)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+          ],
+        ),
+        content: SizedBox(
+          width: 680,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Total Invoices: ${bills.length}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 12),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 380),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: bills.isEmpty
+                    ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('No billed records found.')))
+                    : ListView.separated(
+                        itemCount: bills.length,
+                        separatorBuilder: (c, i) => const Divider(height: 1),
+                        itemBuilder: (c, i) {
+                          final b = bills[i];
+                          return ListTile(
+                            title: Row(
+                              children: [
+                                Text('#${b.slNo} • ${b.customer}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                const Spacer(),
+                                Text('₹${b.grandTotal}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A73E8), fontSize: 15)),
+                              ],
+                            ),
+                            subtitle: Text("${formatDisplayDateTime(b.date)} | ${b.itemSummary}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              widget.onEditInvoice(b);
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final active = estimates.where((e) => e.status != 'CANCELLED').toList();
+    final active = widget.estimates.where((e) => e.status != 'CANCELLED').toList();
     final double totalRevenue = active.fold(0.0, (sum, e) => sum + (double.tryParse(e.grandTotal) ?? 0.0));
     final double totalCoolie = active.fold(0.0, (sum, e) => sum + (double.tryParse(e.coolie) ?? 0.0));
 
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      children: [
-        Card(
-          color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    Map<String, int> itemOrderCount = {};
+    for (var est in active) {
+      for (var item in widget.items) {
+        if (est.itemSummary.toLowerCase().contains(item.name.toLowerCase())) {
+          itemOrderCount[item.name] = (itemOrderCount[item.name] ?? 0) + 1;
+        }
+      }
+    }
+    final sortedItemSales = itemOrderCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    Map<String, double> customerTotalSpend = {};
+    for (var est in active) {
+      customerTotalSpend[est.customer] = (customerTotalSpend[est.customer] ?? 0.0) + (double.tryParse(est.grandTotal) ?? 0.0);
+    }
+    final sortedCustSales = customerTotalSpend.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Total Invoiced Revenue', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 4),
+                  Text('₹${totalRevenue.toStringAsFixed(2)}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1A73E8))),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text('Active Invoices: ${active.length}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(width: 20),
+                      Text('Coolie Charges: ₹${totalCoolie.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Item Distribution'),
+              Tab(text: 'Customer Spend Ledger'),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
               children: [
-                const Text('Total Invoiced Revenue', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 4),
-                Text('₹${totalRevenue.toStringAsFixed(2)}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF1A73E8))),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Text('Active Invoices: ${active.length}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(width: 20),
-                    Text('Coolie Charges: ₹${totalCoolie.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
+                ListView.separated(
+                  itemCount: sortedItemSales.length,
+                  separatorBuilder: (c, i) => const Divider(height: 1),
+                  itemBuilder: (ctx, idx) {
+                    final entry = sortedItemSales[idx];
+                    return ListTile(
+                      title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      trailing: Text('${entry.value} Invoices >', style: const TextStyle(color: Color(0xFF1A73E8), fontWeight: FontWeight.bold)),
+                      onTap: () {
+                        final matchedBills = active.where((e) => e.itemSummary.toLowerCase().contains(entry.key.toLowerCase())).toList();
+                        _openDrilldownHistoryModal('Invoices for ${entry.key}', matchedBills);
+                      },
+                    );
+                  },
+                ),
+                ListView.separated(
+                  itemCount: sortedCustSales.length,
+                  separatorBuilder: (c, i) => const Divider(height: 1),
+                  itemBuilder: (ctx, idx) {
+                    final entry = sortedCustSales[idx];
+                    return ListTile(
+                      title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      trailing: Text('₹${entry.value.toStringAsFixed(2)} >', style: const TextStyle(color: Color(0xFF1A73E8), fontWeight: FontWeight.bold)),
+                      onTap: () {
+                        final matchedBills = active.where((e) => e.customer.toLowerCase().trim() == entry.key.toLowerCase().trim()).toList();
+                        _openDrilldownHistoryModal('Invoices for ${entry.key}', matchedBills);
+                      },
+                    );
+                  },
                 ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        const Text('Recent Invoices (Click to View/Edit)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-        const SizedBox(height: 8),
-        ...active.take(15).map((est) => Card(
-              child: ListTile(
-                title: Text(est.customer, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(formatDisplayDateTime(est.date), style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                trailing: Text('₹${est.grandTotal}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF188038))),
-                onTap: () => onEditInvoice(est),
-              ),
-            )),
-      ],
+        ],
+      ),
     );
   }
 }
