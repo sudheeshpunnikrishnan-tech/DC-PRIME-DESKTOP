@@ -3137,27 +3137,65 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     final itemsParts = est.itemSummary.split(',');
     for (var part in itemsParts) {
       if (part.trim().isNotEmpty) {
+        final raw = part.trim();
+        String itemName = raw;
+        double qty = 1.0;
+        String unit = 'KG';
+        double rate = 0.0;
+        int bags = 1;
+
+        try {
+          if (raw.contains('(') && raw.contains(')')) {
+            itemName = raw.substring(0, raw.indexOf('(')).trim();
+            final inside = raw.substring(raw.indexOf('(') + 1, raw.indexOf(')'));
+            final xParts = inside.split('x');
+            if (xParts.length == 2) {
+              final qParts = xParts[0].trim().split(' ');
+              qty = double.tryParse(qParts[0]) ?? 1.0;
+              if (qParts.length > 1) unit = qParts[1];
+              rate = double.tryParse(xParts[1].trim()) ?? 0.0;
+            }
+          }
+          if (raw.contains('[') && raw.contains(']')) {
+            final bStr = raw.substring(raw.indexOf('[') + 1, raw.indexOf(']')).replaceAll('B', '').trim();
+            bags = int.tryParse(bStr) ?? 1;
+          }
+        } catch (_) {}
+
+        final matchedItem = widget.items.firstWhere(
+          (i) => i.name.toLowerCase() == itemName.toLowerCase(),
+          orElse: () => DCItem(
+            rowIndex: 0,
+            no: parsedItems.length + 1,
+            name: itemName,
+            rateType: unit,
+            rate: rate.toString(),
+            qty: qty.toString(),
+            tallyName: itemName,
+            billedIn: unit,
+            isTaxable: false,
+          ),
+        );
+
         parsedItems.add(
           InvoiceRowItem(
-            item: DCItem(
-              rowIndex: 0,
-              no: 1,
-              name: part.trim(),
-              rateType: 'KG',
-              rate: '0',
-              qty: 1,
-              tallyName: '',
-              billedIn: '',
-              isTaxable: false,
-            ),
-            rate: double.tryParse(est.grandTotal) ?? 0,
-            qty: 1,
-            unit: 'KG',
-            bags: 1,
+            item: matchedItem,
+            rate: rate,
+            qty: qty,
+            unit: unit,
+            bags: bags,
           ),
         );
       }
     }
+
+    final double coolie = double.tryParse(est.coolie) ?? 0.0;
+    final double sgst = double.tryParse(est.sgst) ?? 0.0;
+    final double cgst = double.tryParse(est.cgst) ?? 0.0;
+    final double roundOff = double.tryParse(est.roundOff) ?? 0.0;
+    final double grandTotal = double.tryParse(est.grandTotal) ?? 0.0;
+    final double grossAmount = parsedItems.fold(0.0, (sum, i) => sum + i.amount);
+    final double subTotal = (sgst + cgst) > 0 ? (grossAmount - (sgst + cgst)) : grossAmount;
 
     showDialog(
       context: context,
@@ -3186,12 +3224,12 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
                     dateStr: formatDisplayDateTime(est.date),
                     customer: matchedCustomer,
                     items: parsedItems,
-                    subTotal: double.tryParse(est.grandTotal) ?? 0,
-                    coolie: double.tryParse(est.coolie) ?? 0,
-                    sgst: double.tryParse(est.sgst) ?? 0,
-                    cgst: double.tryParse(est.cgst) ?? 0,
-                    roundOff: double.tryParse(est.roundOff) ?? 0,
-                    grandTotal: double.tryParse(est.grandTotal) ?? 0,
+                    subTotal: subTotal,
+                    coolie: coolie,
+                    sgst: sgst,
+                    cgst: cgst,
+                    roundOff: roundOff,
+                    grandTotal: grandTotal,
                   ),
                   allowPrinting: true,
                   allowSharing: true,
