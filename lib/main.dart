@@ -163,6 +163,18 @@ class DCItem {
     required this.isTaxable,
   });
 
+  static final DCItem endOfList = DCItem(
+    rowIndex: -999,
+    no: '',
+    name: 'End of List',
+    rateType: '',
+    rate: '',
+    qty: '',
+    tallyName: '',
+    billedIn: '',
+    isTaxable: false,
+  );
+
   factory DCItem.fromJson(Map<String, dynamic> json) {
     return DCItem(
       rowIndex: json['rowIndex'] ?? 0,
@@ -290,16 +302,27 @@ class InvoiceRowItem {
   final FocusNode qtyFocus = FocusNode();
   final FocusNode unitFocus = FocusNode();
   final FocusNode bagsFocus = FocusNode();
+
   final TextEditingController textCtrl = TextEditingController();
+  final TextEditingController rateCtrl = TextEditingController();
+  final TextEditingController qtyCtrl = TextEditingController();
+  final TextEditingController bagsCtrl = TextEditingController();
   final LayerLink layerLink = LayerLink();
 
   InvoiceRowItem({
     this.item,
     this.rate = 0.0,
     this.qty = 1.0,
-    this.unit = 'KG',
+    this.unit = '',
     this.bags = 1,
-  });
+  }) {
+    if (item != null) {
+      textCtrl.text = item!.name;
+      rateCtrl.text = rate > 0 ? rate.toStringAsFixed(2) : '';
+      qtyCtrl.text = qty > 0 ? qty.toStringAsFixed(0) : '1';
+      bagsCtrl.text = bags > 0 ? bags.toString() : '1';
+    }
+  }
 
   double get amount => qty * rate;
 }
@@ -523,22 +546,6 @@ pw.Widget _pdfSummaryRow(String label, String value) {
 
 final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier<ThemeMode>(ThemeMode.dark);
 
-String _m3MonthName(int month) => const [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-][month - 1];
-
-String _m3WeekdayName(int weekday) => const [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-  'Friday', 'Saturday', 'Sunday',
-][weekday - 1];
-
-String _m3Date(DateTime date) =>
-    '${date.day.toString().padLeft(2, '0')} ${_m3MonthName(date.month)} ${date.year}';
-
-String _m3FullDate(DateTime date) =>
-    '${_m3WeekdayName(date.weekday)}, ${_m3Date(date)}';
-
 class MultiBillApp extends StatelessWidget {
   const MultiBillApp({super.key});
 
@@ -608,7 +615,8 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
-  int _navIndex = 0; // 0: Home, 1: Billing, 2: Price List, 3: Customers, 4: Packing Slip, 5: Invoices, 6: Reports, 7: Settings
+  // 0: Billing, 1: Price List, 2: Customers, 3: Packing Slip, 4: Invoices, 5: Reports, 6: Settings
+  int _navIndex = 0;
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
@@ -670,7 +678,7 @@ class _MainDashboardState extends State<MainDashboard> {
   void _onLoadInvoiceToEdit(DCEstimate est) {
     setState(() {
       _invoiceToEdit = est;
-      _navIndex = 1; // Switches straight to Billing screen
+      _navIndex = 0; // Billing screen
     });
   }
 
@@ -849,7 +857,7 @@ class _MainDashboardState extends State<MainDashboard> {
               Expanded(
                 child: TextField(
                   decoration: const InputDecoration(
-                    hintText: 'Search menu (Billing, Items, Customers, Reports)...',
+                    hintText: 'Search menu (Billing, Price List, Customers, Reports)...',
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -860,19 +868,19 @@ class _MainDashboardState extends State<MainDashboard> {
                   onSubmitted: (value) {
                     final q = value.toLowerCase();
                     if (q.contains('bill') || q.contains('sale')) {
-                      setState(() => _navIndex = 1);
+                      setState(() => _navIndex = 0);
                     } else if (q.contains('item') || q.contains('price')) {
-                      setState(() => _navIndex = 2);
+                      setState(() => _navIndex = 1);
                     } else if (q.contains('cust') || q.contains('part')) {
-                      setState(() => _navIndex = 3);
+                      setState(() => _navIndex = 2);
                     } else if (q.contains('pack') || q.contains('load')) {
-                      setState(() => _navIndex = 4);
+                      setState(() => _navIndex = 3);
                     } else if (q.contains('invo') || q.contains('hist')) {
-                      setState(() => _navIndex = 5);
+                      setState(() => _navIndex = 4);
                     } else if (q.contains('rep')) {
-                      setState(() => _navIndex = 6);
+                      setState(() => _navIndex = 5);
                     } else if (q.contains('set') || q.contains('prof')) {
-                      setState(() => _navIndex = 7);
+                      setState(() => _navIndex = 6);
                     }
                   },
                 ),
@@ -898,230 +906,9 @@ class _MainDashboardState extends State<MainDashboard> {
     );
   }
 
-  Widget _buildGoogleHomeDashboard(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    final categories = <String, List<({String title, IconData icon, int index, Color tint})>>{
-      'MASTERS': [
-        (title: 'Customers Directory', icon: Icons.people_alt_rounded, index: 3, tint: const Color(0xFF1A73E8)),
-        (title: 'Items / Price List', icon: Icons.inventory_2_rounded, index: 2, tint: const Color(0xFF188038)),
-        (title: 'Company Setup & Header', icon: Icons.business_rounded, index: 7, tint: const Color(0xFF9334E6)),
-      ],
-      'TRANSACTIONS': [
-        (title: 'Customer Billing (Sales)', icon: Icons.receipt_long_rounded, index: 1, tint: const Color(0xFFD93025)),
-        (title: 'Packing & Loading Slip', icon: Icons.local_shipping_rounded, index: 4, tint: const Color(0xFFF29900)),
-        (title: 'Invoice History Log', icon: Icons.description_rounded, index: 5, tint: const Color(0xFF188038)),
-      ],
-      'REPORTS': [
-        (title: 'Sales & Business Reports', icon: Icons.bar_chart_rounded, index: 6, tint: const Color(0xFFD93025)),
-      ],
-      'UTILITIES': [
-        (title: 'Google Sheet Sync', icon: Icons.storage_rounded, index: -2, tint: const Color(0xFF1A73E8)),
-        (title: 'Settings & Theme Preferences', icon: Icons.tune_rounded, index: 7, tint: const Color(0xFF12B5CB)),
-      ],
-    };
-
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      children: [
-        // Google M3 Profile Banner
-        Card(
-          color: scheme.surfaceContainerHighest.withOpacity(0.35),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: scheme.primaryContainer,
-                  child: Text(
-                    'AC',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: scheme.onPrimaryContainer),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        CompanyConfig.name,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "${CompanyConfig.tradeSubtitle} • MULTIBILL ERP",
-                        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _m3FullDate(DateTime.now()),
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: scheme.primary),
-                      ),
-                    ],
-                  ),
-                ),
-                FilledButton.tonalIcon(
-                  style: FilledButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Setup'),
-                  onPressed: _openCompanyProfileDialog,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Quick Shortcut Buttons
-        Row(
-          children: [
-            Expanded(
-              child: _quickActionButton(
-                context,
-                title: 'New Bill (Sales)',
-                icon: Icons.receipt_long_rounded,
-                color: const Color(0xFFD93025),
-                onTap: () => setState(() => _navIndex = 1),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _quickActionButton(
-                context,
-                title: 'Price List',
-                icon: Icons.inventory_2_rounded,
-                color: const Color(0xFF188038),
-                onTap: () => setState(() => _navIndex = 2),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _quickActionButton(
-                context,
-                title: 'Parties',
-                icon: Icons.people_alt_rounded,
-                color: const Color(0xFF1A73E8),
-                onTap: () => setState(() => _navIndex = 3),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _quickActionButton(
-                context,
-                title: 'Reports',
-                icon: Icons.bar_chart_rounded,
-                color: const Color(0xFFF29900),
-                onTap: () => setState(() => _navIndex = 6),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Collapsible M3 Categories
-        ...categories.entries.map((cat) {
-          final isTransactions = cat.key == 'TRANSACTIONS';
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            child: Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                initiallyExpanded: isTransactions,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                leading: Icon(
-                  isTransactions
-                      ? Icons.swap_horiz_rounded
-                      : cat.key == 'MASTERS'
-                          ? Icons.folder_open_rounded
-                          : cat.key == 'REPORTS'
-                              ? Icons.analytics_rounded
-                              : Icons.tune_rounded,
-                  color: scheme.primary,
-                  size: 22,
-                ),
-                title: Text(
-                  cat.key,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.6,
-                    color: scheme.primary,
-                    fontSize: 13,
-                  ),
-                ),
-                children: cat.value.map((item) {
-                  return ListTile(
-                    dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 18),
-                    leading: Icon(item.icon, color: item.tint, size: 22),
-                    title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
-                    onTap: () {
-                      if (item.index == -2) {
-                        _fetchData(silent: true);
-                      } else {
-                        setState(() => _navIndex = item.index);
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _quickActionButton(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: scheme.outlineVariant.withOpacity(0.25)),
-        ),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: color.withOpacity(0.14),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildActiveBodyContent() {
     switch (_navIndex) {
       case 0:
-        return _buildGoogleHomeDashboard(context);
-      case 1:
         return TallyBillingScreen(
           items: _items,
           customers: _customers,
@@ -1131,23 +918,23 @@ class _MainDashboardState extends State<MainDashboard> {
           onSaved: () => _fetchData(silent: true),
           onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
         );
-      case 2:
+      case 1:
         return PriceListDesktopView(
           items: _items,
           onRefreshRequired: () => _fetchData(silent: true),
         );
-      case 3:
+      case 2:
         return CustomerDesktopView(
           customers: _customers,
           onRefreshRequired: () => _fetchData(silent: true),
         );
-      case 4:
+      case 3:
         return LoadingSlipView(
           loadingSlip: _loadingSlip,
           items: _items,
           customers: _customers,
         );
-      case 5:
+      case 4:
         return InvoiceHistoryView(
           estimates: _estimates,
           items: _items,
@@ -1155,7 +942,7 @@ class _MainDashboardState extends State<MainDashboard> {
           onEditInvoice: _onLoadInvoiceToEdit,
           onRefreshRequired: () => _fetchData(silent: true),
         );
-      case 6:
+      case 5:
         return EnterpriseReportsView(
           estimates: _estimates,
           items: _items,
@@ -1163,13 +950,21 @@ class _MainDashboardState extends State<MainDashboard> {
           onEditInvoice: _onLoadInvoiceToEdit,
           onRefreshRequired: () => _fetchData(silent: true),
         );
-      case 7:
+      case 6:
         return SettingsDesktopView(
           onReloadSheet: () => _fetchData(silent: true),
           onOpenProfile: _openCompanyProfileDialog,
         );
       default:
-        return _buildGoogleHomeDashboard(context);
+        return TallyBillingScreen(
+          items: _items,
+          customers: _customers,
+          nextBillNo: _estimates.length + 1,
+          invoiceToEdit: _invoiceToEdit,
+          onClearEditInvoice: () => setState(() => _invoiceToEdit = null),
+          onSaved: () => _fetchData(silent: true),
+          onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+        );
     }
   }
 
@@ -1200,118 +995,128 @@ class _MainDashboardState extends State<MainDashboard> {
       );
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: Row(
-          children: [
-            // Left Material 3 NavigationRail (Exactly like in your Screenshot)
-            NavigationRail(
-              selectedIndex: _navIndex,
-              onDestinationSelected: (int index) {
-                setState(() {
-                  _navIndex = index;
-                });
-              },
-              labelType: NavigationRailLabelType.all,
-              backgroundColor: scheme.surface,
-              indicatorColor: scheme.primaryContainer,
-              leading: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => setState(() => _navIndex = 0),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A73E8),
-                      borderRadius: BorderRadius.circular(14),
+    // Universal Back Button Handler using ESC
+    return FocusScope(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+            return KeyEventResult.handled;
+          } else if (_navIndex != 0) {
+            setState(() => _navIndex = 0); // Jumps back to Billing
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Row(
+            children: [
+              // Left Material 3 NavigationRail (WITHOUT Home button)
+              NavigationRail(
+                selectedIndex: _navIndex,
+                onDestinationSelected: (int index) {
+                  setState(() {
+                    _navIndex = index;
+                  });
+                },
+                labelType: NavigationRailLabelType.all,
+                backgroundColor: scheme.surface,
+                indicatorColor: scheme.primaryContainer,
+                leading: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => setState(() => _navIndex = 0),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A73E8),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'AC',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'AC',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 1,
+                  ),
+                ),
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.receipt_long_outlined),
+                    selectedIcon: Icon(Icons.receipt_long_rounded),
+                    label: Text('Billing'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.inventory_2_outlined),
+                    selectedIcon: Icon(Icons.inventory_2_rounded),
+                    label: Text('Price List'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.people_alt_outlined),
+                    selectedIcon: Icon(Icons.people_alt_rounded),
+                    label: Text('Customers'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.local_shipping_outlined),
+                    selectedIcon: Icon(Icons.local_shipping_rounded),
+                    label: Text('Packing Slip'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.history_rounded),
+                    selectedIcon: Icon(Icons.description_rounded),
+                    label: Text('Invoices'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.bar_chart_outlined),
+                    selectedIcon: Icon(Icons.bar_chart_rounded),
+                    label: Text('Reports'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    selectedIcon: Icon(Icons.settings_rounded),
+                    label: Text('Settings'),
+                  ),
+                ],
+                trailing: Expanded(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: IconButton(
+                        tooltip: 'Sync Google Sheet',
+                        icon: const Icon(Icons.sync_rounded),
+                        onPressed: () => _fetchData(silent: true),
                       ),
                     ),
                   ),
                 ),
               ),
-              destinations: const [
-                NavigationRailDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: Text('Home'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.receipt_long_outlined),
-                  selectedIcon: Icon(Icons.receipt_long_rounded),
-                  label: Text('Billing'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.inventory_2_outlined),
-                  selectedIcon: Icon(Icons.inventory_2_rounded),
-                  label: Text('Price List'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.people_alt_outlined),
-                  selectedIcon: Icon(Icons.people_alt_rounded),
-                  label: Text('Customers'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.local_shipping_outlined),
-                  selectedIcon: Icon(Icons.local_shipping_rounded),
-                  label: Text('Packing Slip'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.history_rounded),
-                  selectedIcon: Icon(Icons.description_rounded),
-                  label: Text('Invoices'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.bar_chart_outlined),
-                  selectedIcon: Icon(Icons.bar_chart_rounded),
-                  label: Text('Reports'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings_rounded),
-                  label: Text('Settings'),
-                ),
-              ],
-              trailing: Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: IconButton(
-                      tooltip: 'Sync Google Sheet',
-                      icon: const Icon(Icons.sync_rounded),
-                      onPressed: () => _fetchData(silent: true),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const VerticalDivider(thickness: 1, width: 1),
+              const VerticalDivider(thickness: 1, width: 1),
 
-            // Right Main Screen Content
-            Expanded(
-              child: Column(
-                children: [
-                  if (_isBackgroundSyncing)
-                    const LinearProgressIndicator(minHeight: 2.5),
-                  _buildTopSearchBar(context),
-                  Expanded(
-                    child: _buildActiveBodyContent(),
-                  ),
-                ],
+              // Right Main Screen Content
+              Expanded(
+                child: Column(
+                  children: [
+                    if (_isBackgroundSyncing)
+                      const LinearProgressIndicator(minHeight: 2.5),
+                    _buildTopSearchBar(context),
+                    Expanded(
+                      child: _buildActiveBodyContent(),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1432,7 +1237,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
         );
 
         final row = InvoiceRowItem(item: matchedItem, rate: rate, qty: qty, unit: unit, bags: bags);
-        row.textCtrl.text = itemName;
         _rows.add(row);
       }
     }
@@ -1443,7 +1247,8 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   void _addRow() {
     setState(() {
-      _rows.add(InvoiceRowItem(item: null, rate: 0.0, qty: 1.0, unit: 'KG', bags: 1));
+      // Columns all blank by default!
+      _rows.add(InvoiceRowItem(item: null, rate: 0.0, qty: 0.0, unit: '', bags: 0));
     });
   }
 
@@ -1470,7 +1275,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     _partyFocus.requestFocus();
   }
 
-  double get _grossItemsTotal => _rows.fold(0.0, (sum, r) => sum + r.amount);
+  double get _grossItemsTotal => _rows.where((r) => r.item != null).fold(0.0, (sum, r) => sum + r.amount);
 
   double get _taxableItemsGross {
     double sum = 0.0;
@@ -1491,7 +1296,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   double get _exactTotal => _grossItemsTotal + _coolie;
   double get _grandTotal => _exactTotal.roundToDouble();
   double get _roundOff => _grandTotal - _exactTotal;
-  int get _totalBags => _rows.fold(0, (sum, r) => sum + r.bags);
+  int get _totalBags => _rows.where((r) => r.item != null).fold(0, (sum, r) => sum + r.bags);
 
   void _showPartyOverlay() {
     _hidePartyOverlay();
@@ -1609,19 +1414,33 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
     });
   }
 
+  void _filterItemsForQuery(String val) {
+    final query = val.toLowerCase().trim();
+    final itemsList = widget.items.where((i) {
+      return i.name.toLowerCase().contains(query) || i.tallyName.toLowerCase().contains(query);
+    }).toList();
+
+    // End of List BY DEFAULT is FIRST in the list!
+    if (query.isEmpty || 'end of list'.startsWith(query) || 'end'.startsWith(query)) {
+      _filteredItems = [DCItem.endOfList, ...itemsList];
+    } else {
+      _filteredItems = itemsList;
+    }
+  }
+
   void _showItemOverlay(int rowIdx) {
     _hideItemOverlay();
     if (_filteredItems.isEmpty) return;
 
     final renderBox = _rows[rowIdx].itemSearchFocus.context?.findRenderObject() as RenderBox?;
     double offsetY = 48.0;
-    const double popupHeight = 200.0;
+    const double popupHeight = 220.0;
 
     if (renderBox != null) {
       final position = renderBox.localToGlobal(Offset.zero);
       final screenHeight = MediaQuery.of(context).size.height;
       final spaceBelow = screenHeight - position.dy - renderBox.size.height;
-      if (spaceBelow < 230) {
+      if (spaceBelow < 240) {
         offsetY = -(popupHeight + 8);
       }
     }
@@ -1660,10 +1479,14 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                     itemBuilder: (context, index) {
                       final item = _filteredItems[index];
                       final isSelected = index == _itemSelectedIndex;
+                      final isEndOfList = item.rowIndex == -999;
+
                       return InkWell(
                         onTap: () => _selectItem(rowIdx, item),
                         child: Container(
-                          color: isSelected ? const Color(0xFF1A73E8).withOpacity(0.3) : null,
+                          color: isSelected
+                              ? const Color(0xFF1A73E8).withOpacity(0.3)
+                              : (isEndOfList ? const Color(0xFFD93025).withOpacity(0.12) : null),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1675,13 +1498,16 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                   Text(
                                     item.name,
                                     style: TextStyle(
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      color: isSelected ? const Color(0xFF8AB4F8) : Colors.white,
+                                      fontWeight: isEndOfList || isSelected ? FontWeight.bold : FontWeight.normal,
+                                      color: isEndOfList
+                                          ? const Color(0xFFF28B82)
+                                          : (isSelected ? const Color(0xFF8AB4F8) : Colors.white),
                                     ),
                                   ),
                                 ],
                               ),
-                              Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF8AB4F8), fontWeight: FontWeight.bold, fontSize: 13)),
+                              if (!isEndOfList)
+                                Text('₹${item.rate}', style: const TextStyle(color: Color(0xFF8AB4F8), fontWeight: FontWeight.bold, fontSize: 13)),
                             ],
                           ),
                         ),
@@ -1740,16 +1566,52 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   void _selectItem(int rowIdx, DCItem itm) {
     _hideItemOverlay();
+
+    // Check if End of List was selected!
+    if (itm.rowIndex == -999) {
+      // Clear this incomplete row if multiple rows exist
+      if (_rows.length > 1 && _rows[rowIdx].item == null) {
+        setState(() {
+          _rows.removeAt(rowIdx);
+        });
+      } else {
+        setState(() {
+          _rows[rowIdx].textCtrl.clear();
+          _rows[rowIdx].rateCtrl.clear();
+          _rows[rowIdx].qtyCtrl.clear();
+          _rows[rowIdx].bagsCtrl.clear();
+          _rows[rowIdx].item = null;
+          _rows[rowIdx].unit = '';
+        });
+      }
+
+      // Jump directly to Coolie!
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _coolieFocus.requestFocus();
+      });
+      return;
+    }
+
     setState(() {
       _rows[rowIdx].item = itm;
       _rows[rowIdx].textCtrl.text = itm.name;
-      _rows[rowIdx].rate = double.tryParse(itm.rate) ?? 0.0;
+      final parsedRate = double.tryParse(itm.rate) ?? 0.0;
+      _rows[rowIdx].rate = parsedRate;
+      _rows[rowIdx].rateCtrl.text = itm.rate;
+
+      _rows[rowIdx].qty = 1.0;
+      _rows[rowIdx].qtyCtrl.text = '1';
+
+      _rows[rowIdx].bags = 1;
+      _rows[rowIdx].bagsCtrl.text = '1';
+
       if (itm.billedIn.toUpperCase().contains('KILO')) {
         _rows[rowIdx].unit = 'KG';
       } else {
         _rows[rowIdx].unit = 'NOS';
       }
     });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _rows[rowIdx].rateFocus.requestFocus();
     });
@@ -2042,22 +1904,19 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                       controller: row.textCtrl,
                                       focusNode: row.itemSearchFocus,
                                       decoration: const InputDecoration(
-                                        hintText: 'Search item...',
+                                        hintText: 'Search item (or End of List)...',
                                         contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                       ),
                                       onChanged: (val) {
                                         setState(() {
                                           _itemSelectedIndex = 0;
-                                          _filteredItems = widget.items.where((i) {
-                                            return i.name.toLowerCase().contains(val.toLowerCase()) ||
-                                                i.tallyName.toLowerCase().contains(val.toLowerCase());
-                                          }).toList();
+                                          _filterItemsForQuery(val);
                                         });
                                         _showItemOverlay(idx);
                                       },
                                       onTap: () {
                                         setState(() {
-                                          _filteredItems = widget.items;
+                                          _filterItemsForQuery(row.textCtrl.text);
                                         });
                                         _showItemOverlay(idx);
                                       },
@@ -2068,9 +1927,8 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                               const SizedBox(width: 10),
                               SizedBox(
                                 width: 100,
-                                child: TextFormField(
-                                  key: ValueKey('rate_${row.item?.name}_$idx'),
-                                  initialValue: row.rate.toStringAsFixed(2),
+                                child: TextField(
+                                  controller: row.rateCtrl,
                                   focusNode: row.rateFocus,
                                   keyboardType: TextInputType.number,
                                   decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
@@ -2079,23 +1937,23 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                       row.rate = double.tryParse(val) ?? 0.0;
                                     });
                                   },
-                                  onFieldSubmitted: (_) => row.qtyFocus.requestFocus(),
+                                  onSubmitted: (_) => row.qtyFocus.requestFocus(),
                                 ),
                               ),
                               const SizedBox(width: 10),
                               SizedBox(
                                 width: 90,
-                                child: TextFormField(
-                                  initialValue: row.qty.toStringAsFixed(0),
+                                child: TextField(
+                                  controller: row.qtyCtrl,
                                   focusNode: row.qtyFocus,
                                   keyboardType: TextInputType.number,
                                   decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                                   onChanged: (val) {
                                     setState(() {
-                                      row.qty = double.tryParse(val) ?? 1.0;
+                                      row.qty = double.tryParse(val) ?? 0.0;
                                     });
                                   },
-                                  onFieldSubmitted: (_) => row.unitFocus.requestFocus(),
+                                  onSubmitted: (_) => row.unitFocus.requestFocus(),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -2128,7 +1986,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                           child: Row(
                                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Text(row.unit, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                              Text(row.unit.isNotEmpty ? row.unit : '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                               const Icon(Icons.swap_vert, size: 16, color: Colors.grey),
                                             ],
                                           ),
@@ -2141,17 +1999,17 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                               const SizedBox(width: 10),
                               SizedBox(
                                 width: 75,
-                                child: TextFormField(
-                                  initialValue: row.bags.toString(),
+                                child: TextField(
+                                  controller: row.bagsCtrl,
                                   focusNode: row.bagsFocus,
                                   keyboardType: TextInputType.number,
                                   decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
                                   onChanged: (val) {
                                     setState(() {
-                                      row.bags = int.tryParse(val) ?? 1;
+                                      row.bags = int.tryParse(val) ?? 0;
                                     });
                                   },
-                                  onFieldSubmitted: (_) {
+                                  onSubmitted: (_) {
                                     if (idx == _rows.length - 1) {
                                       _addRow();
                                       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2268,6 +2126,10 @@ class PriceListDesktopView extends StatefulWidget {
 
 class _PriceListDesktopViewState extends State<PriceListDesktopView> {
   String _query = '';
+  int _selectedIndex = 0;
+  final FocusNode _searchFocus = FocusNode();
+  final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _scrollCtrl = ScrollController();
 
   void _showItemPreviewModal(DCItem item) {
     showDialog(
@@ -2361,6 +2223,13 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
     final billedCtrl = TextEditingController(text: isNew ? 'KILOGRAM' : item.billedIn);
     bool isTaxable = isNew ? false : item.isTaxable;
 
+    final nameFocus = FocusNode();
+    final rateFocus = FocusNode();
+    final rateTypeFocus = FocusNode();
+    final qtyFocus = FocusNode();
+    final billedFocus = FocusNode();
+    final tallyFocus = FocusNode();
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -2373,25 +2242,83 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Item Name')),
+                  TextField(
+                    controller: nameCtrl,
+                    focusNode: nameFocus,
+                    autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Item Name'),
+                    onSubmitted: (_) => rateFocus.requestFocus(),
+                  ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Rate (₹)'))),
+                      Expanded(
+                        child: TextField(
+                          controller: rateCtrl,
+                          focusNode: rateFocus,
+                          decoration: const InputDecoration(labelText: 'Rate (₹)'),
+                          onSubmitted: (_) => rateTypeFocus.requestFocus(),
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: rateTypeCtrl, decoration: const InputDecoration(labelText: 'Rate Type'))),
+                      Expanded(
+                        child: TextField(
+                          controller: rateTypeCtrl,
+                          focusNode: rateTypeFocus,
+                          decoration: const InputDecoration(labelText: 'Rate Type'),
+                          onSubmitted: (_) => qtyFocus.requestFocus(),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: TextField(controller: qtyCtrl, decoration: const InputDecoration(labelText: 'Qty'))),
+                      Expanded(
+                        child: TextField(
+                          controller: qtyCtrl,
+                          focusNode: qtyFocus,
+                          decoration: const InputDecoration(labelText: 'Qty'),
+                          onSubmitted: (_) => billedFocus.requestFocus(),
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: billedCtrl, decoration: const InputDecoration(labelText: 'Billed In'))),
+                      Expanded(
+                        child: TextField(
+                          controller: billedCtrl,
+                          focusNode: billedFocus,
+                          decoration: const InputDecoration(labelText: 'Billed In'),
+                          onSubmitted: (_) => tallyFocus.requestFocus(),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  TextField(controller: tallyCtrl, decoration: const InputDecoration(labelText: 'Tally Name')),
+                  TextField(
+                    controller: tallyCtrl,
+                    focusNode: tallyFocus,
+                    decoration: const InputDecoration(labelText: 'Tally Name'),
+                    onSubmitted: (_) async {
+                      if (nameCtrl.text.trim().isNotEmpty) {
+                        Navigator.pop(ctx);
+                        await http.post(
+                          Uri.parse(sheetApiUrl),
+                          body: jsonEncode({
+                            "action": isNew ? "ADD_ITEM" : "EDIT_ITEM",
+                            if (!isNew) "rowIndex": item.rowIndex,
+                            "name": nameCtrl.text.trim(),
+                            "rateType": rateTypeCtrl.text.trim(),
+                            "rate": rateCtrl.text.trim(),
+                            "qty": qtyCtrl.text.trim(),
+                            "tallyName": tallyCtrl.text.trim(),
+                            "billedIn": billedCtrl.text.trim(),
+                            "isTaxable": isTaxable,
+                          }),
+                        );
+                        widget.onRefreshRequired();
+                      }
+                    },
+                  ),
                   const SizedBox(height: 10),
                   SwitchListTile(
                     title: const Text('Taxable (5% Inclusive)'),
@@ -2463,75 +2390,122 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
         .where((i) => i.name.toLowerCase().contains(_query.toLowerCase()) || i.tallyName.toLowerCase().contains(_query.toLowerCase()))
         .toList();
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search_rounded),
-                    hintText: 'Search items...',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              FilledButton.icon(
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Item'),
-                onPressed: () => _openEditItemDialog(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 8),
-              itemBuilder: (ctx, idx) {
-                final item = filtered[idx];
-                return Card(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => _showItemPreviewModal(item),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                            child: Text('${item.no}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                const SizedBox(height: 3),
-                                Text('${item.qty} ${item.billedIn} • Tally: ${item.tallyName}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                              ],
-                            ),
-                          ),
-                          Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1A73E8))),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed: () => _openEditItemDialog(item: item),
-                          ),
-                        ],
-                      ),
+    return FocusScope(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          final isCtrl = HardwareKeyboard.instance.isControlPressed;
+          if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyF) {
+            _searchFocus.requestFocus();
+            _searchCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _searchCtrl.text.length);
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && filtered.isNotEmpty) {
+            setState(() {
+              _selectedIndex = (_selectedIndex + 1).clamp(0, filtered.length - 1);
+            });
+            _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && filtered.isNotEmpty) {
+            setState(() {
+              _selectedIndex = (_selectedIndex - 1).clamp(0, filtered.length - 1);
+            });
+            _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.enter && filtered.isNotEmpty && !_searchFocus.hasFocus) {
+            _showItemPreviewModal(filtered[_selectedIndex]);
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtrl,
+                    focusNode: _searchFocus,
+                    onChanged: (v) => setState(() {
+                      _query = v;
+                      _selectedIndex = 0;
+                    }),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search_rounded),
+                      hintText: 'Search items (Ctrl + F)...',
                     ),
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 10),
+                FilledButton.icon(
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add Item'),
+                  onPressed: () => _openEditItemDialog(),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Expanded(
+              child: ListView.separated(
+                controller: _scrollCtrl,
+                physics: const BouncingScrollPhysics(),
+                itemCount: filtered.length,
+                separatorBuilder: (ctx, i) => const SizedBox(height: 8),
+                itemBuilder: (ctx, idx) {
+                  final item = filtered[idx];
+                  final isFocused = idx == _selectedIndex;
+
+                  return Card(
+                    color: isFocused ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35) : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: isFocused ? const Color(0xFF1A73E8) : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        setState(() => _selectedIndex = idx);
+                        _showItemPreviewModal(item);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                              child: Text('${item.no}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  const SizedBox(height: 3),
+                                  Text('${item.qty} ${item.billedIn} • Tally: ${item.tallyName}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                            Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1A73E8))),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              onPressed: () => _openEditItemDialog(item: item),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2554,6 +2528,10 @@ class CustomerDesktopView extends StatefulWidget {
 
 class _CustomerDesktopViewState extends State<CustomerDesktopView> {
   String _query = '';
+  int _selectedIndex = 0;
+  final FocusNode _searchFocus = FocusNode();
+  final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _scrollCtrl = ScrollController();
 
   Widget _buildTagChip(String tag) {
     Color bg;
@@ -2699,6 +2677,13 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
     final b2cCtrl = TextEditingController(text: isNew ? '' : customer.b2c);
     final remarksCtrl = TextEditingController(text: isNew ? '' : customer.remarks);
 
+    final nameFocus = FocusNode();
+    final contactFocus = FocusNode();
+    final addressFocus = FocusNode();
+    final b2bFocus = FocusNode();
+    final b2cFocus = FocusNode();
+    final remarksFocus = FocusNode();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -2710,21 +2695,74 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Party Name')),
+                TextField(
+                  controller: nameCtrl,
+                  focusNode: nameFocus,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Party Name'),
+                  onSubmitted: (_) => contactFocus.requestFocus(),
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: contactCtrl, decoration: const InputDecoration(labelText: 'Contact'))),
+                    Expanded(
+                      child: TextField(
+                        controller: contactCtrl,
+                        focusNode: contactFocus,
+                        decoration: const InputDecoration(labelText: 'Contact'),
+                        onSubmitted: (_) => addressFocus.requestFocus(),
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: addressCtrl, decoration: const InputDecoration(labelText: 'Address'))),
+                    Expanded(
+                      child: TextField(
+                        controller: addressCtrl,
+                        focusNode: addressFocus,
+                        decoration: const InputDecoration(labelText: 'Address'),
+                        onSubmitted: (_) => b2bFocus.requestFocus(),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                TextField(controller: b2bCtrl, decoration: const InputDecoration(labelText: 'Trade Name (B2B)')),
+                TextField(
+                  controller: b2bCtrl,
+                  focusNode: b2bFocus,
+                  decoration: const InputDecoration(labelText: 'Trade Name (B2B)'),
+                  onSubmitted: (_) => b2cFocus.requestFocus(),
+                ),
                 const SizedBox(height: 10),
-                TextField(controller: b2cCtrl, decoration: const InputDecoration(labelText: 'B2C Ref')),
+                TextField(
+                  controller: b2cCtrl,
+                  focusNode: b2cFocus,
+                  decoration: const InputDecoration(labelText: 'B2C Ref'),
+                  onSubmitted: (_) => remarksFocus.requestFocus(),
+                ),
                 const SizedBox(height: 10),
-                TextField(controller: remarksCtrl, decoration: const InputDecoration(labelText: 'Delivery Rules / Remarks')),
+                TextField(
+                  controller: remarksCtrl,
+                  focusNode: remarksFocus,
+                  decoration: const InputDecoration(labelText: 'Delivery Rules / Remarks'),
+                  onSubmitted: (_) async {
+                    if (nameCtrl.text.trim().isNotEmpty) {
+                      Navigator.pop(ctx);
+                      await http.post(
+                        Uri.parse(sheetApiUrl),
+                        body: jsonEncode({
+                          "action": isNew ? "ADD_CUSTOMER" : "EDIT_CUSTOMER",
+                          if (!isNew) "rowIndex": customer.rowIndex,
+                          "name": nameCtrl.text.trim(),
+                          "contact": contactCtrl.text.trim(),
+                          "address": addressCtrl.text.trim(),
+                          "b2b": b2bCtrl.text.trim(),
+                          "b2c": b2cCtrl.text.trim(),
+                          "remarks": remarksCtrl.text.trim(),
+                        }),
+                      );
+                      widget.onRefreshRequired();
+                    }
+                  },
+                ),
               ],
             ),
           ),
@@ -2790,79 +2828,126 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           c.contact.contains(_query);
     }).toList();
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search_rounded),
-                    hintText: 'Search parties...',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              FilledButton.icon(
-                icon: const Icon(Icons.person_add_rounded),
-                label: const Text('Add Party'),
-                onPressed: () => _openEditCustomerDialog(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              itemCount: filtered.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 8),
-              itemBuilder: (ctx, i) {
-                final c = filtered[i];
-                return Card(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => _showCustomerPreviewModal(c),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                            child: Text('${c.slNo}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                    const SizedBox(width: 8),
-                                    _buildTagChip(c.billingTag),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"} • 📍 ${c.address.isNotEmpty ? c.address : "-"}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed: () => _openEditCustomerDialog(customer: c),
-                          ),
-                        ],
-                      ),
+    return FocusScope(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          final isCtrl = HardwareKeyboard.instance.isControlPressed;
+          if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyF) {
+            _searchFocus.requestFocus();
+            _searchCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _searchCtrl.text.length);
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && filtered.isNotEmpty) {
+            setState(() {
+              _selectedIndex = (_selectedIndex + 1).clamp(0, filtered.length - 1);
+            });
+            _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && filtered.isNotEmpty) {
+            setState(() {
+              _selectedIndex = (_selectedIndex - 1).clamp(0, filtered.length - 1);
+            });
+            _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+            return KeyEventResult.handled;
+          } else if (event.logicalKey == LogicalKeyboardKey.enter && filtered.isNotEmpty && !_searchFocus.hasFocus) {
+            _showCustomerPreviewModal(filtered[_selectedIndex]);
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtrl,
+                    focusNode: _searchFocus,
+                    onChanged: (v) => setState(() {
+                      _query = v;
+                      _selectedIndex = 0;
+                    }),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search_rounded),
+                      hintText: 'Search parties (Ctrl + F)...',
                     ),
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 10),
+                FilledButton.icon(
+                  icon: const Icon(Icons.person_add_rounded),
+                  label: const Text('Add Party'),
+                  onPressed: () => _openEditCustomerDialog(),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Expanded(
+              child: ListView.separated(
+                controller: _scrollCtrl,
+                physics: const BouncingScrollPhysics(),
+                itemCount: filtered.length,
+                separatorBuilder: (ctx, i) => const SizedBox(height: 8),
+                itemBuilder: (ctx, i) {
+                  final c = filtered[i];
+                  final isFocused = i == _selectedIndex;
+
+                  return Card(
+                    color: isFocused ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35) : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: isFocused ? const Color(0xFF1A73E8) : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        setState(() => _selectedIndex = i);
+                        _showCustomerPreviewModal(c);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                              child: Text('${c.slNo}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                      const SizedBox(width: 8),
+                                      _buildTagChip(c.billingTag),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"} • 📍 ${c.address.isNotEmpty ? c.address : "-"}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              onPressed: () => _openEditCustomerDialog(customer: c),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
