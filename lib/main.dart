@@ -1824,6 +1824,11 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                               });
                               _showPartyOverlay();
                             },
+                            onSubmitted: (val) {
+                              if (_filteredParties.isNotEmpty) {
+                                _selectParty(_filteredParties[_partySelectedIndex.clamp(0, _filteredParties.length - 1)]);
+                              }
+                            },
                             onTap: () {
                               setState(() {
                                 _filteredParties = widget.customers;
@@ -1913,6 +1918,11 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                           _filterItemsForQuery(val);
                                         });
                                         _showItemOverlay(idx);
+                                      },
+                                      onSubmitted: (val) {
+                                        if (_filteredItems.isNotEmpty) {
+                                          _selectItem(idx, _filteredItems[_itemSelectedIndex.clamp(0, _filteredItems.length - 1)]);
+                                        }
                                       },
                                       onTap: () {
                                         setState(() {
@@ -2070,13 +2080,22 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                         children: [
                           SizedBox(
                             width: 130,
-                            child: TextField(
-                              controller: _coolieCtrl,
-                              focusNode: _coolieFocus,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Coolie (₹)'),
-                              onChanged: (_) => setState(() {}),
-                              onSubmitted: (_) => _saveInvoice(),
+                            child: Focus(
+                              onKeyEvent: (node, event) {
+                                if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                                  _saveInvoice();
+                                  return KeyEventResult.handled;
+                                }
+                                return KeyEventResult.ignored;
+                              },
+                              child: TextField(
+                                controller: _coolieCtrl,
+                                focusNode: _coolieFocus,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Coolie (₹)'),
+                                onChanged: (_) => setState(() {}),
+                                onSubmitted: (_) => _saveInvoice(),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -2390,33 +2409,36 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
         .where((i) => i.name.toLowerCase().contains(_query.toLowerCase()) || i.tallyName.toLowerCase().contains(_query.toLowerCase()))
         .toList();
 
-    return FocusScope(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          final isCtrl = HardwareKeyboard.instance.isControlPressed;
-          if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyF) {
-            _searchFocus.requestFocus();
-            _searchCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _searchCtrl.text.length);
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && filtered.isNotEmpty) {
-            setState(() {
-              _selectedIndex = (_selectedIndex + 1).clamp(0, filtered.length - 1);
-            });
-            _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && filtered.isNotEmpty) {
-            setState(() {
-              _selectedIndex = (_selectedIndex - 1).clamp(0, filtered.length - 1);
-            });
-            _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.enter && filtered.isNotEmpty && !_searchFocus.hasFocus) {
-            _showItemPreviewModal(filtered[_selectedIndex]);
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
+          _searchFocus.requestFocus();
+          _searchCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _searchCtrl.text.length);
+        },
       },
+      child: FocusScope(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.arrowDown && filtered.isNotEmpty) {
+              setState(() {
+                _selectedIndex = (_selectedIndex + 1).clamp(0, filtered.length - 1);
+              });
+              _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && filtered.isNotEmpty) {
+              setState(() {
+                _selectedIndex = (_selectedIndex - 1).clamp(0, filtered.length - 1);
+              });
+              _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.enter && filtered.isNotEmpty && !_searchFocus.hasFocus) {
+              _showItemPreviewModal(filtered[_selectedIndex]);
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -2507,7 +2529,8 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -2828,33 +2851,36 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           c.contact.contains(_query);
     }).toList();
 
-    return FocusScope(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          final isCtrl = HardwareKeyboard.instance.isControlPressed;
-          if (isCtrl && event.logicalKey == LogicalKeyboardKey.keyF) {
-            _searchFocus.requestFocus();
-            _searchCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _searchCtrl.text.length);
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown && filtered.isNotEmpty) {
-            setState(() {
-              _selectedIndex = (_selectedIndex + 1).clamp(0, filtered.length - 1);
-            });
-            _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && filtered.isNotEmpty) {
-            setState(() {
-              _selectedIndex = (_selectedIndex - 1).clamp(0, filtered.length - 1);
-            });
-            _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.enter && filtered.isNotEmpty && !_searchFocus.hasFocus) {
-            _showCustomerPreviewModal(filtered[_selectedIndex]);
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
+          _searchFocus.requestFocus();
+          _searchCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _searchCtrl.text.length);
+        },
       },
+      child: FocusScope(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.arrowDown && filtered.isNotEmpty) {
+              setState(() {
+                _selectedIndex = (_selectedIndex + 1).clamp(0, filtered.length - 1);
+              });
+              _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.arrowUp && filtered.isNotEmpty) {
+              setState(() {
+                _selectedIndex = (_selectedIndex - 1).clamp(0, filtered.length - 1);
+              });
+              _scrollCtrl.animateTo(_selectedIndex * 68.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.enter && filtered.isNotEmpty && !_searchFocus.hasFocus) {
+              _showCustomerPreviewModal(filtered[_selectedIndex]);
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -2949,7 +2975,8 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
