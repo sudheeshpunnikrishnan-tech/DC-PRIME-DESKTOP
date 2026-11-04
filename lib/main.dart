@@ -3637,6 +3637,8 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
 
 // ---------------- 8. INVOICE HISTORY VIEW ----------------
 
+// ---------------- 8. INVOICE HISTORY VIEW ----------------
+
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
   final List<DCItem> items;
@@ -4107,6 +4109,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
     );
   }
 }
+
+// ---------------- 9. ENTERPRISE REPORTS VIEW ----------------
 
 // ---------------- 9. ENTERPRISE REPORTS VIEW ----------------
 
