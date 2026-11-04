@@ -185,7 +185,7 @@ class DCItem {
       qty: json['qty'] ?? '',
       tallyName: json['tallyName'] ?? '',
       billedIn: json['billedIn'] ?? '',
-      isTaxable: json['isTaxable'] ?? false,
+      isTaxable: json['isTaxable'] == true || json['isTaxable']?.toString().toUpperCase() == "TRUE",
     );
   }
 }
@@ -615,12 +615,11 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
-  // 0: Sales (F8), 1: Purchase (F9), 2: Receipt (F6), 3: Payment (F5), 4: Price List, 5: Customers, 6: Packing Slip, 7: Invoices, 8: Reports, 9: Settings
   int _navIndex = 0;
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
-  List<Map<String, dynamic>> _allVouchers = [];
+  List> _allVouchers = [];
   final List<LoadingEntry> _loadingSlip = [];
   List<dynamic> _suppliers = [];
   bool _isLoading = true;
@@ -642,16 +641,38 @@ class _MainDashboardState extends State<MainDashboard> {
     }
 
     try {
+      debugPrint('[SYNC] Fetching from: $sheetApiUrl');
       final res = await http.get(Uri.parse(sheetApiUrl));
+      debugPrint('[SYNC] HTTP Status: ${res.statusCode}');
+
       if (res.statusCode == 200 || res.statusCode == 302) {
-        final data = jsonDecode(res.body);
-        final List itemList = data['items'] ?? [];
-        final List custList = data['customers'] ?? [];
-        final List estList = data['estimates'] ?? [];
-        final List suppList = data['suppliers'] ?? [];
-        final List purchaseList = data['purchases'] ?? [];
-        final List receiptList = data['receipts'] ?? [];
-        final List paymentList = data['payments'] ?? [];
+        final rawBody = res.body.trim();
+        if (rawBody.startsWith('<')) {
+          debugPrint('[SYNC ERROR] Received HTML redirect page instead of JSON.');
+          setState(() {
+            _isLoading = false;
+            _isBackgroundSyncing = false;
+          });
+          return;
+        }
+
+        final data = jsonDecode(rawBody);
+        if (data is! Map<String, dynamic>) {
+          debugPrint('[SYNC ERROR] Payload is not a Map: $data');
+          setState(() {
+            _isLoading = false;
+            _isBackgroundSyncing = false;
+          });
+          return;
+        }
+
+        final List itemList = data['items'] is List ? data['items'] : [];
+        final List custList = data['customers'] is List ? data['customers'] : [];
+        final List estList = data['estimates'] is List ? data['estimates'] : [];
+        final List suppList = data['suppliers'] is List ? data['suppliers'] : [];
+        final List purchaseList = data['purchases'] is List ? data['purchases'] : [];
+        final List receiptList = data['receipts'] is List ? data['receipts'] : [];
+        final List paymentList = data['payments'] is List ? data['payments'] : [];
 
         String valOf(Map row, List<String> keys, [String fallback = '']) {
           for (final key in keys) {
@@ -660,6 +681,7 @@ class _MainDashboardState extends State<MainDashboard> {
           }
           return fallback;
         }
+
         Map<String, dynamic> voucher(String type, Map row, List<String> noKeys, List<String> partyKeys, List<String> amountKeys, List<String> summaryKeys) => {
           'type': type,
           'number': valOf(row, noKeys, '-'),
@@ -671,49 +693,113 @@ class _MainDashboardState extends State<MainDashboard> {
           'reference': valOf(row, ['reference', 'referenceNo', 'Reference No']),
           'status': valOf(row, ['status', 'Status'], 'ACTIVE'),
         };
-        final List<Map<String, dynamic>> voucherRows = [
-          ...estList.map((e) => voucher('SALES', e as Map, ['slNo', 'voucherNo', 'invoiceNo'], ['customer'], ['grandTotal'], ['itemSummary'])),
-          ...purchaseList.map((e) => voucher('PURCHASE', e as Map, ['voucherNo', 'purchaseNo'], ['supplier'], ['grandTotal'], ['itemSummary'])),
-          ...receiptList.map((e) => voucher('RECEIPT', e as Map, ['receiptNo', 'voucherNo'], ['customer'], ['amount'], ['narration'])),
-          ...paymentList.map((e) => voucher('PAYMENT', e as Map, ['paymentNo', 'voucherNo'], ['paidTo'], ['amount'], ['narration'])),
-        ];
-        // Newer Apps Script deployments may also expose a pre-combined vouchers array.
-        // Prefer that payload when it contains records; otherwise use the four sheet arrays above.
+
+        final List> voucherRows = [];
+
+        for (final e in estList) {
+          if (e is Map) voucherRows.add(voucher('SALES', e, ['slNo', 'voucherNo', 'invoiceNo'], ['customer'], ['grandTotal'], ['itemSummary']));
+        }
+        for (final p in purchaseList) {
+          if (p is Map) voucherRows.add(voucher('PURCHASE', p, ['voucherNo', 'purchaseNo'], ['supplier'], ['grandTotal'], ['itemSummary']));
+        }
+        for (final r in receiptList) {
+          if (r is Map) voucherRows.add(voucher('RECEIPT', r, ['receiptNo', 'voucherNo'], ['customer'], ['amount'], ['narration']));
+        }
+        for (final pay in paymentList) {
+          if (pay is Map) voucherRows.add(voucher('PAYMENT', pay, ['paymentNo', 'voucherNo'], ['paidTo'], ['amount'], ['narration']));
+        }
+
         final List combinedVoucherList = data['vouchers'] is List ? data['vouchers'] as List : [];
         if (combinedVoucherList.isNotEmpty) {
           voucherRows
             ..clear()
-            ..addAll(combinedVoucherList.whereType<Map>().map((row) {
+            ..addAll(combinedVoucherList.whereType().map((row) {
               final rawType = valOf(row, ['type', 'voucherType', 'category'], 'SALES').toUpperCase();
               final type = rawType.contains('PUR') ? 'PURCHASE' : rawType.contains('REC') ? 'RECEIPT' : rawType.contains('PAY') ? 'PAYMENT' : 'SALES';
               return voucher(type, row, ['number', 'voucherNo', 'receiptNo', 'paymentNo', 'slNo'], ['party', 'customer', 'supplier', 'paidTo'], ['amount', 'grandTotal'], ['summary', 'itemSummary', 'narration']);
             }));
         }
-        voucherRows.sort((a, b) => (parseUniversalDate(b['date'] ?? '') ?? DateTime(2000)).compareTo(parseUniversalDate(a['date'] ?? '') ?? DateTime(2000)));
 
-        if (data['company'] != null) {
-          final comp = data['company'];
-          CompanyConfig.logoUrl = comp['logoUrl'] ?? CompanyConfig.logoUrl;
-          CompanyConfig.name = comp['name'] ?? CompanyConfig.name;
-          CompanyConfig.tradeSubtitle = comp['tradeSubtitle'] ?? CompanyConfig.tradeSubtitle;
-          CompanyConfig.address = comp['address'] ?? CompanyConfig.address;
-          CompanyConfig.phone = comp['phone'] ?? CompanyConfig.phone;
-          CompanyConfig.email = comp['email'] ?? CompanyConfig.email;
-          CompanyConfig.gstin = comp['gstin'] ?? CompanyConfig.gstin;
-          CompanyConfig.regType = comp['regType'] ?? CompanyConfig.regType;
+        try {
+          voucherRows.sort((a, b) {
+            final da = parseUniversalDate(a['date']?.toString() ?? '') ?? DateTime(2000);
+            final db = parseUniversalDate(b['date']?.toString() ?? '') ?? DateTime(2000);
+            return db.compareTo(da);
+          });
+        } catch (e) {
+          debugPrint('[SYNC] Note: Voucher sort fallback: $e');
+        }
+
+        if (data['company'] is Map) {
+          final comp = data['company'] as Map;
+          CompanyConfig.logoUrl = comp['logoUrl']?.toString() ?? CompanyConfig.logoUrl;
+          CompanyConfig.name = comp['name']?.toString() ?? CompanyConfig.name;
+          CompanyConfig.tradeSubtitle = comp['tradeSubtitle']?.toString() ?? CompanyConfig.tradeSubtitle;
+          CompanyConfig.address = comp['address']?.toString() ?? CompanyConfig.address;
+          CompanyConfig.phone = comp['phone']?.toString() ?? CompanyConfig.phone;
+          CompanyConfig.email = comp['email']?.toString() ?? CompanyConfig.email;
+          CompanyConfig.gstin = comp['gstin']?.toString() ?? CompanyConfig.gstin;
+          CompanyConfig.regType = comp['regType']?.toString() ?? CompanyConfig.regType;
+        }
+
+        final List<DCItem> parsedItems = [];
+        for (final item in itemList) {
+          try {
+            if (item is Map<String, dynamic>) {
+              parsedItems.add(DCItem.fromJson(item));
+            } else if (item is Map) {
+              parsedItems.add(DCItem.fromJson(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('[SYNC] Skipping item parse error: $e');
+          }
+        }
+
+        final List<DCCustomer> parsedCustomers = [];
+        for (final cust in custList) {
+          try {
+            if (cust is Map<String, dynamic>) {
+              parsedCustomers.add(DCCustomer.fromJson(cust));
+            } else if (cust is Map) {
+              parsedCustomers.add(DCCustomer.fromJson(Map<String, dynamic>.from(cust)));
+            }
+          } catch (e) {
+            debugPrint('[SYNC] Skipping customer parse error: $e');
+          }
+        }
+
+        final List<DCEstimate> parsedEstimates = [];
+        for (final est in estList) {
+          try {
+            if (est is Map<String, dynamic>) {
+              parsedEstimates.add(DCEstimate.fromJson(est));
+            } else if (est is Map) {
+              parsedEstimates.add(DCEstimate.fromJson(Map<String, dynamic>.from(est)));
+            }
+          } catch (e) {
+            debugPrint('[SYNC] Skipping estimate parse error: $e');
+          }
         }
 
         setState(() {
-          _items = itemList.map((i) => DCItem.fromJson(i)).toList();
-          _customers = custList.map((c) => DCCustomer.fromJson(c)).toList();
-          _estimates = estList.map((e) => DCEstimate.fromJson(e)).toList();
+          _items = parsedItems;
+          _customers = parsedCustomers;
+          _estimates = parsedEstimates;
           _allVouchers = voucherRows;
           _suppliers = suppList;
           _isLoading = false;
           _isBackgroundSyncing = false;
         });
+
+        debugPrint('[SYNC COMPLETE] Customers: ${_customers.length}, Items: ${_items.length}, Invoices: ${_estimates.length}, Vouchers: ${_allVouchers.length}');
+      } else {
+        setState(() {
+          _isLoading = false;
+          _isBackgroundSyncing = false;
+        });
       }
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('[SYNC ERROR]: $e\n$stack');
       setState(() {
         _isLoading = false;
         _isBackgroundSyncing = false;
@@ -724,7 +810,7 @@ class _MainDashboardState extends State<MainDashboard> {
   void _onLoadInvoiceToEdit(DCEstimate est) {
     setState(() {
       _invoiceToEdit = est;
-      _navIndex = 0; // Billing screen
+      _navIndex = 0;
     });
   }
 
@@ -1073,7 +1159,6 @@ class _MainDashboardState extends State<MainDashboard> {
       );
     }
 
-    // Global Key Bindings for F-keys & Esc
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.f8): () => setState(() => _navIndex = 0),
@@ -1520,10 +1605,10 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
     if (query.isEmpty || 'end of list'.startsWith(query) || 'end'.startsWith(query)) {
       _filteredItems = [DCItem.endOfList, ...itemsList];
-      _itemSelectedIndex = 0; // Lock on End of List by default
+      _itemSelectedIndex = 0;
     } else {
       _filteredItems = itemsList;
-      _itemSelectedIndex = 0; // Lock on first matched item
+      _itemSelectedIndex = 0;
     }
   }
 
@@ -3670,14 +3755,7 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
                     title: Text(entry.customerName, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text('${entry.place} • ${entry.summary}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                     trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFFF29900))),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 20),
-                          onPressed: () => setState(() => widget.loadingSlip.removeAt(idx)),
-                        ),
-                      ],
+                      mainAxisSize:切割_trailing(entry, idx),
                     ),
                   ),
                 );
@@ -3688,12 +3766,22 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
       ),
     );
   }
+
+  List<Widget> 切割_trailing(LoadingEntry entry, int idx) {
+    return [
+      Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFFF29900))),
+      IconButton(
+        icon: const Icon(Icons.delete_outline, size: 20),
+        onPressed: () => setState(() => widget.loadingSlip.removeAt(idx)),
+      ),
+    ];
+  }
 }
 
 // ---------------- ALL VOUCHER HISTORY ----------------
 
 class AllVoucherHistoryView extends StatefulWidget {
-  final List<Map<String, dynamic>> vouchers;
+  final List> vouchers;
   final VoidCallback onRefresh;
   const AllVoucherHistoryView({super.key, required this.vouchers, required this.onRefresh});
 
@@ -3778,8 +3866,6 @@ class _AllVoucherHistoryViewState extends State<AllVoucherHistoryView> {
 
 // ---------------- 8. INVOICE HISTORY VIEW ----------------
 
-// ---------------- 8. INVOICE HISTORY VIEW ----------------
-
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
   final List<DCItem> items;
@@ -3804,8 +3890,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    final List<Map<String, dynamic>> rows = [];
+  List> _parseSummaryTable(String summary) {
+    final List> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -4253,8 +4339,6 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
 
 // ---------------- 9. ENTERPRISE REPORTS VIEW ----------------
 
-// ---------------- 9. ENTERPRISE REPORTS VIEW ----------------
-
 class EnterpriseReportsView extends StatefulWidget {
   final List<DCEstimate> estimates;
   final List<DCItem> items;
@@ -4277,8 +4361,6 @@ class EnterpriseReportsView extends StatefulWidget {
 
 class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _reportFilter = 'ALL';
-  DateTimeRange? _reportDateRange;
 
   @override
   void initState() {
