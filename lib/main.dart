@@ -2479,6 +2479,7 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                   final isFocused = idx == _selectedIndex;
 
                   return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
                     color: isFocused ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35) : null,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -2494,28 +2495,86 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
                         _showItemPreviewModal(item);
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         child: Row(
                           children: [
                             CircleAvatar(
+                              radius: 22,
                               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                              child: Text('${item.no}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                '${item.no}',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 18),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                  const SizedBox(height: 3),
-                                  Text('${item.qty} ${item.billedIn} • Tally: ${item.tallyName}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          item.name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 16.5,
+                                            letterSpacing: 0.3,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF1A73E8).withOpacity(0.18),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: const Color(0xFF1A73E8), width: 1.2),
+                                        ),
+                                        child: Text(
+                                          '₹${item.rate}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 16,
+                                            color: Color(0xFF8AB4F8),
+                                          ),
+                                        ),
+                                      ),
+                                      if (item.isTaxable) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF38230B),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
+                                          ),
+                                          child: const Text(
+                                            'TAX 5%',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFFFCD34D),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    '${item.qty} ${item.billedIn} • Rate Unit: ${item.rateType} • Tally: ${item.tallyName}',
+                                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                  ),
                                 ],
                               ),
                             ),
-                            Text('₹${item.rate}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1A73E8))),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              icon: const Icon(Icons.edit_outlined, size: 22),
+                              tooltip: 'Edit Item',
                               onPressed: () => _openEditItemDialog(item: item),
                             ),
                           ],
@@ -2921,6 +2980,7 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                   final isFocused = i == _selectedIndex;
 
                   return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 5),
                     color: isFocused ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35) : null,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -2936,32 +2996,124 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
                         _showCustomerPreviewModal(c);
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             CircleAvatar(
+                              radius: 22,
                               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                              child: Text('${c.slNo}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                '${c.slNo}',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 18),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
-                                      Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          c.name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 16.5,
+                                            letterSpacing: 0.3,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
                                       _buildTagChip(c.billingTag),
+                                      if (c.b2b.trim().isNotEmpty) ...[
+                                        const SizedBox(width: 10),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF1E293B),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: const Color(0xFF64748B), width: 0.8),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.business_rounded, size: 12, color: Color(0xFF94A3B8)),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'B2B: ${c.b2b}',
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFFCBD5E1),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
-                                  const SizedBox(height: 3),
-                                  Text('📞 ${c.contact.isNotEmpty ? c.contact : "-"} • 📍 ${c.address.isNotEmpty ? c.address : "-"}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                  const SizedBox(height: 6),
+                                  Wrap(
+                                    spacing: 16,
+                                    runSpacing: 4,
+                                    children: [
+                                      Text(
+                                        '📞 ${c.contact.isNotEmpty ? c.contact : "-"}',
+                                        style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                      ),
+                                      Text(
+                                        '📍 ${c.address.isNotEmpty ? c.address : "-"}',
+                                        style: const TextStyle(fontSize: 13, color: Colors.grey),
+                                      ),
+                                      if (c.b2c.trim().isNotEmpty)
+                                        Text(
+                                          '👤 B2C: ${c.b2c}',
+                                          style: const TextStyle(fontSize: 13, color: Color(0xFF8AB4F8), fontWeight: FontWeight.w600),
+                                        ),
+                                    ],
+                                  ),
+                                  if (c.remarks.trim().isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF2B1F0A),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.5), width: 1),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.sticky_note_2_outlined, size: 15, color: Color(0xFFF59E0B)),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Remarks: ${c.remarks}',
+                                              style: const TextStyle(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFFFDE68A),
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 12),
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              icon: const Icon(Icons.edit_outlined, size: 22),
+                              tooltip: 'Edit Party',
                               onPressed: () => _openEditCustomerDialog(customer: c),
                             ),
                           ],
