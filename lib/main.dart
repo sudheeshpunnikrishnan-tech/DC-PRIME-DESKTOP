@@ -620,6 +620,7 @@ class _MainDashboardState extends State<MainDashboard> {
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
+  List<Map<String, dynamic>> _allVouchers = [];
   final List<LoadingEntry> _loadingSlip = [];
   List<dynamic> _suppliers = [];
   bool _isLoading = true;
@@ -648,6 +649,47 @@ class _MainDashboardState extends State<MainDashboard> {
         final List custList = data['customers'] ?? [];
         final List estList = data['estimates'] ?? [];
         final List suppList = data['suppliers'] ?? [];
+        final List purchaseList = data['purchases'] ?? [];
+        final List receiptList = data['receipts'] ?? [];
+        final List paymentList = data['payments'] ?? [];
+
+        String valOf(Map row, List<String> keys, [String fallback = '']) {
+          for (final key in keys) {
+            final value = row[key];
+            if (value != null && value.toString().trim().isNotEmpty) return value.toString();
+          }
+          return fallback;
+        }
+        Map<String, dynamic> voucher(String type, Map row, List<String> noKeys, List<String> partyKeys, List<String> amountKeys, List<String> summaryKeys) => {
+          'type': type,
+          'number': valOf(row, noKeys, '-'),
+          'date': valOf(row, ['date', 'Date']),
+          'party': valOf(row, partyKeys, '-'),
+          'amount': valOf(row, amountKeys, '0'),
+          'summary': valOf(row, summaryKeys),
+          'mode': valOf(row, ['mode', 'paymentMode', 'Payment Mode']),
+          'reference': valOf(row, ['reference', 'referenceNo', 'Reference No']),
+          'status': valOf(row, ['status', 'Status'], 'ACTIVE'),
+        };
+        final List<Map<String, dynamic>> voucherRows = [
+          ...estList.map((e) => voucher('SALES', e as Map, ['slNo', 'voucherNo', 'invoiceNo'], ['customer'], ['grandTotal'], ['itemSummary'])),
+          ...purchaseList.map((e) => voucher('PURCHASE', e as Map, ['voucherNo', 'purchaseNo'], ['supplier'], ['grandTotal'], ['itemSummary'])),
+          ...receiptList.map((e) => voucher('RECEIPT', e as Map, ['receiptNo', 'voucherNo'], ['customer'], ['amount'], ['narration'])),
+          ...paymentList.map((e) => voucher('PAYMENT', e as Map, ['paymentNo', 'voucherNo'], ['paidTo'], ['amount'], ['narration'])),
+        ];
+        // Newer Apps Script deployments may also expose a pre-combined vouchers array.
+        // Prefer that payload when it contains records; otherwise use the four sheet arrays above.
+        final List combinedVoucherList = data['vouchers'] is List ? data['vouchers'] as List : [];
+        if (combinedVoucherList.isNotEmpty) {
+          voucherRows
+            ..clear()
+            ..addAll(combinedVoucherList.whereType<Map>().map((row) {
+              final rawType = valOf(row, ['type', 'voucherType', 'category'], 'SALES').toUpperCase();
+              final type = rawType.contains('PUR') ? 'PURCHASE' : rawType.contains('REC') ? 'RECEIPT' : rawType.contains('PAY') ? 'PAYMENT' : 'SALES';
+              return voucher(type, row, ['number', 'voucherNo', 'receiptNo', 'paymentNo', 'slNo'], ['party', 'customer', 'supplier', 'paidTo'], ['amount', 'grandTotal'], ['summary', 'itemSummary', 'narration']);
+            }));
+        }
+        voucherRows.sort((a, b) => (parseUniversalDate(b['date'] ?? '') ?? DateTime(2000)).compareTo(parseUniversalDate(a['date'] ?? '') ?? DateTime(2000)));
 
         if (data['company'] != null) {
           final comp = data['company'];
@@ -665,6 +707,7 @@ class _MainDashboardState extends State<MainDashboard> {
           _items = itemList.map((i) => DCItem.fromJson(i)).toList();
           _customers = custList.map((c) => DCCustomer.fromJson(c)).toList();
           _estimates = estList.map((e) => DCEstimate.fromJson(e)).toList();
+          _allVouchers = voucherRows;
           _suppliers = suppList;
           _isLoading = false;
           _isBackgroundSyncing = false;
@@ -886,6 +929,8 @@ class _MainDashboardState extends State<MainDashboard> {
                       setState(() => _navIndex = 6);
                     } else if (q.contains('invo') || q.contains('hist')) {
                       setState(() => _navIndex = 7);
+                    } else if (q.contains('voucher') || q.contains('history') || q.contains('view')) {
+                      setState(() => _navIndex = 10);
                     } else if (q.contains('rep')) {
                       setState(() => _navIndex = 8);
                     } else if (q.contains('set') || q.contains('prof')) {
@@ -982,6 +1027,11 @@ class _MainDashboardState extends State<MainDashboard> {
         return SettingsDesktopView(
           onReloadSheet: () => _fetchData(silent: true),
           onOpenProfile: _openCompanyProfileDialog,
+        );
+      case 10:
+        return AllVoucherHistoryView(
+          vouchers: _allVouchers,
+          onRefresh: () => _fetchData(silent: true),
         );
       default:
         return TallyBillingScreen(
@@ -1124,6 +1174,11 @@ class _MainDashboardState extends State<MainDashboard> {
                       icon: Icon(Icons.settings_outlined),
                       selectedIcon: Icon(Icons.settings_rounded),
                       label: Text('Settings'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.history_rounded),
+                      label: Text('Vouchers'),
                     ),
                   ],
                   trailing: Expanded(
@@ -3632,6 +3687,92 @@ class _LoadingSlipViewState extends State<LoadingSlipView> {
         ],
       ),
     );
+  }
+}
+
+// ---------------- ALL VOUCHER HISTORY ----------------
+
+class AllVoucherHistoryView extends StatefulWidget {
+  final List<Map<String, dynamic>> vouchers;
+  final VoidCallback onRefresh;
+  const AllVoucherHistoryView({super.key, required this.vouchers, required this.onRefresh});
+
+  @override
+  State<AllVoucherHistoryView> createState() => _AllVoucherHistoryViewState();
+}
+
+class _AllVoucherHistoryViewState extends State<AllVoucherHistoryView> {
+  String _filter = 'ALL';
+  String _query = '';
+
+  Color _typeColor(String type) {
+    switch (type) {
+      case 'SALES': return const Color(0xFF1A73E8);
+      case 'PURCHASE': return const Color(0xFF0F9D58);
+      case 'RECEIPT': return const Color(0xFF00A6A6);
+      default: return const Color(0xFFE37400);
+    }
+  }
+
+  void _showDetails(Map<String, dynamic> v) {
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: Text('${v['type']} • ${v['number']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+      content: SizedBox(width: 480, child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _detail('Date', formatDisplayDateTime('${v['date'] ?? ''}')),
+        _detail(v['type'] == 'PAYMENT' ? 'Paid To' : (v['type'] == 'PURCHASE' ? 'Supplier' : 'Party'), '${v['party'] ?? '-'}'),
+        _detail('Amount', '₹${v['amount'] ?? '0'}'),
+        if ('${v['mode'] ?? ''}'.isNotEmpty) _detail('Mode', '${v['mode']}'),
+        if ('${v['reference'] ?? ''}'.isNotEmpty) _detail('Reference', '${v['reference']}'),
+        if ('${v['summary'] ?? ''}'.isNotEmpty) _detail('Details', '${v['summary']}'),
+        _detail('Status', '${v['status'] ?? 'ACTIVE'}'),
+      ])),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+    ));
+  }
+
+  Widget _detail(String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [SizedBox(width: 105, child: Text(label, style: const TextStyle(color: Colors.grey))), Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600))) ]),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = widget.vouchers.where((v) {
+      final matchesType = _filter == 'ALL' || v['type'] == _filter;
+      final q = _query.toLowerCase();
+      final matchesQuery = q.isEmpty || ['number', 'party', 'summary', 'date', 'type'].any((k) => '${v[k] ?? ''}'.toLowerCase().contains(q));
+      return matchesType && matchesQuery;
+    }).toList();
+    final total = visible.fold<double>(0, (sum, v) => sum + (double.tryParse('${v['amount'] ?? 0}') ?? 0));
+    return Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Expanded(child: Text('VOUCHER HISTORY', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 0.5))),
+        OutlinedButton.icon(onPressed: widget.onRefresh, icon: const Icon(Icons.sync, size: 18), label: const Text('Refresh')),
+      ]),
+      const SizedBox(height: 6),
+      Text('${visible.length} vouchers  •  Total ₹${total.toStringAsFixed(2)}', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 14),
+      TextField(decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search voucher no, party, details...'), onChanged: (v) => setState(() => _query = v)),
+      const SizedBox(height: 12),
+      SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
+        for (final f in ['ALL', 'SALES', 'PURCHASE', 'RECEIPT', 'PAYMENT'])
+          Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(label: Text(f), selected: _filter == f, onSelected: (_) => setState(() => _filter = f))),
+      ])),
+      const SizedBox(height: 10),
+      Expanded(child: visible.isEmpty
+        ? const Center(child: Text('No vouchers found. Sync and try again.', style: TextStyle(color: Colors.grey)))
+        : ListView.separated(itemCount: visible.length, separatorBuilder: (_, __) => const SizedBox(height: 7), itemBuilder: (ctx, i) {
+            final v = visible[i]; final type = '${v['type']}'; final color = _typeColor(type);
+            return Card(child: ListTile(
+              onTap: () => _showDetails(v),
+              leading: CircleAvatar(backgroundColor: color.withOpacity(.14), child: Icon(Icons.receipt_long, color: color)),
+              title: Row(children: [Expanded(child: Text('${v['number']}', style: const TextStyle(fontWeight: FontWeight.bold))), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: color.withOpacity(.14), borderRadius: BorderRadius.circular(6)), child: Text(type, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)))]),
+              subtitle: Text('${v['party']}  •  ${formatDisplayDateTime('${v['date'] ?? ''}')}\n${v['summary'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis),
+              isThreeLine: true,
+              trailing: Text('₹${v['amount']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            ));
+          })),
+    ]));
   }
 }
 
