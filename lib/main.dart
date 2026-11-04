@@ -3663,8 +3663,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List> _parseSummaryTable(String summary) {
-    List> rows = [];
+  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
+    final List<Map<String, dynamic>> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
