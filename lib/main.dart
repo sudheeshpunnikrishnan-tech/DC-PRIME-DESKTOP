@@ -615,12 +615,13 @@ class MainDashboard extends StatefulWidget {
 }
 
 class _MainDashboardState extends State<MainDashboard> {
-  // 0: Billing, 1: Price List, 2: Customers, 3: Packing Slip, 4: Invoices, 5: Reports, 6: Settings
+  // 0: Sales (F8), 1: Purchase (F9), 2: Receipt (F6), 3: Payment (F5), 4: Price List, 5: Customers, 6: Packing Slip, 7: Invoices, 8: Reports, 9: Settings
   int _navIndex = 0;
   List<DCItem> _items = [];
   List<DCCustomer> _customers = [];
   List<DCEstimate> _estimates = [];
   final List<LoadingEntry> _loadingSlip = [];
+  List<dynamic> _suppliers = [];
   bool _isLoading = true;
   bool _isBackgroundSyncing = false;
 
@@ -646,6 +647,7 @@ class _MainDashboardState extends State<MainDashboard> {
         final List itemList = data['items'] ?? [];
         final List custList = data['customers'] ?? [];
         final List estList = data['estimates'] ?? [];
+        final List suppList = data['suppliers'] ?? [];
 
         if (data['company'] != null) {
           final comp = data['company'];
@@ -663,6 +665,7 @@ class _MainDashboardState extends State<MainDashboard> {
           _items = itemList.map((i) => DCItem.fromJson(i)).toList();
           _customers = custList.map((c) => DCCustomer.fromJson(c)).toList();
           _estimates = estList.map((e) => DCEstimate.fromJson(e)).toList();
+          _suppliers = suppList;
           _isLoading = false;
           _isBackgroundSyncing = false;
         });
@@ -869,18 +872,24 @@ class _MainDashboardState extends State<MainDashboard> {
                     final q = value.toLowerCase();
                     if (q.contains('bill') || q.contains('sale')) {
                       setState(() => _navIndex = 0);
-                    } else if (q.contains('item') || q.contains('price')) {
+                    } else if (q.contains('pur')) {
                       setState(() => _navIndex = 1);
-                    } else if (q.contains('cust') || q.contains('part')) {
+                    } else if (q.contains('rec')) {
                       setState(() => _navIndex = 2);
-                    } else if (q.contains('pack') || q.contains('load')) {
+                    } else if (q.contains('pay')) {
                       setState(() => _navIndex = 3);
-                    } else if (q.contains('invo') || q.contains('hist')) {
+                    } else if (q.contains('item') || q.contains('price')) {
                       setState(() => _navIndex = 4);
-                    } else if (q.contains('rep')) {
+                    } else if (q.contains('cust') || q.contains('part')) {
                       setState(() => _navIndex = 5);
-                    } else if (q.contains('set') || q.contains('prof')) {
+                    } else if (q.contains('pack') || q.contains('load')) {
                       setState(() => _navIndex = 6);
+                    } else if (q.contains('invo') || q.contains('hist')) {
+                      setState(() => _navIndex = 7);
+                    } else if (q.contains('rep')) {
+                      setState(() => _navIndex = 8);
+                    } else if (q.contains('set') || q.contains('prof')) {
+                      setState(() => _navIndex = 9);
                     }
                   },
                 ),
@@ -919,22 +928,41 @@ class _MainDashboardState extends State<MainDashboard> {
           onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
         );
       case 1:
+        return PurchaseVoucherScreen(
+          items: _items,
+          suppliers: _suppliers,
+          onSaved: () => _fetchData(silent: true),
+          onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+        );
+      case 2:
+        return ReceiptVoucherScreen(
+          customers: _customers,
+          onSaved: () => _fetchData(silent: true),
+          onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+        );
+      case 3:
+        return PaymentVoucherScreen(
+          suppliers: _suppliers,
+          onSaved: () => _fetchData(silent: true),
+          onSetSyncing: (val) => setState(() => _isBackgroundSyncing = val),
+        );
+      case 4:
         return PriceListDesktopView(
           items: _items,
           onRefreshRequired: () => _fetchData(silent: true),
         );
-      case 2:
+      case 5:
         return CustomerDesktopView(
           customers: _customers,
           onRefreshRequired: () => _fetchData(silent: true),
         );
-      case 3:
+      case 6:
         return LoadingSlipView(
           loadingSlip: _loadingSlip,
           items: _items,
           customers: _customers,
         );
-      case 4:
+      case 7:
         return InvoiceHistoryView(
           estimates: _estimates,
           items: _items,
@@ -942,7 +970,7 @@ class _MainDashboardState extends State<MainDashboard> {
           onEditInvoice: _onLoadInvoiceToEdit,
           onRefreshRequired: () => _fetchData(silent: true),
         );
-      case 5:
+      case 8:
         return EnterpriseReportsView(
           estimates: _estimates,
           items: _items,
@@ -950,7 +978,7 @@ class _MainDashboardState extends State<MainDashboard> {
           onEditInvoice: _onLoadInvoiceToEdit,
           onRefreshRequired: () => _fetchData(silent: true),
         );
-      case 6:
+      case 9:
         return SettingsDesktopView(
           onReloadSheet: () => _fetchData(silent: true),
           onOpenProfile: _openCompanyProfileDialog,
@@ -995,127 +1023,135 @@ class _MainDashboardState extends State<MainDashboard> {
       );
     }
 
-    // Universal Back Button Handler using ESC
-    return FocusScope(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-            return KeyEventResult.handled;
-          } else if (_navIndex != 0) {
-            setState(() => _navIndex = 0); // Jumps back to Billing
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
+    // Global Key Bindings for F-keys & Esc
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f8): () => setState(() => _navIndex = 0),
+        const SingleActivator(LogicalKeyboardKey.f9): () => setState(() => _navIndex = 1),
+        const SingleActivator(LogicalKeyboardKey.f6): () => setState(() => _navIndex = 2),
+        const SingleActivator(LogicalKeyboardKey.f5): () => setState(() => _navIndex = 3),
       },
-      child: Scaffold(
-        body: SafeArea(
-          child: Row(
-            children: [
-              // Left Material 3 NavigationRail (WITHOUT Home button)
-              NavigationRail(
-                selectedIndex: _navIndex,
-                onDestinationSelected: (int index) {
-                  setState(() {
-                    _navIndex = index;
-                  });
-                },
-                labelType: NavigationRailLabelType.all,
-                backgroundColor: scheme.surface,
-                indicatorColor: scheme.primaryContainer,
-                leading: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => setState(() => _navIndex = 0),
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A73E8),
-                        borderRadius: BorderRadius.circular(14),
+      child: FocusScope(
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+              return KeyEventResult.handled;
+            } else if (_navIndex != 0) {
+              setState(() => _navIndex = 0);
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Scaffold(
+          body: SafeArea(
+            child: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _navIndex,
+                  onDestinationSelected: (int index) => setState(() => _navIndex = index),
+                  labelType: NavigationRailLabelType.all,
+                  backgroundColor: scheme.surface,
+                  indicatorColor: scheme.primaryContainer,
+                  leading: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => setState(() => _navIndex = 0),
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A73E8),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'AC',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                        ),
                       ),
-                      alignment: Alignment.center,
-                      child: const Text(
-                        'AC',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: 1,
+                    ),
+                  ),
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long_rounded),
+                      label: Text('Sales (F8)'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.shopping_cart_outlined),
+                      selectedIcon: Icon(Icons.shopping_cart_rounded),
+                      label: Text('Purchase (F9)'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.download_rounded),
+                      selectedIcon: Icon(Icons.download_done_rounded),
+                      label: Text('Receipt (F6)'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.upload_rounded),
+                      selectedIcon: Icon(Icons.payments_rounded),
+                      label: Text('Payment (F5)'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.inventory_2_outlined),
+                      selectedIcon: Icon(Icons.inventory_2_rounded),
+                      label: Text('Price List'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.people_alt_outlined),
+                      selectedIcon: Icon(Icons.people_alt_rounded),
+                      label: Text('Customers'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.local_shipping_outlined),
+                      selectedIcon: Icon(Icons.local_shipping_rounded),
+                      label: Text('Packing Slip'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.history_rounded),
+                      selectedIcon: Icon(Icons.description_rounded),
+                      label: Text('Invoices'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.bar_chart_outlined),
+                      selectedIcon: Icon(Icons.bar_chart_rounded),
+                      label: Text('Reports'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.settings_outlined),
+                      selectedIcon: Icon(Icons.settings_rounded),
+                      label: Text('Settings'),
+                    ),
+                  ],
+                  trailing: Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: IconButton(
+                          tooltip: 'Sync Google Sheet',
+                          icon: const Icon(Icons.sync_rounded),
+                          onPressed: () => _fetchData(silent: true),
                         ),
                       ),
                     ),
                   ),
                 ),
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.receipt_long_outlined),
-                    selectedIcon: Icon(Icons.receipt_long_rounded),
-                    label: Text('Billing'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.inventory_2_outlined),
-                    selectedIcon: Icon(Icons.inventory_2_rounded),
-                    label: Text('Price List'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.people_alt_outlined),
-                    selectedIcon: Icon(Icons.people_alt_rounded),
-                    label: Text('Customers'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.local_shipping_outlined),
-                    selectedIcon: Icon(Icons.local_shipping_rounded),
-                    label: Text('Packing Slip'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.history_rounded),
-                    selectedIcon: Icon(Icons.description_rounded),
-                    label: Text('Invoices'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.bar_chart_outlined),
-                    selectedIcon: Icon(Icons.bar_chart_rounded),
-                    label: Text('Reports'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.settings_outlined),
-                    selectedIcon: Icon(Icons.settings_rounded),
-                    label: Text('Settings'),
-                  ),
-                ],
-                trailing: Expanded(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: IconButton(
-                        tooltip: 'Sync Google Sheet',
-                        icon: const Icon(Icons.sync_rounded),
-                        onPressed: () => _fetchData(silent: true),
-                      ),
-                    ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(
+                  child: Column(
+                    children: [
+                      if (_isBackgroundSyncing) const LinearProgressIndicator(minHeight: 2.5),
+                      _buildTopSearchBar(context),
+                      Expanded(child: _buildActiveBodyContent()),
+                    ],
                   ),
                 ),
-              ),
-              const VerticalDivider(thickness: 1, width: 1),
-
-              // Right Main Screen Content
-              Expanded(
-                child: Column(
-                  children: [
-                    if (_isBackgroundSyncing)
-                      const LinearProgressIndicator(minHeight: 2.5),
-                    _buildTopSearchBar(context),
-                    Expanded(
-                      child: _buildActiveBodyContent(),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1123,7 +1159,7 @@ class _MainDashboardState extends State<MainDashboard> {
   }
 }
 
-// ---------------- 1. BILLING SCREEN ----------------
+// ---------------- 1. BILLING SCREEN (SALES F8) ----------------
 
 class TallyBillingScreen extends StatefulWidget {
   final List<DCItem> items;
@@ -1247,17 +1283,24 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
 
   void _addRow() {
     setState(() {
-      // Columns all blank by default!
-      _rows.add(InvoiceRowItem(item: null, rate: 0.0, qty: 0.0, unit: '', bags: 0));
+      final row = InvoiceRowItem(item: null, rate: 0.0, qty: 0.0, unit: '', bags: 0);
+      _rows.add(row);
+      final newIdx = _rows.length - 1;
+      row.itemSearchFocus.addListener(() {
+        if (row.itemSearchFocus.hasFocus) {
+          _filterItemsForQuery(row.textCtrl.text);
+          _showItemOverlay(newIdx);
+        } else {
+          _hideItemOverlay();
+        }
+      });
     });
   }
 
   void _removeRow(int idx) {
     _hideItemOverlay();
     if (_rows.length > 1) {
-      setState(() {
-        _rows.removeAt(idx);
-      });
+      setState(() => _rows.removeAt(idx));
     }
   }
 
@@ -1420,11 +1463,12 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
       return i.name.toLowerCase().contains(query) || i.tallyName.toLowerCase().contains(query);
     }).toList();
 
-    // End of List BY DEFAULT is FIRST in the list!
     if (query.isEmpty || 'end of list'.startsWith(query) || 'end'.startsWith(query)) {
       _filteredItems = [DCItem.endOfList, ...itemsList];
+      _itemSelectedIndex = 0; // Lock on End of List by default
     } else {
       _filteredItems = itemsList;
+      _itemSelectedIndex = 0; // Lock on first matched item
     }
   }
 
@@ -1567,9 +1611,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   void _selectItem(int rowIdx, DCItem itm) {
     _hideItemOverlay();
 
-    // Check if End of List was selected!
     if (itm.rowIndex == -999) {
-      // Clear this incomplete row if multiple rows exist
       if (_rows.length > 1 && _rows[rowIdx].item == null) {
         setState(() {
           _rows.removeAt(rowIdx);
@@ -1585,9 +1627,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
         });
       }
 
-      // Jump directly to Coolie!
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _coolieFocus.requestFocus();
+        FocusScope.of(context).requestFocus(_coolieFocus);
+        _coolieCtrl.selection = TextSelection(baseOffset: 0, extentOffset: _coolieCtrl.text.length);
       });
       return;
     }
@@ -1754,17 +1796,9 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   Widget build(BuildContext context) {
     final isEditing = widget.invoiceToEdit != null;
 
-    return FocusScope(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          final isCtrl = HardwareKeyboard.instance.isControlPressed;
-          if ((isCtrl && event.logicalKey == LogicalKeyboardKey.keyS) ||
-              event.logicalKey == LogicalKeyboardKey.f8) {
-            _saveInvoice();
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): _saveInvoice,
       },
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -1773,7 +1807,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
           children: [
             Row(
               children: [
-                Text(isEditing ? 'Edit Customer Bill' : 'Customer Bill',
+                Text(isEditing ? 'Edit Customer Bill' : 'Customer Bill (Sales - F8)',
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 12),
                 Chip(
@@ -1789,7 +1823,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                 const SizedBox(width: 8),
                 FilledButton.icon(
                   icon: const Icon(Icons.print_rounded, size: 18),
-                  label: Text(isEditing ? 'Update & Print' : 'Save & Print'),
+                  label: Text(isEditing ? 'Update & Print' : 'Save & Print (Ctrl + S)'),
                   onPressed: _saveInvoice,
                 ),
               ],
@@ -1914,7 +1948,6 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                       ),
                                       onChanged: (val) {
                                         setState(() {
-                                          _itemSelectedIndex = 0;
                                           _filterItemsForQuery(val);
                                         });
                                         _showItemOverlay(idx);
@@ -2092,7 +2125,7 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
                                 controller: _coolieCtrl,
                                 focusNode: _coolieFocus,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(labelText: 'Coolie (₹)'),
+                                decoration: const InputDecoration(labelText: 'Coolie (Enter to Save)'),
                                 onChanged: (_) => setState(() {}),
                                 onSubmitted: (_) => _saveInvoice(),
                               ),
@@ -2128,7 +2161,359 @@ class _TallyBillingScreenState extends State<TallyBillingScreen> {
   }
 }
 
-// ---------------- 2. PRICE LIST VIEW ----------------
+// ---------------- 2. PURCHASE VOUCHER (F9) ----------------
+
+class PurchaseVoucherScreen extends StatefulWidget {
+  final List<DCItem> items;
+  final List<dynamic> suppliers;
+  final VoidCallback onSaved;
+  final Function(bool) onSetSyncing;
+
+  const PurchaseVoucherScreen({
+    super.key,
+    required this.items,
+    required this.suppliers,
+    required this.onSaved,
+    required this.onSetSyncing,
+  });
+
+  @override
+  State<PurchaseVoucherScreen> createState() => _PurchaseVoucherScreenState();
+}
+
+class _PurchaseVoucherScreenState extends State<PurchaseVoucherScreen> {
+  final _supplierCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  final _remarksCtrl = TextEditingController();
+  final _supplierFocus = FocusNode();
+  final _amountFocus = FocusNode();
+  final _remarksFocus = FocusNode();
+
+  Future<void> _savePurchase() async {
+    if (_supplierCtrl.text.trim().isEmpty || _amountCtrl.text.trim().isEmpty) return;
+    widget.onSetSyncing(true);
+
+    await http.post(
+      Uri.parse(sheetApiUrl),
+      body: jsonEncode({
+        "action": "ADD_PURCHASE",
+        "voucherNo": DateTime.now().millisecondsSinceEpoch.toString().substring(7),
+        "date": getCurrentFormattedDateTime(),
+        "supplier": _supplierCtrl.text.trim(),
+        "itemSummary": _remarksCtrl.text.trim(),
+        "coolie": "0.00",
+        "sgst": "0.00",
+        "cgst": "0.00",
+        "roundOff": "0.00",
+        "grandTotal": _amountCtrl.text.trim(),
+      }),
+    );
+
+    widget.onSaved();
+    _supplierCtrl.clear();
+    _amountCtrl.clear();
+    _remarksCtrl.clear();
+    _supplierFocus.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Purchase Voucher (F9 - Stock In)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _supplierCtrl,
+                focusNode: _supplierFocus,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'Supplier / Mill Name (Enter to jump)'),
+                onSubmitted: (_) => _amountFocus.requestFocus(),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _amountCtrl,
+                focusNode: _amountFocus,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Total Purchase Amount (Enter to jump)'),
+                onSubmitted: (_) => _remarksFocus.requestFocus(),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _remarksCtrl,
+                focusNode: _remarksFocus,
+                decoration: const InputDecoration(labelText: 'Item Summary / Lorry Load Details (Enter to Save)'),
+                onSubmitted: (_) => _savePurchase(),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                icon: const Icon(Icons.check),
+                label: const Text('Save Purchase Entry'),
+                onPressed: _savePurchase,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- 3. RECEIPT VOUCHER (F6) ----------------
+
+class ReceiptVoucherScreen extends StatefulWidget {
+  final List<DCCustomer> customers;
+  final VoidCallback onSaved;
+  final Function(bool) onSetSyncing;
+
+  const ReceiptVoucherScreen({
+    super.key,
+    required this.customers,
+    required this.onSaved,
+    required this.onSetSyncing,
+  });
+
+  @override
+  State<ReceiptVoucherScreen> createState() => _ReceiptVoucherScreenState();
+}
+
+class _ReceiptVoucherScreenState extends State<ReceiptVoucherScreen> {
+  final _customerCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  final _refCtrl = TextEditingController();
+  final _narrationCtrl = TextEditingController();
+  String _mode = 'Cash';
+
+  final _custFocus = FocusNode();
+  final _amountFocus = FocusNode();
+  final _refFocus = FocusNode();
+  final _narrationFocus = FocusNode();
+
+  Future<void> _saveReceipt() async {
+    if (_customerCtrl.text.trim().isEmpty || _amountCtrl.text.trim().isEmpty) return;
+    widget.onSetSyncing(true);
+
+    await http.post(
+      Uri.parse(sheetApiUrl),
+      body: jsonEncode({
+        "action": "ADD_RECEIPT",
+        "receiptNo": DateTime.now().millisecondsSinceEpoch.toString().substring(7),
+        "date": getCurrentFormattedDateTime(),
+        "customer": _customerCtrl.text.trim(),
+        "mode": _mode,
+        "amount": _amountCtrl.text.trim(),
+        "reference": _refCtrl.text.trim(),
+        "narration": _narrationCtrl.text.trim(),
+      }),
+    );
+
+    widget.onSaved();
+    _customerCtrl.clear();
+    _amountCtrl.clear();
+    _refCtrl.clear();
+    _narrationCtrl.clear();
+    _custFocus.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Receipt Voucher (F6 - Money In)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _customerCtrl,
+                focusNode: _custFocus,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'Received From (Customer Name - Enter to jump)'),
+                onSubmitted: (_) => _amountFocus.requestFocus(),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _amountCtrl,
+                      focusNode: _amountFocus,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Amount (₹) - Enter to jump'),
+                      onSubmitted: (_) => _refFocus.requestFocus(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 140,
+                    child: DropdownButtonFormField<String>(
+                      value: _mode,
+                      decoration: const InputDecoration(labelText: 'Mode'),
+                      items: const [
+                        DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                        DropdownMenuItem(value: 'Bank/UPI', child: Text('Bank / UPI')),
+                      ],
+                      onChanged: (v) => setState(() => _mode = v!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _refCtrl,
+                focusNode: _refFocus,
+                decoration: const InputDecoration(labelText: 'UPI Ref / Cheque No (Enter to jump)'),
+                onSubmitted: (_) => _narrationFocus.requestFocus(),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _narrationCtrl,
+                focusNode: _narrationFocus,
+                decoration: const InputDecoration(labelText: 'Narration / Notes (Enter to Save)'),
+                onSubmitted: (_) => _saveReceipt(),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                icon: const Icon(Icons.check),
+                label: const Text('Save Receipt'),
+                onPressed: _saveReceipt,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- 4. PAYMENT VOUCHER (F5) ----------------
+
+class PaymentVoucherScreen extends StatefulWidget {
+  final List<dynamic> suppliers;
+  final VoidCallback onSaved;
+  final Function(bool) onSetSyncing;
+
+  const PaymentVoucherScreen({
+    super.key,
+    required this.suppliers,
+    required this.onSaved,
+    required this.onSetSyncing,
+  });
+
+  @override
+  State<PaymentVoucherScreen> createState() => _PaymentVoucherScreenState();
+}
+
+class _PaymentVoucherScreenState extends State<PaymentVoucherScreen> {
+  final _paidToCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  final _narrationCtrl = TextEditingController();
+  String _mode = 'Cash';
+
+  final _paidToFocus = FocusNode();
+  final _amountFocus = FocusNode();
+  final _narrationFocus = FocusNode();
+
+  Future<void> _savePayment() async {
+    if (_paidToCtrl.text.trim().isEmpty || _amountCtrl.text.trim().isEmpty) return;
+    widget.onSetSyncing(true);
+
+    await http.post(
+      Uri.parse(sheetApiUrl),
+      body: jsonEncode({
+        "action": "ADD_PAYMENT",
+        "paymentNo": DateTime.now().millisecondsSinceEpoch.toString().substring(7),
+        "date": getCurrentFormattedDateTime(),
+        "paidTo": _paidToCtrl.text.trim(),
+        "mode": _mode,
+        "amount": _amountCtrl.text.trim(),
+        "narration": _narrationCtrl.text.trim(),
+      }),
+    );
+
+    widget.onSaved();
+    _paidToCtrl.clear();
+    _amountCtrl.clear();
+    _narrationCtrl.clear();
+    _paidToFocus.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Payment Voucher (F5 - Money Out)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _paidToCtrl,
+                focusNode: _paidToFocus,
+                autofocus: true,
+                decoration: const InputDecoration(labelText: 'Paid To (Supplier / Vadaka / Coolie / Rent - Enter to jump)'),
+                onSubmitted: (_) => _amountFocus.requestFocus(),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _amountCtrl,
+                      focusNode: _amountFocus,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Amount (₹) - Enter to jump'),
+                      onSubmitted: (_) => _narrationFocus.requestFocus(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 140,
+                    child: DropdownButtonFormField<String>(
+                      value: _mode,
+                      decoration: const InputDecoration(labelText: 'Mode'),
+                      items: const [
+                        DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                        DropdownMenuItem(value: 'Bank/UPI', child: Text('Bank / UPI')),
+                      ],
+                      onChanged: (v) => setState(() => _mode = v!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _narrationCtrl,
+                focusNode: _narrationFocus,
+                decoration: const InputDecoration(labelText: 'Narration / Notes (Enter to Save)'),
+                onSubmitted: (_) => _savePayment(),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                icon: const Icon(Icons.check),
+                label: const Text('Save Payment'),
+                onPressed: _savePayment,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- 5. PRICE LIST VIEW ----------------
 
 class PriceListDesktopView extends StatefulWidget {
   final List<DCItem> items;
@@ -2439,160 +2824,160 @@ class _PriceListDesktopViewState extends State<PriceListDesktopView> {
           }
           return KeyEventResult.ignored;
         },
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl,
-                    focusNode: _searchFocus,
-                    onChanged: (v) => setState(() {
-                      _query = v;
-                      _selectedIndex = 0;
-                    }),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search_rounded),
-                      hintText: 'Search items (Ctrl + F)...',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton.icon(
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add Item'),
-                  onPressed: () => _openEditItemDialog(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: ListView.separated(
-                controller: _scrollCtrl,
-                physics: const BouncingScrollPhysics(),
-                itemCount: filtered.length,
-                separatorBuilder: (ctx, i) => const SizedBox(height: 8),
-                itemBuilder: (ctx, idx) {
-                  final item = filtered[idx];
-                  final isFocused = idx == _selectedIndex;
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 3),
-                    color: isFocused ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35) : null,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(
-                        color: isFocused ? const Color(0xFF1A73E8) : Colors.transparent,
-                        width: 1.5,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchCtrl,
+                      focusNode: _searchFocus,
+                      onChanged: (v) => setState(() {
+                        _query = v;
+                        _selectedIndex = 0;
+                      }),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search_rounded),
+                        hintText: 'Search items (Ctrl + F)...',
                       ),
                     ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () {
-                        setState(() => _selectedIndex = idx);
-                        _showItemPreviewModal(item);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                              child: Text(
-                                '${item.no}',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Add Item'),
+                    onPressed: () => _openEditItemDialog(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: ListView.separated(
+                  controller: _scrollCtrl,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: filtered.length,
+                  separatorBuilder: (ctx, i) => const SizedBox(height: 8),
+                  itemBuilder: (ctx, idx) {
+                    final item = filtered[idx];
+                    final isFocused = idx == _selectedIndex;
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      color: isFocused ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35) : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: isFocused ? const Color(0xFF1A73E8) : Colors.transparent,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          setState(() => _selectedIndex = idx);
+                          _showItemPreviewModal(item);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                child: Text(
+                                  '${item.no}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          item.name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF1A73E8).withOpacity(0.18),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: const Color(0xFF1A73E8), width: 1),
-                                        ),
-                                        child: Text(
-                                          '₹${item.rate}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                            color: Color(0xFF8AB4F8),
-                                          ),
-                                        ),
-                                      ),
-                                      if (item.isTaxable) ...[
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF38230B),
-                                            borderRadius: BorderRadius.circular(5),
-                                            border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
-                                          ),
-                                          child: const Text(
-                                            'TAX 5%',
-                                            style: TextStyle(
-                                              fontSize: 9.5,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            item.name,
+                                            style: const TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              color: Color(0xFFFCD34D),
+                                              fontSize: 15,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF1A73E8).withOpacity(0.18),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: const Color(0xFF1A73E8), width: 1),
+                                          ),
+                                          child: Text(
+                                            '₹${item.rate}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Color(0xFF8AB4F8),
                                             ),
                                           ),
                                         ),
+                                        if (item.isTaxable) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF38230B),
+                                              borderRadius: BorderRadius.circular(5),
+                                              border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
+                                            ),
+                                            child: const Text(
+                                              'TAX 5%',
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFFFCD34D),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${item.qty} ${item.billedIn} • Rate Unit: ${item.rateType} • Tally: ${item.tallyName}',
-                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${item.qty} ${item.billedIn} • Rate Unit: ${item.rateType} • Tally: ${item.tallyName}',
+                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
-                              tooltip: 'Edit Item',
-                              onPressed: () => _openEditItemDialog(item: item),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 20),
+                                tooltip: 'Edit Item',
+                                onPressed: () => _openEditItemDialog(item: item),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 
-// ---------------- 3. CUSTOMERS VIEW ----------------
+// ---------------- 6. CUSTOMERS VIEW ----------------
 
 class CustomerDesktopView extends StatefulWidget {
   final List<DCCustomer> customers;
@@ -2939,167 +3324,318 @@ class _CustomerDesktopViewState extends State<CustomerDesktopView> {
           }
           return KeyEventResult.ignored;
         },
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl,
-                    focusNode: _searchFocus,
-                    onChanged: (v) => setState(() {
-                      _query = v;
-                      _selectedIndex = 0;
-                    }),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search_rounded),
-                      hintText: 'Search parties (Ctrl + F)...',
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchCtrl,
+                      focusNode: _searchFocus,
+                      onChanged: (v) => setState(() {
+                        _query = v;
+                        _selectedIndex = 0;
+                      }),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search_rounded),
+                        hintText: 'Search parties (Ctrl + F)...',
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton.icon(
-                  icon: const Icon(Icons.person_add_rounded),
-                  label: const Text('Add Party'),
-                  onPressed: () => _openEditCustomerDialog(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: ListView.separated(
-                controller: _scrollCtrl,
-                physics: const BouncingScrollPhysics(),
-                itemCount: filtered.length,
-                separatorBuilder: (ctx, i) => const SizedBox(height: 8),
-                itemBuilder: (ctx, i) {
-                  final c = filtered[i];
-                  final isFocused = i == _selectedIndex;
+                  const SizedBox(width: 10),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.person_add_rounded),
+                    label: const Text('Add Party'),
+                    onPressed: () => _openEditCustomerDialog(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: ListView.separated(
+                  controller: _scrollCtrl,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: filtered.length,
+                  separatorBuilder: (ctx, i) => const SizedBox(height: 8),
+                  itemBuilder: (ctx, i) {
+                    final c = filtered[i];
+                    final isFocused = i == _selectedIndex;
 
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 3),
-                    color: isFocused ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35) : null,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(
-                        color: isFocused ? const Color(0xFF1A73E8) : Colors.transparent,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () {
-                        setState(() => _selectedIndex = i);
-                        _showCustomerPreviewModal(c);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                              child: Text(
-                                '${c.slNo}',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          c.name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _buildTagChip(c.billingTag),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Wrap(
-                                    spacing: 12,
-                                    runSpacing: 2,
-                                    children: [
-                                      if (c.b2b.trim().isNotEmpty)
-                                        Text(
-                                          'B2B: ${c.b2b}',
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFF90CAF9), fontWeight: FontWeight.w600),
-                                        ),
-                                      if (c.b2c.trim().isNotEmpty)
-                                        Text(
-                                          'B2C: ${c.b2c}',
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFFA7F3D0), fontWeight: FontWeight.w600),
-                                        ),
-                                      if (c.contact.trim().isNotEmpty)
-                                        Text(
-                                          '📞 ${c.contact}',
-                                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                        ),
-                                      if (c.address.trim().isNotEmpty)
-                                        Text(
-                                          '📍 ${c.address}',
-                                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                        ),
-                                    ],
-                                  ),
-                                  if (c.remarks.trim().isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.info_outline_rounded, size: 13, color: Colors.amber.shade400),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Click to preview for remarks',
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            color: Colors.amber.shade300,
-                                            fontStyle: FontStyle.italic,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
-                              tooltip: 'Edit Party',
-                              onPressed: () => _openEditCustomerDialog(customer: c),
-                            ),
-                          ],
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      color: isFocused ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35) : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: isFocused ? const Color(0xFF1A73E8) : Colors.transparent,
+                          width: 1.5,
                         ),
                       ),
-                    ),
-                  );
-                },
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          setState(() => _selectedIndex = i);
+                          _showCustomerPreviewModal(c);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                child: Text(
+                                  '${c.slNo}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            c.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _buildTagChip(c.billingTag),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 2,
+                                      children: [
+                                        if (c.b2b.trim().isNotEmpty)
+                                          Text(
+                                            'B2B: ${c.b2b}',
+                                            style: const TextStyle(fontSize: 12, color: Color(0xFF90CAF9), fontWeight: FontWeight.w600),
+                                          ),
+                                        if (c.b2c.trim().isNotEmpty)
+                                          Text(
+                                            'B2C: ${c.b2c}',
+                                            style: const TextStyle(fontSize: 12, color: Color(0xFFA7F3D0), fontWeight: FontWeight.w600),
+                                          ),
+                                        if (c.contact.trim().isNotEmpty)
+                                          Text(
+                                            '📞 ${c.contact}',
+                                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                          ),
+                                        if (c.address.trim().isNotEmpty)
+                                          Text(
+                                            '📍 ${c.address}',
+                                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                          ),
+                                      ],
+                                    ),
+                                    if (c.remarks.trim().isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.info_outline_rounded, size: 13, color: Colors.amber.shade400),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Click to preview for remarks',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: Colors.amber.shade300,
+                                              fontStyle: FontStyle.italic,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 20),
+                                tooltip: 'Edit Party',
+                                onPressed: () => _openEditCustomerDialog(customer: c),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- 7. PACKING SLIP VIEW ----------------
+
+class LoadingSlipView extends StatefulWidget {
+  final List<LoadingEntry> loadingSlip;
+  final List<DCItem> items;
+  final List<DCCustomer> customers;
+
+  const LoadingSlipView({
+    super.key,
+    required this.loadingSlip,
+    required this.items,
+    required this.customers,
+  });
+
+  @override
+  State<LoadingSlipView> createState() => _LoadingSlipViewState();
+}
+
+class _LoadingSlipViewState extends State<LoadingSlipView> {
+  void _openAddPackingSlipDialog() {
+    String? selectedCust = widget.customers.isNotEmpty ? widget.customers.first.name : null;
+    final placeCtrl = TextEditingController();
+    final summaryCtrl = TextEditingController();
+    final bagsCtrl = TextEditingController(text: '10');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Add Entry to Slip'),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedCust,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Party / Customer Name'),
+                    items: widget.customers.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))).toList(),
+                    onChanged: (v) => setDialogState(() => selectedCust = v),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(controller: placeCtrl, decoration: const InputDecoration(labelText: 'Place')),
+                  const SizedBox(height: 10),
+                  TextField(controller: summaryCtrl, decoration: const InputDecoration(labelText: 'Item Summary')),
+                  const SizedBox(height: 10),
+                  TextField(controller: bagsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Bags')),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                if (selectedCust != null && bagsCtrl.text.trim().isNotEmpty) {
+                  final party = selectedCust!;
+                  final place = placeCtrl.text.trim();
+                  final summary = summaryCtrl.text.trim();
+                  final bags = int.tryParse(bagsCtrl.text.trim()) ?? 0;
+
+                  Navigator.pop(ctx);
+                  setState(() {
+                    widget.loadingSlip.add(LoadingEntry(
+                      customerName: party,
+                      place: place,
+                      summary: summary.isEmpty ? 'Rice Bags' : summary,
+                      bags: bags,
+                    ));
+                  });
+
+                  await http.post(
+                    Uri.parse(sheetApiUrl),
+                    body: jsonEncode({
+                      "action": "ADD_PACKING_SLIP",
+                      "party": party,
+                      "place": place,
+                      "itemSummary": summary,
+                      "totalBags": bags,
+                    }),
+                  );
+                }
+              },
+              child: const Text('Save Entry'),
             ),
           ],
         ),
       ),
-    ),
-  );
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    int totalBags = widget.loadingSlip.fold(0, (sum, entry) => sum + entry.bags);
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text('Total Load: $totalBags Bags', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              FilledButton.icon(
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add Entry'),
+                onPressed: _openAddPackingSlipDialog,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: ListView.separated(
+              physics: const BouncingScrollPhysics(),
+              itemCount: widget.loadingSlip.length,
+              separatorBuilder: (ctx, i) => const SizedBox(height: 8),
+              itemBuilder: (ctx, idx) {
+                final entry = widget.loadingSlip[idx];
+                return Card(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      child: Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    title: Text(entry.customerName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('${entry.place} • ${entry.summary}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFFF29900))),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          onPressed: () => setState(() => widget.loadingSlip.removeAt(idx)),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-// ---------------- 4. INVOICE HISTORY VIEW ----------------
+// ---------------- 8. INVOICE HISTORY VIEW ----------------
 
 class InvoiceHistoryView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -3125,8 +3661,8 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   String _selectedFilter = 'ALL';
   DateTimeRange? _customDateRange;
 
-  List<Map<String, dynamic>> _parseSummaryTable(String summary) {
-    List<Map<String, dynamic>> rows = [];
+  List> _parseSummaryTable(String summary) {
+    List> rows = [];
     final parts = summary.split(',');
     for (var part in parts) {
       if (part.trim().isNotEmpty) {
@@ -3572,158 +4108,7 @@ class _InvoiceHistoryViewState extends State<InvoiceHistoryView> {
   }
 }
 
-// ---------------- 5. PACKING SLIP VIEW ----------------
-
-class LoadingSlipView extends StatefulWidget {
-  final List<LoadingEntry> loadingSlip;
-  final List<DCItem> items;
-  final List<DCCustomer> customers;
-
-  const LoadingSlipView({
-    super.key,
-    required this.loadingSlip,
-    required this.items,
-    required this.customers,
-  });
-
-  @override
-  State<LoadingSlipView> createState() => _LoadingSlipViewState();
-}
-
-class _LoadingSlipViewState extends State<LoadingSlipView> {
-  void _openAddPackingSlipDialog() {
-    String? selectedCust = widget.customers.isNotEmpty ? widget.customers.first.name : null;
-    final placeCtrl = TextEditingController();
-    final summaryCtrl = TextEditingController();
-    final bagsCtrl = TextEditingController(text: '10');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Add Entry to Slip'),
-          content: SizedBox(
-            width: 480,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedCust,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Party / Customer Name'),
-                    items: widget.customers.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))).toList(),
-                    onChanged: (v) => setDialogState(() => selectedCust = v),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(controller: placeCtrl, decoration: const InputDecoration(labelText: 'Place')),
-                  const SizedBox(height: 10),
-                  TextField(controller: summaryCtrl, decoration: const InputDecoration(labelText: 'Item Summary')),
-                  const SizedBox(height: 10),
-                  TextField(controller: bagsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Bags')),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () async {
-                if (selectedCust != null && bagsCtrl.text.trim().isNotEmpty) {
-                  final party = selectedCust!;
-                  final place = placeCtrl.text.trim();
-                  final summary = summaryCtrl.text.trim();
-                  final bags = int.tryParse(bagsCtrl.text.trim()) ?? 0;
-
-                  Navigator.pop(ctx);
-                  setState(() {
-                    widget.loadingSlip.add(LoadingEntry(
-                      customerName: party,
-                      place: place,
-                      summary: summary.isEmpty ? 'Rice Bags' : summary,
-                      bags: bags,
-                    ));
-                  });
-
-                  await http.post(
-                    Uri.parse(sheetApiUrl),
-                    body: jsonEncode({
-                      "action": "ADD_PACKING_SLIP",
-                      "party": party,
-                      "place": place,
-                      "itemSummary": summary,
-                      "totalBags": bags,
-                    }),
-                  );
-                }
-              },
-              child: const Text('Save Entry'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    int totalBags = widget.loadingSlip.fold(0, (sum, entry) => sum + entry.bags);
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text('Total Load: $totalBags Bags', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              FilledButton.icon(
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Entry'),
-                onPressed: _openAddPackingSlipDialog,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              itemCount: widget.loadingSlip.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 8),
-              itemBuilder: (ctx, idx) {
-                final entry = widget.loadingSlip[idx];
-                return Card(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                    title: Text(entry.customerName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('${entry.place} • ${entry.summary}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('${entry.bags} Bags', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFFF29900))),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 20),
-                          onPressed: () => setState(() => widget.loadingSlip.removeAt(idx)),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------- 6. ENTERPRISE REPORTS VIEW ----------------
+// ---------------- 9. ENTERPRISE REPORTS VIEW ----------------
 
 class EnterpriseReportsView extends StatefulWidget {
   final List<DCEstimate> estimates;
@@ -3917,7 +4302,7 @@ class _EnterpriseReportsViewState extends State<EnterpriseReportsView> with Sing
   }
 }
 
-// ---------------- 7. SETTINGS VIEW ----------------
+// ---------------- 10. SETTINGS VIEW ----------------
 
 class SettingsDesktopView extends StatelessWidget {
   final VoidCallback onReloadSheet;
